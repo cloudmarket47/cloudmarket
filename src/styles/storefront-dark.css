@@ -1,0 +1,92 @@
+.storefront-dark {
+  background: #050816;
+  color: #f8fafc;
+}
+
+.storefront-dark .bg-white,
+.storefront-dark .bg-gray-50,
+.storefront-dark .bg-gray-100,
+.storefront-dark .bg-slate-50,
+.storefront-dark .bg-stone-50,
+.storefront-dark .bg-stone-100,
+.storefront-dark .bg-\[\#f8f5ef\],
+.storefront-dark .bg-\[\#f6f4ef\],
+.storefront-dark .bg-\[\#f7f6f2\],
+.storefront-dark .bg-\[\#f8f5ee\] {
+  background-color: #07111f !important;
+}
+
+.storefront-dark .bg-\[\#f8f1e8\],
+.storefront-dark .bg-\[\#f4ede3\] {
+  background-color: #0b1628 !important;
+}
+
+.storefront-dark .card-3d {
+  background: linear-gradient(180deg, rgba(11, 22, 40, 0.96), rgba(7, 17, 31, 0.98)) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.36) !important;
+}
+
+.storefront-dark .hero-share-panel {
+  background: rgba(7, 17, 31, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+}
+
+.storefront-dark .text-gray-900,
+.storefront-dark .text-gray-800,
+.storefront-dark .text-slate-950,
+.storefront-dark .text-stone-950 {
+  color: #f8fafc !important;
+}
+
+.storefront-dark .text-gray-700,
+.storefront-dark .text-gray-600,
+.storefront-dark .text-slate-700,
+.storefront-dark .text-slate-600,
+.storefront-dark .text-stone-700,
+.storefront-dark .text-stone-600 {
+  color: #cbd5e1 !important;
+}
+
+.storefront-dark .text-gray-500,
+.storefront-dark .text-slate-500,
+.storefront-dark .text-slate-400,
+.storefront-dark .text-stone-500,
+.storefront-dark .text-stone-400 {
+  color: #94a3b8 !important;
+}
+
+.storefront-dark .border-gray-200,
+.storefront-dark .border-gray-300,
+.storefront-dark .border-slate-200,
+.storefront-dark .border-slate-300,
+.storefront-dark .border-stone-200 {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.storefront-dark .from-white,
+.storefront-dark .from-gray-50,
+.storefront-dark .from-slate-50 {
+  --tw-gradient-from: #050816 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(5 8 22 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.storefront-dark .via-white,
+.storefront-dark .via-slate-50 {
+  --tw-gradient-via: #081120 var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
+}
+
+.storefront-dark .to-white,
+.storefront-dark .to-gray-50,
+.storefront-dark .to-slate-50 {
+  --tw-gradient-to: #081120 var(--tw-gradient-to-position) !important;
+}
+
+.storefront-dark input,
+.storefront-dark select,
+.storefront-dark textarea {
+  color-scheme: dark;
+}

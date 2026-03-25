@@ -1,0 +1,21 @@
+// prisma/schema.prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models will be added here based on your requirements
+// Common eCommerce models:
+// - User (accounts, roles)
+// - Product (catalog, inventory)
+// - Order (transactions, line items)
+// - Category (product organization)
+// - Cart (shopping cart)
+// - Payment (transaction history)

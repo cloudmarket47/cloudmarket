@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[edge_functions]]
+  function = "localize"
+  path = "/*"
+
+[[edge_functions]]
+  function = "order-notify"
+  path = "/api/order-notify"
