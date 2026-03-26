@@ -18,9 +18,31 @@ const DEFAULT_BUCKETS = {
 
 let supabaseClient: SupabaseClient | null | undefined;
 
+function hasRealSupabaseConfig(url?: string, anonKey?: string) {
+  const normalizedUrl = url?.trim();
+  const normalizedAnonKey = anonKey?.trim();
+
+  if (!normalizedUrl || !normalizedAnonKey) {
+    return false;
+  }
+
+  const placeholderFragments = [
+    'your-project-ref',
+    'your-supabase-anon-key',
+    'example.supabase.co',
+  ];
+
+  return !placeholderFragments.some(
+    (fragment) =>
+      normalizedUrl.toLowerCase().includes(fragment) ||
+      normalizedAnonKey.toLowerCase().includes(fragment),
+  );
+}
+
 export function isSupabaseConfigured() {
-  return Boolean(
-    import.meta.env.VITE_SUPABASE_URL?.trim() && import.meta.env.VITE_SUPABASE_ANON_KEY?.trim(),
+  return hasRealSupabaseConfig(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
   );
 }
 
@@ -62,7 +84,7 @@ export function getSupabaseClient() {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-  if (!url || !anonKey) {
+  if (!hasRealSupabaseConfig(url, anonKey)) {
     supabaseClient = null;
     return supabaseClient;
   }

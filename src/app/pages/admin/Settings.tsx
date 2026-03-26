@@ -806,11 +806,11 @@ export function Settings() {
               Homepage highlights
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Manage the moving highlight images on the homepage
+              Manage the hero carousel images on the homepage
             </h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               Upload images from your device or add them with direct URLs. These images power the
-              homepage highlight marquee seen below the hero section.
+              homepage hero carousel and rotating storefront image panel.
             </p>
           </div>
 
@@ -920,7 +920,7 @@ export function Settings() {
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-950">Image {index + 1}</p>
-                      <p className="text-xs text-slate-500">Homepage highlight slot</p>
+                      <p className="text-xs text-slate-500">Homepage hero carousel slot</p>
                     </div>
                     <button
                       type="button"

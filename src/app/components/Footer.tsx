@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Phone, Mail, Facebook, Instagram, Twitter } from 'lucide-react';
 import { useBrandingSettings } from '../lib/branding';
 import { grantAdminAccess } from '../lib/adminAccess';
 
@@ -56,10 +56,6 @@ export function Footer() {
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 <span>cloudmarket47@gmail.com</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>Lagos, Nigeria</span>
               </div>
             </div>
           </div>

@@ -1,32 +1,47 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
+  BadgeCheck,
   ChevronRight,
-  CreditCard,
-  Headphones,
+  Flame,
+  House,
   LayoutGrid,
+  Menu,
+  Moon,
+  RotateCcw,
+  Search,
   ShieldCheck,
-  ShoppingBag,
+  ShoppingCart,
+  SlidersHorizontal,
   Sparkles,
-  TrendingUp,
+  Sun,
+  Truck,
   X,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { Footer } from '../../components/Footer';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import { MarketplaceCollectionsCarousel } from '../../components/storefront/MarketplaceCollectionsCarousel';
+import { MarketplaceBottomNav, type MarketplaceMobileNavTab } from '../../components/storefront/MarketplaceBottomNav';
+import { MarketplaceCategorySheet } from '../../components/storefront/MarketplaceCategorySheet';
+import { MarketplaceProductCard } from '../../components/storefront/MarketplaceProductCard';
+import { MarketplacePromoHero } from '../../components/storefront/MarketplacePromoHero';
 import {
-  MarketplaceHero,
-  type MarketplaceSearchSuggestion,
-} from '../../components/storefront/MarketplaceHero';
+  buildMarketplaceTrendingKeywords,
+  type CategoryFilterItem,
+  formatMarketplaceCountdownParts,
+  getMarketplaceProductImage,
+  getMarketplaceProductPricing,
+  marketplaceCategoryIconMap,
+  marketplaceCategorySurfaceMap,
+} from '../../components/storefront/marketplaceShared';
+import { Switch } from '../../components/ui/switch';
+import { useLocale } from '../../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
 import {
   filterProductsByCategory,
   getCategoryRoutePath,
-  getProductCategoryDisplay,
-  getProductCategoryTagLabel,
   PRODUCT_CATEGORIES,
   resolveCategoryFilter,
 } from '../../lib/productCategories';
@@ -38,6 +53,36 @@ import { cn } from '../../lib/utils';
 import type { Product } from '../../types';
 
 const PRODUCTS_PER_PAGE = 6;
+const FLASH_SALE_DURATION_MS = ((2 * 60) + 14) * 60 * 1000 + 33 * 1000;
+const MARKETPLACE_THEME_COOKIE = 'nf_marketplace_theme';
+
+type MarketplaceThemeMode = 'light' | 'dark';
+
+const readMarketplaceTheme = (): MarketplaceThemeMode => {
+  if (typeof document === 'undefined') {
+    return 'light';
+  }
+
+  const cookieValue = document.cookie
+    .split('; ')
+    .find((entry) => entry.startsWith(`${MARKETPLACE_THEME_COOKIE}=`))
+    ?.split('=')
+    .at(1);
+
+  if (cookieValue === 'dark' || cookieValue === 'light') {
+    return cookieValue;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const writeMarketplaceTheme = (themeMode: MarketplaceThemeMode) => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.cookie = `${MARKETPLACE_THEME_COOKIE}=${themeMode}; path=/; max-age=31536000; samesite=lax`;
+};
 
 const scrollToSection = (sectionId: string) => {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -45,7 +90,10 @@ const scrollToSection = (sectionId: string) => {
 
 const matchesSearch = (product: Product, query: string) => {
   const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return true;
+
+  if (!normalizedQuery) {
+    return true;
+  }
 
   return [
     product.name,
@@ -65,15 +113,55 @@ const matchesSearch = (product: Product, query: string) => {
     .includes(normalizedQuery);
 };
 
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2B63D9] dark:text-[#8ab4ff]">
+          {eyebrow}
+        </p>
+        <div className="space-y-1">
+          <h2 className="text-[1.75rem] font-black tracking-[-0.03em] text-slate-950 sm:text-[2.1rem] dark:text-white">
+            {title}
+          </h2>
+          <p className="max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
 export function Marketplace() {
   const navigate = useNavigate();
   const { categorySlug } = useParams();
   const branding = useBrandingSettings();
+  const {
+    countryName,
+    formatPrice,
+  } = useLocale();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeMobileTab, setActiveMobileTab] = useState<MarketplaceMobileNavTab>('home');
+  const [themeMode, setThemeMode] = useState<MarketplaceThemeMode>(() => readMarketplaceTheme());
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [cartProductIds, setCartProductIds] = useState<string[]>([]);
+  const [flashSaleEndsAt] = useState(() => Date.now() + FLASH_SALE_DURATION_MS);
+  const [flashSaleRemaining, setFlashSaleRemaining] = useState(() => flashSaleEndsAt - Date.now());
+  const isDarkMode = themeMode === 'dark';
 
   useEffect(() => {
     let isActive = true;
@@ -121,21 +209,34 @@ export function Marketplace() {
     };
   }, [isLoadingProducts]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setFlashSaleRemaining(Math.max(0, flashSaleEndsAt - Date.now()));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [flashSaleEndsAt]);
+
+  useEffect(() => {
+    writeMarketplaceTheme(themeMode);
+  }, [themeMode]);
+
   const publishedProducts = useMemo(
     () => storefrontProducts.filter((product) => product.status === 'published'),
     [storefrontProducts],
   );
   const activeFilter = useMemo(() => resolveCategoryFilter(categorySlug), [categorySlug]);
-  const hasPublishedProducts = publishedProducts.length > 0;
   const categoryScopedProducts = useMemo(
     () => filterProductsByCategory(publishedProducts, categorySlug ?? 'all'),
     [categorySlug, publishedProducts],
   );
-  const liveSearchResultCount = useMemo(
-    () => categoryScopedProducts.filter((product) => matchesSearch(product, searchQuery)).length,
+  const visibleProducts = useMemo(
+    () => categoryScopedProducts.filter((product) => matchesSearch(product, searchQuery)),
     [categoryScopedProducts, searchQuery],
   );
-  const categoryFilters = useMemo(
+  const categoryFilters = useMemo<CategoryFilterItem[]>(
     () =>
       PRODUCT_CATEGORIES.map((category) => ({
         ...category,
@@ -147,31 +248,155 @@ export function Marketplace() {
       })),
     [publishedProducts],
   );
-  const visibleProducts = useMemo(
-    () => categoryScopedProducts.filter((product) => matchesSearch(product, searchQuery)),
-    [categoryScopedProducts, searchQuery],
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
+  const paginatedProducts = useMemo(
+    () => visibleProducts.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE),
+    [currentPage, visibleProducts],
   );
-  const searchSuggestions = useMemo<MarketplaceSearchSuggestion[]>(
+  const trendingProducts = useMemo(
+    () =>
+      [...(visibleProducts.length > 0 ? visibleProducts : publishedProducts)]
+        .sort(
+          (left, right) =>
+            right.orders - left.orders ||
+            right.views - left.views ||
+            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+        )
+        .slice(0, 4),
+    [publishedProducts, visibleProducts],
+  );
+  const recommendedProducts = useMemo(
+    () =>
+      [...publishedProducts]
+        .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+        .slice(0, 6),
+    [publishedProducts],
+  );
+  const heroProducts = useMemo(
+    () =>
+      [...publishedProducts]
+        .sort(
+          (left, right) =>
+            right.orders - left.orders ||
+            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+        )
+        .slice(0, 3),
+    [publishedProducts],
+  );
+  const heroVisuals = useMemo(() => {
+    const brandingImages = branding.homepageHighlightImages
+      .filter((image) => image.trim())
+      .map((image, index) => ({
+      image,
+      name: `${branding.companyName} highlight ${index + 1}`,
+      href: '/',
+    }));
+    const productImages = heroProducts.map((product) => ({
+      image: getMarketplaceProductImage(product),
+      name: product.name,
+      href: `/product/${product.slug}`,
+    }));
+    const fallbackVisual = {
+      image: branding.logoUrl,
+      name: branding.companyName,
+      href: '/',
+    };
+
+    if (brandingImages.length > 0) {
+      return brandingImages;
+    }
+
+    const visuals = productImages.filter((item) => item.image).slice(0, 5);
+    return visuals.length > 0 ? visuals : [fallbackVisual];
+  }, [branding.companyName, branding.homepageHighlightImages, branding.logoUrl, heroProducts]);
+  const highestDiscount = useMemo(
+    () => Math.max(15, ...publishedProducts.map((product) => getMarketplaceProductPricing(product).discountPercentage)),
+    [publishedProducts],
+  );
+  const flashSaleProduct = useMemo(
+    () =>
+      [...publishedProducts].sort(
+        (left, right) =>
+          getMarketplaceProductPricing(right).discountPercentage -
+          getMarketplaceProductPricing(left).discountPercentage,
+      )[0] ?? null,
+    [publishedProducts],
+  );
+  const flashSaleParts = useMemo(
+    () => formatMarketplaceCountdownParts(flashSaleRemaining),
+    [flashSaleRemaining],
+  );
+  const searchSuggestions = useMemo(
     () =>
       searchQuery.trim().length < 2
         ? []
         : visibleProducts.slice(0, 6).map((product) => ({
             id: product.id,
             title: product.name,
-            subtitle: getProductCategoryDisplay(product),
+            subtitle: product.category,
             href: `/product/${product.slug}`,
           })),
     [searchQuery, visibleProducts],
   );
-  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
-  const paginatedProducts = useMemo(
-    () =>
-      visibleProducts.slice(
-        (currentPage - 1) * PRODUCTS_PER_PAGE,
-        currentPage * PRODUCTS_PER_PAGE,
-      ),
-    [currentPage, visibleProducts],
+  const trendingKeywords = useMemo(
+    () => buildMarketplaceTrendingKeywords(publishedProducts),
+    [publishedProducts],
   );
+  const heroBenefitItems = useMemo(
+    () => [
+      { icon: Flame, label: `Up to ${highestDiscount}% Off Today` },
+      { icon: Truck, label: `Fast Delivery in ${countryName}` },
+      { icon: BadgeCheck, label: 'Pay on Delivery' },
+    ],
+    [countryName, highestDiscount],
+  );
+  const announcementItems = useMemo(
+    () => [
+      { icon: Flame, label: `Up to ${highestDiscount}% Off Today` },
+      { icon: Truck, label: `Fast Delivery in ${countryName}` },
+      { icon: BadgeCheck, label: 'Pay on Delivery' },
+      { icon: ShieldCheck, label: 'Verified sellers across key categories' },
+      { icon: RotateCcw, label: 'Easy returns on eligible orders' },
+      { icon: LayoutGrid, label: 'Category picks refreshed for faster shopping' },
+      { icon: ShoppingCart, label: 'Simple order flow built for quick checkout' },
+      { icon: Sparkles, label: 'Fresh deals and featured drops added often' },
+      { icon: Flame, label: `Top storefront picks curated for ${countryName}` },
+      { icon: BadgeCheck, label: 'Local pricing and delivery-first shopping' },
+    ],
+    [countryName, highestDiscount],
+  );
+  const trustBadgeItems = useMemo(
+    () => [
+      { icon: ShieldCheck, label: 'Pay on Delivery' },
+      { icon: Truck, label: 'Fast Delivery' },
+      { icon: RotateCcw, label: 'Easy Returns' },
+      { icon: BadgeCheck, label: 'Verified Sellers' },
+    ],
+    [],
+  );
+  const sidebarLinks = [
+    { title: 'Home', description: 'Jump back to the top banner.', target: 'top', icon: House },
+    {
+      title: 'Categories',
+      description: 'Browse category cards and quick filters.',
+      target: 'categories',
+      icon: LayoutGrid,
+    },
+    {
+      title: 'Trending',
+      description: 'Open the hottest products right now.',
+      target: 'trending',
+      icon: Flame,
+    },
+    {
+      title: 'Search',
+      description: 'Use search and trending keywords.',
+      target: 'search-panel',
+      icon: Search,
+    },
+  ];
+  const hasPublishedProducts = publishedProducts.length > 0;
+  const cartCount = cartProductIds.length;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -183,18 +408,23 @@ export function Marketplace() {
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = isSidebarOpen ? 'hidden' : originalOverflow;
+    const shouldLockBody = isSidebarOpen || isCategorySheetOpen;
+    document.body.style.overflow = shouldLockBody ? 'hidden' : originalOverflow;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsSidebarOpen(false);
+      if (event.key === 'Escape') {
+        setIsSidebarOpen(false);
+        setIsCategorySheetOpen(false);
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.body.style.overflow = originalOverflow;
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isSidebarOpen]);
+  }, [isCategorySheetOpen, isSidebarOpen]);
 
   useEffect(() => {
     const normalizedQuery = searchQuery.trim();
@@ -209,7 +439,7 @@ export function Marketplace() {
         pagePath: '/',
         pageType: 'marketplace',
         searchQuery: normalizedQuery,
-        resultsCount: liveSearchResultCount,
+        resultsCount: visibleProducts.length,
         metadata: {
           mode: 'live',
         },
@@ -219,70 +449,7 @@ export function Marketplace() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [liveSearchResultCount, searchQuery]);
-
-  if (isLoadingProducts) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="max-w-md space-y-3 rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Loading products</h1>
-          <p className="text-sm text-slate-600">
-            Preparing the storefront for browsing.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const bestSellers = [...publishedProducts].sort((left, right) => right.orders - left.orders);
-  const latestProducts = [...publishedProducts].sort(
-    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-  );
-  const sidebarLinks = [
-    {
-      title: 'Homepage',
-      description: 'Back to the marketplace hero.',
-      href: '#top',
-      icon: LayoutGrid,
-    },
-    {
-      title: 'Highlights',
-      description: 'Open top products and new launches.',
-      href: '#collections',
-      icon: TrendingUp,
-    },
-    {
-      title: 'All products',
-      description: 'Browse the full product selection.',
-      href: '#products',
-      icon: ShoppingBag,
-    },
-    {
-      title: 'Support',
-      description: 'Delivery and shopping help in one place.',
-      href: '#why-shop',
-      icon: Headphones,
-    },
-  ];
-  const trustPoints = [
-    {
-      title: 'Free nationwide delivery',
-      description: 'Fast shipping across Nigeria.',
-      icon: ShoppingBag,
-    },
-    {
-      title: 'Pay on delivery',
-      description: 'Customers can inspect orders first.',
-      icon: CreditCard,
-    },
-    {
-      title: '7-day satisfaction guarantee',
-      description: 'Support stays straightforward.',
-      icon: ShieldCheck,
-    },
-  ];
-  const topProduct = bestSellers[0] ?? null;
-  const newestProduct = latestProducts[0] ?? null;
+  }, [searchQuery, visibleProducts.length]);
 
   const handleSidebarOpen = () => {
     trackAnalyticsButtonClick({
@@ -291,6 +458,7 @@ export function Marketplace() {
       buttonId: 'homepage_menu_open',
       buttonLabel: 'Menu',
     });
+    setActiveMobileTab('home');
     setIsSidebarOpen(true);
   };
 
@@ -319,12 +487,12 @@ export function Marketplace() {
     navigate('/');
   };
 
-  const handleSearchSubmit = () => {
+  const handleSearchSubmit = (section: 'hero' | 'search') => {
     trackAnalyticsButtonClick({
       pagePath: '/',
       pageType: 'marketplace',
-      buttonId: 'homepage_browse_products',
-      buttonLabel: 'Browse products',
+      buttonId: `homepage_${section}_search_submit`,
+      buttonLabel: section === 'hero' ? 'Shop Now' : 'Search products',
       searchQuery: searchQuery.trim(),
       resultsCount: visibleProducts.length,
     });
@@ -337,610 +505,677 @@ export function Marketplace() {
         searchQuery: searchQuery.trim(),
         resultsCount: visibleProducts.length,
         metadata: {
-          mode: 'submit',
+          mode: section,
         },
       });
     }
+
+    scrollToSection('products');
   };
 
-  const handleSuggestionSelect = (suggestion: MarketplaceSearchSuggestion) => {
+  const handleSuggestionSelect = (title: string) => {
     trackAnalyticsButtonClick({
       pagePath: '/',
       pageType: 'marketplace',
       buttonId: 'homepage_search_suggestion',
-      buttonLabel: suggestion.title,
+      buttonLabel: title,
       searchQuery: searchQuery.trim(),
       resultsCount: visibleProducts.length,
     });
     setSearchQuery('');
   };
 
+  const handleOpenProduct = (product: Product, section: string) => {
+    trackAnalyticsButtonClick({
+      pagePath: '/',
+      pageType: 'marketplace',
+      productId: product.id,
+      productSlug: product.slug,
+      productName: product.name,
+      buttonId: `homepage_${section}`,
+      buttonLabel: product.name,
+      metadata: {
+        section,
+      },
+    });
+  };
+
+  const handleAddToCart = (product: Product) => {
+    setCartProductIds((currentIds) =>
+      currentIds.includes(product.id) ? currentIds : [...currentIds, product.id],
+    );
+
+    trackAnalyticsButtonClick({
+      pagePath: '/',
+      pageType: 'marketplace',
+      productId: product.id,
+      productSlug: product.slug,
+      productName: product.name,
+      buttonId: 'homepage_add_to_cart',
+      buttonLabel: 'Add to Cart',
+    });
+  };
+
+  if (isLoadingProducts) {
+    return (
+      <div className={cn('flex min-h-screen items-center justify-center bg-[#f5f7fb] px-4 text-center', isDarkMode && 'dark bg-[#081225]')}>
+        <div className="w-full max-w-sm rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
+          <div className="mx-auto mb-4 h-12 w-12 animate-pulse rounded-2xl bg-[#e6efff]" />
+          <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+            Loading storefront
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Preparing the shopping experience.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div id="top" className="min-h-screen bg-slate-50 text-slate-900">
+    <div
+      id="top"
+      className={cn(
+        'min-h-screen bg-[#f5f7fb] pb-36 text-slate-950 md:pb-10',
+        isDarkMode && 'dark bg-[#081225] text-slate-100',
+      )}
+    >
       {isSidebarOpen ? (
         <>
           <button
             type="button"
-            aria-label="Close sidebar"
+            aria-label="Close menu"
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 z-[55] bg-slate-950/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[55] bg-slate-950/45 backdrop-blur-sm"
           />
-          <aside
-            aria-label="User sidebar"
-            aria-modal="true"
-            role="dialog"
-            className="fixed left-0 top-0 z-[60] h-full w-full max-w-sm overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-[0_28px_70px_rgba(15,23,42,0.22)] sm:px-6"
-          >
+          <aside className="fixed left-0 top-0 z-[60] h-full w-full max-w-sm overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-[0_28px_70px_rgba(15,23,42,0.22)] dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-slate-950 shadow-sm">
-                  <ImageWithFallback src={branding.logoUrl} alt={`${branding.companyName} logo`} className="h-full w-full object-cover" />
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-[#edf3ff] shadow-sm">
+                  <ImageWithFallback
+                    src={branding.logoUrl}
+                    alt={`${branding.companyName} logo`}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div>
-                  <p className="text-lg font-bold tracking-tight text-slate-950">{branding.companyName}</p>
-                  <p className="text-xs text-slate-500">Product index and highlights</p>
+                  <p className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
+                    {branding.companyName}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Mobile shopping menu</p>
                 </div>
               </div>
               <button
                 type="button"
-                aria-label="Close user sidebar"
+                aria-label="Close menu"
                 onClick={() => setIsSidebarOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-6 rounded-[2rem] bg-slate-900 p-6 text-white shadow-sm">
-              <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.35rem] border border-white/10 bg-slate-950">
-                  <ImageWithFallback src={branding.logoUrl} alt={`${branding.companyName} mark`} className="h-full w-full object-cover" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Shop summary</p>
-                  <h2 className="mt-1 text-2xl font-black">{branding.companyName}</h2>
-                  <p className="mt-1 text-sm text-slate-300">A simple product shop built to help visitors browse and order easily.</p>
-                </div>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white/5 px-4 py-4">
-                  <p className="text-sm font-semibold text-white">Easy product browsing</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    Search the shop, filter by category, and open any product in one tap.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-white/5 px-4 py-4">
-                  <p className="text-sm font-semibold text-white">Single-seller shopping</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    Everything here comes from one seller, with one consistent ordering experience.
-                  </p>
-                </div>
-              </div>
+            <div className="mt-6 rounded-[2rem] bg-[linear-gradient(145deg,#0d2f78_0%,#2B63D9_65%,#76a7ff_100%)] p-5 text-white shadow-[0_20px_44px_rgba(43,99,217,0.28)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
+                Shop summary
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight">{branding.companyName}</h2>
+              <p className="mt-3 max-w-xs text-sm leading-6 text-white/82">
+                Quick access to trending deals, category filters, search, and the product grid.
+              </p>
             </div>
 
-            <div className="mt-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Quick Access</p>
-              <div className="mt-4 space-y-3">
-                {sidebarLinks.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <a
-                      key={item.title}
-                      href={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
-                      className="flex items-start gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 transition-colors hover:border-slate-300 hover:bg-white"
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-950">{item.title}</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{item.description}</p>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
+            <div className="mt-8 space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                Navigate
+              </p>
+              {sidebarLinks.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      window.setTimeout(() => {
+                        scrollToSection(item.target);
+                      }, 0);
+                    }}
+                    className="flex w-full items-start gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#2B63D9] shadow-sm dark:bg-slate-800 dark:text-[#9fc0ff]">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-950 dark:text-white">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{item.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </aside>
         </>
       ) : null}
 
-      <ScrollReveal>
-        <MarketplaceHero
-          products={publishedProducts}
-          searchQuery={searchQuery}
-          suggestions={searchSuggestions}
-          activeFilter={activeFilter}
+      {isCategorySheetOpen ? (
+        <MarketplaceCategorySheet
+          activeFilterSlug={activeFilter.filterSlug}
           categoryFilters={categoryFilters}
-          onSearchChange={setSearchQuery}
-          onOpenSidebar={handleSidebarOpen}
-          onCategorySelect={handleCategoryFilterChange}
-          onSearchSubmit={handleSearchSubmit}
-          onSuggestionSelect={handleSuggestionSelect}
+          onClose={() => setIsCategorySheetOpen(false)}
+          onSelectCategory={handleCategoryFilterChange}
         />
-      </ScrollReveal>
+      ) : null}
 
-      <ScrollReveal>
-        <section id="collections" className="py-14 md:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <MarketplaceCollectionsCarousel />
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <button
+            type="button"
+            onClick={handleSidebarOpen}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <Link
+            to="/"
+            className="min-w-0 text-center text-[1.1rem] font-black tracking-[0.08em] text-[#1d3f8f] sm:text-[1.25rem] dark:text-[#b8d0ff]"
+          >
+            CLOUDMARKET
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMobileTab('search');
+                scrollToSection('search-panel');
+              }}
+              className="hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 sm:inline-flex"
+              aria-label="Search products"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMobileTab('cart');
+                scrollToSection('products');
+              }}
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
+              aria-label="Cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span className="absolute -right-1.5 -top-1.5 rounded-full bg-[#ff6a45] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                {cartCount}
+              </span>
+            </button>
+
+            <div className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <Sun className={cn('h-4 w-4', isDarkMode ? 'text-slate-500' : 'text-amber-500')} />
+              <Switch
+                checked={isDarkMode}
+                onCheckedChange={(checked) => setThemeMode(checked ? 'dark' : 'light')}
+                aria-label="Toggle light and dark mode"
+                className="data-[state=checked]:bg-[#2B63D9]"
+              />
+              <Moon className={cn('h-4 w-4', isDarkMode ? 'text-[#8ab4ff]' : 'text-slate-400')} />
+            </div>
           </div>
-        </section>
-      </ScrollReveal>
+        </div>
+      </header>
 
-      <ScrollReveal>
-        <section
-          id="products"
-          className="border-y border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] py-14 md:py-16"
-        >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="overflow-hidden rounded-[2.3rem] border border-slate-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.05)] md:p-8">
-              <div className="max-w-3xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  All products
-                </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                  Browse the catalog
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-                  {searchQuery.trim()
-                    ? `Showing products that match "${searchQuery.trim()}"${activeFilter.kind !== 'all' ? ` inside ${activeFilter.label}` : ''}.`
-                    : activeFilter.kind !== 'all'
-                      ? `Browsing ${activeFilter.label}. Use the category icon above the homepage search bar to switch categories quickly.`
-                      : 'Use the category icon above the search bar to narrow the catalog, then open the product that fits what you need.'}
+      <main className="mx-auto max-w-7xl space-y-6 px-4 pt-4 sm:px-6 sm:pt-5">
+        <ScrollReveal>
+          <MarketplacePromoHero
+            brandName={branding.companyName}
+            heroVisuals={heroVisuals}
+            heroBenefitItems={heroBenefitItems}
+            announcementItems={announcementItems}
+            onShopNow={() => handleSearchSubmit('hero')}
+            onExploreCategories={() => {
+              setActiveMobileTab('categories');
+              scrollToSection('categories');
+            }}
+          />
+        </ScrollReveal>
+
+        <ScrollReveal>
+          <section id="categories" className="space-y-4">
+            <SectionHeading
+              eyebrow="Browse"
+              title="Categories"
+              description="Move fast with card-based category shortcuts built for quick product discovery."
+            />
+
+            <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex min-w-max gap-3">
+                {categoryFilters.map((category) => {
+                  const Icon = marketplaceCategoryIconMap[category.icon];
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => handleCategoryFilterChange(category.slug, category.name)}
+                      className={cn(
+                        'w-[108px] shrink-0 rounded-[1.55rem] border border-slate-200 bg-white p-3 text-left shadow-[0_14px_30px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] active:scale-[0.98] dark:border-slate-800 dark:bg-slate-950',
+                        activeFilter.filterSlug === category.slug && 'border-[#bcd4ff] shadow-[0_18px_40px_rgba(43,99,217,0.12)] dark:border-[#315ea8]',
+                      )}
+                    >
+                      <div className={cn('flex h-16 w-full items-center justify-center rounded-[1.2rem] bg-gradient-to-br', marketplaceCategorySurfaceMap[category.icon])}>
+                        <Icon className="h-7 w-7 text-[#2B63D9]" />
+                      </div>
+                      <p className="mt-3 text-sm font-semibold leading-5 text-slate-900 dark:text-white">
+                        {category.name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{category.productCount} items</p>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setIsCategorySheetOpen(true)}
+                  className="w-[108px] shrink-0 rounded-[1.55rem] border border-slate-200 bg-[linear-gradient(180deg,#f7faff_0%,#edf3ff_100%)] p-3 text-left shadow-[0_14px_30px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] active:scale-[0.98] dark:border-slate-800 dark:bg-[linear-gradient(180deg,#0d203f_0%,#12305f_100%)]"
+                >
+                  <div className="flex h-16 w-full items-center justify-center rounded-[1.2rem] bg-white text-[#2B63D9] shadow-sm dark:bg-slate-950 dark:text-[#9fc0ff]">
+                    <LayoutGrid className="h-7 w-7" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold leading-5 text-slate-900 dark:text-white">
+                    All Categories
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Open full filter</p>
+                </button>
+              </div>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        <ScrollReveal>
+          <section id="trending" className="space-y-4">
+            <SectionHeading
+              eyebrow="Hot products"
+              title="Trending Now 🔥"
+              description={
+                searchQuery.trim()
+                  ? `Showing products that match "${searchQuery.trim()}".`
+                  : activeFilter.kind !== 'all'
+                    ? `Trending picks inside ${activeFilter.label}.`
+                    : 'The products most likely to convert right now.'
+              }
+              action={
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('products')}
+                  className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 sm:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
+                >
+                  View all
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              }
+            />
+
+            {trendingProducts.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {trendingProducts.map((product) => (
+                  <MarketplaceProductCard
+                    key={`trending-${product.id}`}
+                    product={product}
+                    formatPrice={formatPrice}
+                    isAdded={cartProductIds.includes(product.id)}
+                    onAddToCart={handleAddToCart}
+                    onOpenProduct={handleOpenProduct}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[1.9rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-950">
+                <p className="text-xl font-black text-slate-950 dark:text-white">Trending products will appear here</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  Publish products in the admin dashboard and the storefront will automatically fill this section.
                 </p>
               </div>
+            )}
+          </section>
+        </ScrollReveal>
 
-              <div className="mt-8">
-                <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-                        {activeFilter.label}
-                      </span>
-                      {activeFilter.kind === 'subcategory' ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCategoryFilterChange(
-                              activeFilter.category?.slug ?? null,
-                              activeFilter.category?.name ?? 'Category',
-                            )
-                          }
-                          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+        <ScrollReveal>
+          <section id="search-panel" className="space-y-4">
+            <SectionHeading
+              eyebrow="Search"
+              title="Find what you want quickly"
+              description="Use live product search, tap a trending keyword, or open category filters from the search panel."
+            />
+
+            <div className="rounded-[1.9rem] border border-slate-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)] sm:p-5 dark:border-slate-800 dark:bg-slate-950">
+              <form
+                onSubmit={(event: FormEvent<HTMLFormElement>) => {
+                  event.preventDefault();
+                  handleSearchSubmit('search');
+                }}
+                className="space-y-4"
+              >
+                <div className="relative flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-3 shadow-inner dark:border-slate-700 dark:bg-slate-900">
+                  <Search className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search products..."
+                    className="h-full w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsCategorySheetOpen(true)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
+                    aria-label="Open filters"
+                  >
+                    <SlidersHorizontal className="h-4.5 w-4.5" />
+                  </button>
+
+                  {searchSuggestions.length > 0 ? (
+                    <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white p-2 shadow-[0_22px_54px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-slate-950">
+                      {searchSuggestions.map((suggestion) => (
+                        <Link
+                          key={suggestion.id}
+                          to={suggestion.href}
+                          onClick={() => handleSuggestionSelect(suggestion.title)}
+                          className="flex items-start justify-between gap-3 rounded-[1rem] px-3 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-900"
                         >
-                          View full group
-                        </button>
-                      ) : null}
-                      {(activeFilter.kind !== 'all' || searchQuery.trim()) ? (
-                        <button
-                          type="button"
-                          onClick={handleResetFilters}
-                          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
-                        >
-                          Reset filters
-                        </button>
-                      ) : null}
-                    </div>
-                    <p className="text-sm text-slate-600">
-                      <span className="font-semibold text-slate-900">{visibleProducts.length}</span>{' '}
-                      product{visibleProducts.length === 1 ? '' : 's'} available
-                    </p>
-                  </div>
-
-                  {activeFilter.category ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {categoryFilters
-                        .find((category) => category.id === activeFilter.category?.id)
-                        ?.subcategories.map((subcategory) => {
-                          const isSubcategoryActive =
-                            activeFilter.kind === 'subcategory' &&
-                            activeFilter.subcategory?.slug === subcategory.slug;
-
-                          return (
-                            <button
-                              key={subcategory.id}
-                              type="button"
-                              onClick={() =>
-                                handleCategoryFilterChange(subcategory.slug, subcategory.name)
-                              }
-                              className={cn(
-                                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
-                                isSubcategoryActive
-                                  ? 'border-slate-900 bg-slate-900 text-white'
-                                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400',
-                              )}
-                            >
-                              <span>{subcategory.name}</span>
-                              <span
-                                className={cn(
-                                  'rounded-full px-2 py-0.5 text-[11px]',
-                                  isSubcategoryActive
-                                    ? 'bg-white/14 text-white'
-                                    : 'bg-slate-100 text-slate-500',
-                                )}
-                              >
-                                {subcategory.productCount}
-                              </span>
-                            </button>
-                          );
-                        })}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                              {suggestion.title}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                              {suggestion.subtitle}
+                            </p>
+                          </div>
+                          <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" />
+                        </Link>
+                      ))}
                     </div>
                   ) : null}
                 </div>
 
-                <div className="mt-6">
-                  {visibleProducts.length > 0 ? (
-                    <>
-                      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                        {paginatedProducts.map((product) => (
-                          <article
-                            key={product.id}
-                            className="group overflow-hidden rounded-[1.9rem] border border-slate-200 bg-slate-50 shadow-sm transition-transform duration-300 hover:-translate-y-1"
-                          >
-                            <Link to={`/product/${product.slug}`} className="block">
-                              <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                                <ImageWithFallback
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                                <div className="absolute left-4 top-4">
-                                  <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                                    {getProductCategoryTagLabel(product)}
-                                  </span>
-                                </div>
-                              </div>
-                            </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Trending:</span>
+                  {trendingKeywords.map((keyword) => (
+                    <button
+                      key={keyword}
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery(keyword);
+                        window.setTimeout(() => handleSearchSubmit('search'), 0);
+                      }}
+                      className="rounded-full bg-[#eef3fb] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#e4edfb] active:scale-[0.98] dark:bg-[#12305f] dark:text-[#d7e6ff] dark:hover:bg-[#183d76]"
+                    >
+                      {keyword}
+                    </button>
+                  ))}
+                </div>
+              </form>
+            </div>
+          </section>
+        </ScrollReveal>
 
-                            <div className="p-5">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                {getProductCategoryDisplay(product)}
-                              </p>
-                              <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
-                                {product.name}
-                              </h3>
-                              <p className="mt-3 text-sm leading-6 text-slate-600">
-                                {product.shortDescription}
-                              </p>
+        <ScrollReveal>
+          <section id="flash-sale" className="space-y-4">
+            <div className="overflow-hidden rounded-[2rem] bg-[linear-gradient(130deg,#0f3d9b_0%,#2B63D9_55%,#7aaeff_100%)] p-5 text-white shadow-[0_24px_60px_rgba(43,99,217,0.24)] sm:p-6">
+              <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
+                    <Flame className="h-3.5 w-3.5" />
+                    Flash sale
+                  </div>
 
-                              <Link
-                                to={`/product/${product.slug}`}
-                                onClick={() => {
-                                  trackAnalyticsButtonClick({
-                                    pagePath: '/',
-                                    pageType: 'marketplace',
-                                    productId: product.id,
-                                    productSlug: product.slug,
-                                    productName: product.name,
-                                    buttonId: 'homepage_open_product',
-                                    buttonLabel: 'Open page',
-                                    searchQuery: searchQuery.trim(),
-                                    resultsCount: visibleProducts.length,
-                                    metadata: {
-                                      section: 'catalog_grid',
-                                      category: getProductCategoryDisplay(product),
-                                    },
-                                  });
-                                }}
-                                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2B63D9] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f56c6]"
-                              >
-                                Open page
-                                <ArrowRight className="h-4 w-4" />
-                              </Link>
-                            </div>
-                          </article>
-                        ))}
+                  <div className="space-y-2">
+                    <h2 className="text-3xl font-black tracking-[-0.04em] sm:text-[2.3rem]">
+                      Flash Sale
+                    </h2>
+                    <p className="max-w-xl text-sm leading-7 text-white/82 sm:text-base">
+                      Ends in {flashSaleParts.hours}:{flashSaleParts.minutes}:{flashSaleParts.seconds}.
+                      {flashSaleProduct ? ` ${flashSaleProduct.name} is leading this deal window right now.` : ' Deal slots refresh throughout the day.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.8rem] border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                  {flashSaleProduct ? (
+                    <div className="flex items-center gap-4">
+                      <div className="h-24 w-24 overflow-hidden rounded-[1.4rem] bg-white/10">
+                        <ImageWithFallback
+                          src={getMarketplaceProductImage(flashSaleProduct)}
+                          alt={flashSaleProduct.name}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-
-                      {totalPages > 1 ? (
-                        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                          <p className="text-sm text-slate-600">
-                            Page <span className="font-semibold text-slate-900">{currentPage}</span> of{' '}
-                            <span className="font-semibold text-slate-900">{totalPages}</span>
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-                              disabled={currentPage === 1}
-                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Previous
-                            </button>
-                            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                              <button
-                                key={page}
-                                type="button"
-                                onClick={() => setCurrentPage(page)}
-                                className={cn(
-                                  'h-10 w-10 rounded-full text-sm font-semibold transition',
-                                  page === currentPage
-                                    ? 'bg-slate-900 text-white'
-                                    : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400',
-                                )}
-                              >
-                                {page}
-                              </button>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
-                              disabled={currentPage === totalPages}
-                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-                      <h3 className="text-xl font-bold text-slate-950">
-                        {hasPublishedProducts ? 'No matching products' : 'No products published yet'}
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-slate-600">
-                        {hasPublishedProducts
-                          ? 'Try a broader search term, reset the search, or switch to another category group.'
-                          : 'The catalog is ready and this page will automatically update once products are published.'}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleResetFilters}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                      >
-                        Reset filters
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/65">
+                          Best discount
+                        </p>
+                        <p className="mt-2 line-clamp-2 text-lg font-bold text-white">
+                          {flashSaleProduct.name}
+                        </p>
+                        <p className="mt-2 text-sm text-white/75">
+                          Save up to {getMarketplaceProductPricing(flashSaleProduct).discountPercentage}% on this page.
+                        </p>
+                      </div>
                     </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-white/75">
+                      Once products are published, the strongest discount will be highlighted automatically.
+                    </p>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-      </ScrollReveal>
+          </section>
+        </ScrollReveal>
 
-      <ScrollReveal>
-        <section id="why-shop" className="pb-6 pt-14 md:pb-8 md:pt-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.05)] md:p-8">
-              <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                <div className="rounded-[2.1rem] bg-slate-950 p-8 text-white shadow-[0_18px_48px_rgba(15,23,42,0.22)] md:p-10">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Why shop with us
-                  </div>
-                  <h2 className="mt-5 text-3xl font-black tracking-tight md:text-4xl">
-                    Built to make product discovery and ordering feel simple.
-                  </h2>
-                  <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
-                    {branding.companyName} gives visitors a cleaner path from browsing to checkout.
-                    Search products, filter by category, open the right offer, and place orders
-                    without clutter or distractions.
-                  </p>
+        <ScrollReveal>
+          <section id="trust" className="space-y-4">
+            <SectionHeading
+              eyebrow="Confidence"
+              title="Why shoppers trust CLOUDMARKET"
+              description="Compact trust points that keep the storefront moving without turning the homepage into a long sales page."
+            />
 
-                  <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-5 py-4">
-                      <p className="text-sm font-semibold text-white">One consistent shopping flow</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        Every product follows the same clear path from discovery to order form.
-                      </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {trustBadgeItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.label}
+                    className="rounded-[1.5rem] border border-slate-200 bg-white px-4 py-4 text-center shadow-[0_14px_30px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950"
+                  >
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#eef4ff] text-[#2B63D9] dark:bg-[#12305f] dark:text-[#9fc0ff]">
+                      <Icon className="h-5 w-5" />
                     </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-5 py-4">
-                      <p className="text-sm font-semibold text-white">Focused on what matters</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        Product details, offers, and support stay visible while unnecessary stats stay hidden.
-                      </p>
-                    </div>
+                    <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">{item.label}</p>
                   </div>
+                );
+              })}
+            </div>
+          </section>
+        </ScrollReveal>
 
+        <ScrollReveal>
+          <section id="products" className="space-y-5">
+            <SectionHeading
+              eyebrow="Catalog"
+              title="More to Explore"
+              description={
+                searchQuery.trim()
+                  ? `Showing ${visibleProducts.length} result${visibleProducts.length === 1 ? '' : 's'} for "${searchQuery.trim()}".`
+                  : activeFilter.kind !== 'all'
+                    ? `Browsing ${activeFilter.label} with ${visibleProducts.length} product${visibleProducts.length === 1 ? '' : 's'} available.`
+                    : 'A clean product grid built to keep browsing fast on mobile.'
+              }
+              action={
+                (activeFilter.kind !== 'all' || searchQuery.trim()) ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      trackAnalyticsButtonClick({
-                        pagePath: '/',
-                        pageType: 'marketplace',
-                        buttonId: 'homepage_why_shop_browse',
-                        buttonLabel: 'Browse all products',
-                      });
-                      scrollToSection('products');
-                    }}
-                    className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100"
+                    onClick={handleResetFilters}
+                    className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 sm:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
                   >
-                    Browse all products
-                    <ArrowRight className="h-4 w-4" />
+                    Reset filters
+                    <RotateCcw className="h-4 w-4" />
                   </button>
+                ) : undefined
+              }
+            />
+
+            {paginatedProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                  {paginatedProducts.map((product) => (
+                    <MarketplaceProductCard
+                      key={`catalog-${product.id}`}
+                      product={product}
+                      formatPrice={formatPrice}
+                      isAdded={cartProductIds.includes(product.id)}
+                      onAddToCart={handleAddToCart}
+                      onOpenProduct={handleOpenProduct}
+                    />
+                  ))}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
-                  {trustPoints.map((point) => {
-                    const Icon = point.icon;
+                {totalPages > 1 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Page <span className="font-semibold text-slate-900 dark:text-white">{currentPage}</span> of{' '}
+                      <span className="font-semibold text-slate-900 dark:text-white">{totalPages}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                        disabled={currentPage === 1}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
+                      >
+                        Previous
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={cn(
+                            'h-10 w-10 rounded-full text-sm font-semibold transition',
+                            page === currentPage
+                              ? 'bg-[#2B63D9] text-white'
+                              : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600',
+                          )}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                        disabled={currentPage === totalPages}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-950">
+                <p className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+                  {hasPublishedProducts ? 'No matching products' : 'No products published yet'}
+                </p>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  {hasPublishedProducts
+                    ? 'Try a broader search term, switch categories, or reset the filters to reopen the full grid.'
+                    : 'This storefront is ready. Publish products from the admin dashboard and the homepage will fill automatically.'}
+                </p>
+              </div>
+            )}
+          </section>
+        </ScrollReveal>
+
+        {recommendedProducts.length > 0 ? (
+          <ScrollReveal>
+            <section id="recommended" className="space-y-4">
+              <SectionHeading
+                eyebrow="Fresh picks"
+                title="Recommended for you"
+                description="Newer product pages that keep the storefront feeling active and current."
+              />
+
+              <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex min-w-max gap-4">
+                  {recommendedProducts.map((product) => {
+                    const pricing = getMarketplaceProductPricing(product);
+
                     return (
                       <article
-                        key={point.title}
-                        className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm"
+                        key={`recommended-${product.id}`}
+                        className="w-[280px] shrink-0 rounded-[1.7rem] border border-slate-200 bg-white p-3 shadow-[0_16px_36px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[#eef4ff] text-[#2B63D9]">
-                          <Icon className="h-5 w-5" />
+                        <Link
+                          to={`/product/${product.slug}`}
+                          onClick={() => handleOpenProduct(product, 'recommended_strip')}
+                          className="block"
+                        >
+                          <div className="overflow-hidden rounded-[1.35rem] bg-slate-100">
+                            <ImageWithFallback
+                              src={getMarketplaceProductImage(product)}
+                              alt={product.name}
+                              className="aspect-[4/3] w-full object-cover transition duration-500 hover:scale-105"
+                            />
+                          </div>
+                        </Link>
+                        <div className="space-y-2 px-1 pb-1 pt-3">
+                          <p className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+                            {product.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-black text-[#d73d32]">
+                              {formatPrice(pricing.currentPrice)}
+                            </span>
+                            <span className="text-sm text-slate-400 line-through">
+                              {formatPrice(pricing.oldPrice)}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="mt-4 text-lg font-bold tracking-tight text-slate-950">
-                          {point.title}
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                          {point.description}
-                        </p>
                       </article>
                     );
                   })}
                 </div>
               </div>
+            </section>
+          </ScrollReveal>
+        ) : null}
 
-              <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                {topProduct ? (
-                  <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                      <ImageWithFallback
-                        src={topProduct.image}
-                        alt={topProduct.name}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute left-4 top-4">
-                        <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                          Top pick
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Most ordered product
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                        {topProduct.name}
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        {topProduct.shortDescription}
-                      </p>
-                      <Link
-                        to={`/product/${topProduct.slug}`}
-                        onClick={() => {
-                          trackAnalyticsButtonClick({
-                            pagePath: '/',
-                            pageType: 'marketplace',
-                            productId: topProduct.id,
-                            productSlug: topProduct.slug,
-                            productName: topProduct.name,
-                            buttonId: 'homepage_top_product',
-                            buttonLabel: 'Open top product',
-                            metadata: {
-                              section: 'why_shop_top_pick',
-                            },
-                          });
-                        }}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#2B63D9] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f56c6]"
-                      >
-                        Open top product
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </article>
-                ) : (
-                  <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                    <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-slate-100">
-                      <ImageWithFallback
-                        src={branding.logoUrl}
-                        alt={`${branding.companyName} placeholder`}
-                        className="h-24 w-24 rounded-3xl object-cover opacity-75"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Most ordered product
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                        Coming soon
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        This card will automatically show your top-performing product once orders begin.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => scrollToSection('products')}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-100"
-                      >
-                        Browse catalog
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </article>
-                )}
+        <Footer />
+      </main>
 
-                {newestProduct ? (
-                  <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                      <ImageWithFallback
-                        src={newestProduct.image}
-                        alt={newestProduct.name}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute left-4 top-4">
-                        <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                          New arrival
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Fresh option
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                        {newestProduct.name}
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        {newestProduct.shortDescription}
-                      </p>
-                      <Link
-                        to={`/product/${newestProduct.slug}`}
-                        onClick={() => {
-                          trackAnalyticsButtonClick({
-                            pagePath: '/',
-                            pageType: 'marketplace',
-                            productId: newestProduct.id,
-                            productSlug: newestProduct.slug,
-                            productName: newestProduct.name,
-                            buttonId: 'homepage_latest_product',
-                            buttonLabel: 'View latest product',
-                            metadata: {
-                              section: 'why_shop_new_arrival',
-                            },
-                          });
-                        }}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-100"
-                      >
-                        View latest product
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </article>
-                ) : (
-                  <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                    <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-slate-100">
-                      <ImageWithFallback
-                        src={branding.logoUrl}
-                        alt={`${branding.companyName} placeholder`}
-                        className="h-24 w-24 rounded-3xl object-cover opacity-75"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Fresh option
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                        Next launch preview
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        This space will showcase your newest product automatically after publishing.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => scrollToSection('products')}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-100"
-                      >
-                        Explore homepage
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </article>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      </ScrollReveal>
-
-      <Footer />
+      <MarketplaceBottomNav
+        activeTab={activeMobileTab}
+        cartCount={cartCount}
+        onTabChange={setActiveMobileTab}
+        onHome={() => {
+          setActiveMobileTab('home');
+          scrollToSection('top');
+        }}
+        onCategories={() => {
+          setActiveMobileTab('categories');
+          setIsCategorySheetOpen(true);
+        }}
+        onSearch={() => scrollToSection('search-panel')}
+        onCart={() => scrollToSection('products')}
+      />
     </div>
   );
 }
