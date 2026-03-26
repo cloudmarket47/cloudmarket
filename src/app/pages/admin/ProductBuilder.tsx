@@ -54,6 +54,13 @@ import {
   type AdminReviewItem,
   type AdminThemeMode,
 } from '../../lib/adminProductDrafts';
+import { ALERT_PRESETS, applyAlertPreset } from '../../lib/alertPresets';
+import {
+  getProductCategoryDisplay,
+  getProductSubcategories,
+  PRODUCT_CATEGORIES,
+  resolveProductCategorySelection,
+} from '../../lib/productCategories';
 import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
 
 const inputClasses =
@@ -1083,6 +1090,14 @@ function AlertItemsEditor({
     onChange(items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   };
 
+  const applyPresetToItem = (index: number, presetId: string) => {
+    onChange(
+      items.map((item, itemIndex) =>
+        itemIndex === index ? applyAlertPreset(presetId, item) : item,
+      ),
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -1092,12 +1107,7 @@ function AlertItemsEditor({
           onClick={() =>
             onChange([
               ...items,
-              {
-                kind: 'offer',
-                title: '',
-                message: '',
-                badge: 'Offer',
-              },
+              applyAlertPreset(ALERT_PRESETS[0].id),
             ])
           }
           className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#0E7C7B] ring-1 ring-inset ring-[#0E7C7B]/15 transition hover:bg-[#eef7f6]"
@@ -1111,6 +1121,16 @@ function AlertItemsEditor({
         {items.map((item, index) => (
           <div key={`alert-${index}`} className="rounded-[1.5rem] border border-gray-200 bg-white p-4">
             <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField
+                label="Preset"
+                value={item.presetId ?? ALERT_PRESETS[0].id}
+                options={ALERT_PRESETS.map((preset) => ({
+                  value: preset.id,
+                  label: `${preset.badge} - ${preset.title}`,
+                }))}
+                onChange={(value) => applyPresetToItem(index, value)}
+                hint="Choose a ready-made alert, then fine-tune the text below."
+              />
               <SelectField
                 label="Alert type"
                 value={item.kind}
@@ -1530,7 +1550,7 @@ function PreviewPanel({ draft }: { draft: AdminProductDraft }) {
             }`}
           >
             <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Product category</p>
-            <p className="mt-2 text-lg font-semibold">{draft.category}</p>
+            <p className="mt-2 text-lg font-semibold">{getProductCategoryDisplay(draft)}</p>
           </div>
         </div>
 
@@ -2268,6 +2288,8 @@ function ElementEditorModal({
   patchSection,
   handlePageNameChange,
   handleProductNameChange,
+  handleCategoryChange,
+  handleSubcategoryChange,
   orderedTargets,
   currentIndex,
   nextTarget,
@@ -2282,6 +2304,8 @@ function ElementEditorModal({
   patchSection: PatchSectionFn;
   handlePageNameChange: (value: string) => void;
   handleProductNameChange: (value: string) => void;
+  handleCategoryChange: (categoryId: string) => void;
+  handleSubcategoryChange: (subcategorySlug: string) => void;
   orderedTargets: EditorTargetId[];
   currentIndex: number;
   nextTarget: EditorTargetId | null;
@@ -2359,6 +2383,8 @@ function ElementEditorModal({
                   setTopLevel={setTopLevel}
                   handlePageNameChange={handlePageNameChange}
                   handleProductNameChange={handleProductNameChange}
+                  handleCategoryChange={handleCategoryChange}
+                  handleSubcategoryChange={handleSubcategoryChange}
                 />
               ) : isStorySection ? (
                 <StorySections draft={draft} patchSection={patchSection} onlySectionId={target} />
@@ -2467,12 +2493,18 @@ function CoreSettingsSections({
   setTopLevel,
   handlePageNameChange,
   handleProductNameChange,
+  handleCategoryChange,
+  handleSubcategoryChange,
 }: {
   draft: AdminProductDraft;
   setTopLevel: SetTopLevelFn;
   handlePageNameChange: (value: string) => void;
   handleProductNameChange: (value: string) => void;
+  handleCategoryChange: (categoryId: string) => void;
+  handleSubcategoryChange: (subcategorySlug: string) => void;
 }) {
+  const subcategoryOptions = getProductSubcategories(draft.categoryId);
+
   return (
     <>
       <Card className="rounded-[2rem] border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
@@ -2526,11 +2558,24 @@ function CoreSettingsSections({
             placeholder="Nigeria"
             hint="Examples: Nigeria, Ghana, Kenya, Women in Lagos, Parents in Abuja."
           />
-          <TextField
-            label="Product category"
-            value={draft.category}
-            onChange={(value) => setTopLevel('category', value)}
-            placeholder="Home & Cleaning"
+          <SelectField
+            label="Top-level category"
+            value={draft.categoryId}
+            options={PRODUCT_CATEGORIES.map((category) => ({
+              value: category.id,
+              label: category.name,
+            }))}
+            onChange={handleCategoryChange}
+          />
+          <SelectField
+            label="Subcategory"
+            value={draft.subcategorySlug}
+            options={subcategoryOptions.map((subcategory) => ({
+              value: subcategory.slug,
+              label: subcategory.name,
+            }))}
+            onChange={handleSubcategoryChange}
+            hint={`Category page route: /category/${draft.subcategorySlug}`}
           />
           <SelectField
             label="Gender target"
@@ -3423,6 +3468,47 @@ export function ProductBuilder() {
     );
   };
 
+  const handleCategoryChange = (categoryId: string) => {
+    setDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const selection = resolveProductCategorySelection({ categoryId });
+
+      return {
+        ...current,
+        category: selection.category.name,
+        categoryId: selection.category.id,
+        categorySlug: selection.category.slug,
+        subcategory: selection.subcategory.name,
+        subcategorySlug: selection.subcategory.slug,
+      };
+    });
+  };
+
+  const handleSubcategoryChange = (subcategorySlug: string) => {
+    setDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const selection = resolveProductCategorySelection({
+        categoryId: current.categoryId,
+        subcategorySlug,
+      });
+
+      return {
+        ...current,
+        category: selection.category.name,
+        categoryId: selection.category.id,
+        categorySlug: selection.category.slug,
+        subcategory: selection.subcategory.name,
+        subcategorySlug: selection.subcategory.slug,
+      };
+    });
+  };
+
   const handlePublish = () => {
     if (draft.purchaseCost <= 0) {
       setSaveFeedback('Set the product purchase cost price before publishing this page.');
@@ -3691,6 +3777,8 @@ export function ProductBuilder() {
         patchSection={patchSection}
         handlePageNameChange={handlePageNameChange}
         handleProductNameChange={handleProductNameChange}
+        handleCategoryChange={handleCategoryChange}
+        handleSubcategoryChange={handleSubcategoryChange}
         orderedTargets={orderedEditorTargets}
         currentIndex={currentEditorIndex}
         nextTarget={nextEditorTarget}

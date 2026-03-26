@@ -1,30 +1,49 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   ArrowRight,
+  Car,
   ChevronRight,
   CreditCard,
   Headphones,
+  Home,
+  Laptop,
   LayoutGrid,
   ShieldCheck,
   ShoppingBag,
+  Smartphone,
   Sparkles,
   TrendingUp,
   X,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { Footer } from '../../components/Footer';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { MarketplaceCollectionsCarousel } from '../../components/storefront/MarketplaceCollectionsCarousel';
-import { MarketplaceHero } from '../../components/storefront/MarketplaceHero';
+import {
+  MarketplaceHero,
+  type MarketplaceSearchSuggestion,
+} from '../../components/storefront/MarketplaceHero';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
+import {
+  filterProductsByCategory,
+  getCategoryRoutePath,
+  getProductCategoryDisplay,
+  getProductCategoryTagLabel,
+  PRODUCT_CATEGORIES,
+  resolveCategoryFilter,
+  type ProductCategoryIconName,
+} from '../../lib/productCategories';
 import {
   loadStorefrontProducts,
   STOREFRONT_PRODUCTS_CHANGE_EVENT,
 } from '../../lib/storefrontProducts';
 import { cn } from '../../lib/utils';
 import type { Product } from '../../types';
+
+const PRODUCTS_PER_PAGE = 6;
 
 const scrollToSection = (sectionId: string) => {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -36,6 +55,8 @@ const matchesSearch = (product: Product, query: string) => {
 
   return [
     product.name,
+    product.category,
+    product.subcategory ?? '',
     product.shortDescription,
     product.sections.hero.title,
     product.sections.hero.subtitle,
@@ -50,11 +71,26 @@ const matchesSearch = (product: Product, query: string) => {
     .includes(normalizedQuery);
 };
 
+const categoryIconMap: Record<
+  ProductCategoryIconName,
+  typeof Smartphone
+> = {
+  Smartphone,
+  Laptop,
+  Home,
+  ShoppingBag,
+  Sparkles,
+  Car,
+  Activity,
+};
+
 export function Marketplace() {
+  const navigate = useNavigate();
+  const { categorySlug } = useParams();
   const branding = useBrandingSettings();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All categories');
+  const [currentPage, setCurrentPage] = useState(1);
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
@@ -108,19 +144,61 @@ export function Marketplace() {
     () => storefrontProducts.filter((product) => product.status === 'published'),
     [storefrontProducts],
   );
+  const activeFilter = useMemo(() => resolveCategoryFilter(categorySlug), [categorySlug]);
   const hasPublishedProducts = publishedProducts.length > 0;
-  const liveSearchResultCount = useMemo(
-    () => publishedProducts.filter((product) => matchesSearch(product, searchQuery)).length,
-    [publishedProducts, searchQuery],
+  const categoryScopedProducts = useMemo(
+    () => filterProductsByCategory(publishedProducts, categorySlug ?? 'all'),
+    [categorySlug, publishedProducts],
   );
-  const categoryFilters = ['All categories', ...Array.from(new Set(publishedProducts.map((product) => product.category.trim() || 'General')))];
-  const visibleProducts = publishedProducts.filter((product) => {
-    const matchesCategory =
-      activeCategory === 'All categories' ||
-      (product.category.trim() || 'General') === activeCategory;
+  const liveSearchResultCount = useMemo(
+    () => categoryScopedProducts.filter((product) => matchesSearch(product, searchQuery)).length,
+    [categoryScopedProducts, searchQuery],
+  );
+  const categoryFilters = useMemo(
+    () =>
+      PRODUCT_CATEGORIES.map((category) => ({
+        ...category,
+        productCount: filterProductsByCategory(publishedProducts, category.slug).length,
+        subcategories: category.subcategories.map((subcategory) => ({
+          ...subcategory,
+          productCount: filterProductsByCategory(publishedProducts, subcategory.slug).length,
+        })),
+      })),
+    [publishedProducts],
+  );
+  const visibleProducts = useMemo(
+    () => categoryScopedProducts.filter((product) => matchesSearch(product, searchQuery)),
+    [categoryScopedProducts, searchQuery],
+  );
+  const searchSuggestions = useMemo<MarketplaceSearchSuggestion[]>(
+    () =>
+      searchQuery.trim().length < 2
+        ? []
+        : visibleProducts.slice(0, 6).map((product) => ({
+            id: product.id,
+            title: product.name,
+            subtitle: getProductCategoryDisplay(product),
+            href: `/product/${product.slug}`,
+          })),
+    [searchQuery, visibleProducts],
+  );
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
+  const paginatedProducts = useMemo(
+    () =>
+      visibleProducts.slice(
+        (currentPage - 1) * PRODUCTS_PER_PAGE,
+        currentPage * PRODUCTS_PER_PAGE,
+      ),
+    [currentPage, visibleProducts],
+  );
 
-    return matchesCategory && matchesSearch(product, searchQuery);
-  });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categorySlug, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -168,7 +246,7 @@ export function Marketplace() {
         <div className="max-w-md space-y-3 rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">
           <h1 className="text-2xl font-bold text-slate-900">Loading products</h1>
           <p className="text-sm text-slate-600">
-            Fetching the live catalog from Supabase.
+            Preparing the storefront for browsing.
           </p>
         </div>
       </div>
@@ -235,6 +313,28 @@ export function Marketplace() {
     setIsSidebarOpen(true);
   };
 
+  const handleCategoryFilterChange = (filterSlug: string | null, label: string) => {
+    trackAnalyticsButtonClick({
+      pagePath: '/',
+      pageType: 'marketplace',
+      buttonId: `homepage_category_${(filterSlug ?? 'all').toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+      buttonLabel: label,
+    });
+
+    navigate(getCategoryRoutePath(filterSlug));
+  };
+
+  const handleResetFilters = () => {
+    trackAnalyticsButtonClick({
+      pagePath: '/',
+      pageType: 'marketplace',
+      buttonId: 'homepage_reset_filters',
+      buttonLabel: 'Reset filters',
+    });
+    setSearchQuery('');
+    navigate('/');
+  };
+
   const handleSearchSubmit = () => {
     trackAnalyticsButtonClick({
       pagePath: '/',
@@ -257,6 +357,18 @@ export function Marketplace() {
         },
       });
     }
+  };
+
+  const handleSuggestionSelect = (suggestion: MarketplaceSearchSuggestion) => {
+    trackAnalyticsButtonClick({
+      pagePath: '/',
+      pageType: 'marketplace',
+      buttonId: 'homepage_search_suggestion',
+      buttonLabel: suggestion.title,
+      searchQuery: searchQuery.trim(),
+      resultsCount: visibleProducts.length,
+    });
+    setSearchQuery('');
   };
 
   return (
@@ -354,9 +466,11 @@ export function Marketplace() {
         <MarketplaceHero
           products={publishedProducts}
           searchQuery={searchQuery}
+          suggestions={searchSuggestions}
           onSearchChange={setSearchQuery}
           onOpenSidebar={handleSidebarOpen}
           onSearchSubmit={handleSearchSubmit}
+          onSuggestionSelect={handleSuggestionSelect}
         />
       </ScrollReveal>
 
@@ -384,128 +498,280 @@ export function Marketplace() {
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
                   {searchQuery.trim()
-                    ? `Showing products that match "${searchQuery.trim()}"${activeCategory !== 'All categories' ? ` in ${activeCategory}` : ''}.`
-                    : 'Choose a category and open the product that fits what you need.'}
+                    ? `Showing products that match "${searchQuery.trim()}"${activeFilter.kind !== 'all' ? ` inside ${activeFilter.label}` : ''}.`
+                    : activeFilter.kind !== 'all'
+                      ? `Browsing ${activeFilter.label}. Open a top-level category to see the full group or drill into one subcategory.`
+                      : 'Choose a category and open the product that fits what you need.'}
                 </p>
               </div>
 
-              <div className="mt-7 flex flex-wrap gap-3">
-                {categoryFilters.map((category) => {
-                  const isActive = category === activeCategory;
+              <div className="mt-8 grid gap-6 xl:grid-cols-[310px,minmax(0,1fr)]">
+                <aside className="h-fit xl:sticky xl:top-24">
+                  <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/78 p-5 shadow-[0_20px_55px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+                    <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(43,99,217,0.1),rgba(14,124,123,0.08))] p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        Filter island
+                      </p>
+                      <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+                        Category navigation
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Top-level filters show the full category group. Subcategories narrow the grid further without reloading the page.
+                      </p>
+                    </div>
 
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => {
-                        trackAnalyticsButtonClick({
-                          pagePath: '/',
-                          pageType: 'marketplace',
-                          buttonId: `homepage_category_${category.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
-                          buttonLabel: category,
-                        });
-                        setActiveCategory(category);
-                      }}
-                      className={cn(
-                        'rounded-full px-5 py-3 text-sm font-semibold transition-colors',
-                        isActive
-                          ? 'bg-slate-900 text-white'
-                          : 'border border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-white',
-                      )}
-                    >
-                      {category}
-                    </button>
-                  );
-                })}
-              </div>
+                    <div className="mt-5 space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => handleCategoryFilterChange(null, 'All categories')}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-[1.4rem] border px-4 py-3 text-left transition',
+                          activeFilter.kind === 'all'
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white/85 text-slate-800 hover:border-slate-300',
+                        )}
+                      >
+                        <span>
+                          <span className="block text-sm font-semibold">All categories</span>
+                          <span className={cn('mt-1 block text-xs', activeFilter.kind === 'all' ? 'text-white/70' : 'text-slate-500')}>
+                            Browse the full catalog
+                          </span>
+                        </span>
+                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', activeFilter.kind === 'all' ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700')}>
+                          {publishedProducts.length}
+                        </span>
+                      </button>
 
-              {visibleProducts.length > 0 ? (
-                <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {visibleProducts.map((product) => (
-                    <article
-                      key={product.id}
-                      className="group overflow-hidden rounded-[1.9rem] border border-slate-200 bg-slate-50 shadow-sm transition-transform duration-300 hover:-translate-y-1"
-                    >
-                      <Link to={`/product/${product.slug}`} className="block">
-                        <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                          <ImageWithFallback
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                          <div className="absolute left-4 top-4">
-                            <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                              {product.category}
+                      {categoryFilters.map((category) => {
+                        const Icon = categoryIconMap[category.icon];
+                        const isCategoryActive = activeFilter.category?.id === category.id;
+
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => handleCategoryFilterChange(category.slug, category.name)}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-[1.4rem] border px-4 py-3 text-left transition',
+                              isCategoryActive && activeFilter.kind === 'category'
+                                ? 'border-[#2B63D9] bg-[#2B63D9] text-white'
+                                : 'border-slate-200 bg-white/85 text-slate-900 hover:border-slate-300',
+                            )}
+                          >
+                            <span className="flex items-center gap-3">
+                              <span className={cn(
+                                'flex h-11 w-11 items-center justify-center rounded-2xl',
+                                isCategoryActive && activeFilter.kind === 'category'
+                                  ? 'bg-white/16 text-white'
+                                  : 'bg-[#eef4ff] text-[#2B63D9]',
+                              )}>
+                                <Icon className="h-5 w-5" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold">{category.name}</span>
+                                <span className={cn('mt-1 block text-xs', isCategoryActive && activeFilter.kind === 'category' ? 'text-white/70' : 'text-slate-500')}>
+                                  {category.subcategories.length} subcategories
+                                </span>
+                              </span>
                             </span>
+                            <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', isCategoryActive && activeFilter.kind === 'category' ? 'bg-white/16 text-white' : 'bg-slate-100 text-slate-700')}>
+                              {category.productCount}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {activeFilter.category ? (
+                      <div className="mt-6 rounded-[1.6rem] border border-slate-200 bg-slate-50/90 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                              {activeFilter.category.name}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-900">
+                              Subcategories
+                            </p>
+                          </div>
+                          {activeFilter.kind === 'subcategory' ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCategoryFilterChange(
+                                  activeFilter.category?.slug ?? null,
+                                  activeFilter.category?.name ?? 'Category',
+                                )
+                              }
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
+                            >
+                              View full group
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                          {categoryFilters
+                            .find((category) => category.id === activeFilter.category?.id)
+                            ?.subcategories.map((subcategory) => {
+                              const isSubcategoryActive =
+                                activeFilter.kind === 'subcategory' &&
+                                activeFilter.subcategory?.slug === subcategory.slug;
+
+                              return (
+                                <button
+                                  key={subcategory.id}
+                                  type="button"
+                                  onClick={() =>
+                                    handleCategoryFilterChange(subcategory.slug, subcategory.name)
+                                  }
+                                  className={cn(
+                                    'flex w-full items-center justify-between rounded-[1.1rem] px-3 py-3 text-left text-sm font-semibold transition',
+                                    isSubcategoryActive
+                                      ? 'bg-slate-900 text-white'
+                                      : 'bg-white text-slate-800 hover:bg-slate-100',
+                                  )}
+                                >
+                                  <span>{subcategory.name}</span>
+                                  <span className={cn('rounded-full px-2 py-0.5 text-[11px]', isSubcategoryActive ? 'bg-white/16 text-white' : 'bg-slate-100 text-slate-600')}>
+                                    {subcategory.productCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </aside>
+
+                <div>
+                  {visibleProducts.length > 0 ? (
+                    <>
+                      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        {paginatedProducts.map((product) => (
+                          <article
+                            key={product.id}
+                            className="group overflow-hidden rounded-[1.9rem] border border-slate-200 bg-slate-50 shadow-sm transition-transform duration-300 hover:-translate-y-1"
+                          >
+                            <Link to={`/product/${product.slug}`} className="block">
+                              <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                                <ImageWithFallback
+                                  src={product.image}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                                <div className="absolute left-4 top-4">
+                                  <span className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                                    {getProductCategoryTagLabel(product)}
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
+
+                            <div className="p-5">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                {getProductCategoryDisplay(product)}
+                              </p>
+                              <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+                                {product.name}
+                              </h3>
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {product.shortDescription}
+                              </p>
+
+                              <Link
+                                to={`/product/${product.slug}`}
+                                onClick={() => {
+                                  trackAnalyticsButtonClick({
+                                    pagePath: '/',
+                                    pageType: 'marketplace',
+                                    productId: product.id,
+                                    productSlug: product.slug,
+                                    productName: product.name,
+                                    buttonId: 'homepage_open_product',
+                                    buttonLabel: 'Open page',
+                                    searchQuery: searchQuery.trim(),
+                                    resultsCount: visibleProducts.length,
+                                    metadata: {
+                                      section: 'catalog_grid',
+                                      category: getProductCategoryDisplay(product),
+                                    },
+                                  });
+                                }}
+                                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2B63D9] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f56c6]"
+                              >
+                                Open page
+                                <ArrowRight className="h-4 w-4" />
+                              </Link>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+
+                      {totalPages > 1 ? (
+                        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                          <p className="text-sm text-slate-600">
+                            Page <span className="font-semibold text-slate-900">{currentPage}</span> of{' '}
+                            <span className="font-semibold text-slate-900">{totalPages}</span>
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                              disabled={currentPage === 1}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Previous
+                            </button>
+                            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                              <button
+                                key={page}
+                                type="button"
+                                onClick={() => setCurrentPage(page)}
+                                className={cn(
+                                  'h-10 w-10 rounded-full text-sm font-semibold transition',
+                                  page === currentPage
+                                    ? 'bg-slate-900 text-white'
+                                    : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400',
+                                )}
+                              >
+                                {page}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                              disabled={currentPage === totalPages}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Next
+                            </button>
                           </div>
                         </div>
-                      </Link>
-
-                      <div className="p-5">
-                        <h3 className="text-xl font-bold tracking-tight text-slate-950">
-                          {product.name}
-                        </h3>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">
-                          {product.shortDescription}
-                        </p>
-
-                        <Link
-                          to={`/product/${product.slug}`}
-                          onClick={() => {
-                            trackAnalyticsButtonClick({
-                              pagePath: '/',
-                              pageType: 'marketplace',
-                              productId: product.id,
-                              productSlug: product.slug,
-                              productName: product.name,
-                              buttonId: 'homepage_open_product',
-                              buttonLabel: 'Open page',
-                              searchQuery: searchQuery.trim(),
-                              resultsCount: visibleProducts.length,
-                              metadata: {
-                                section: 'catalog_grid',
-                                category: product.category,
-                              },
-                            });
-                          }}
-                          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2B63D9] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f56c6]"
-                        >
-                          Open page
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </div>
-                    </article>
-                  ))}
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+                      <h3 className="text-xl font-bold text-slate-950">
+                        {hasPublishedProducts ? 'No matching products' : 'No products published yet'}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        {hasPublishedProducts
+                          ? 'Try a broader search term, reset the search, or switch to another category group.'
+                          : 'The catalog is ready and this page will automatically update once products are published.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                      >
+                        Reset filters
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="mt-8 rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-                  <h3 className="text-xl font-bold text-slate-950">
-                    {hasPublishedProducts ? 'No matching products' : 'No products published yet'}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    {hasPublishedProducts
-                      ? 'Try a broader search term or switch to another category.'
-                      : 'The catalog is ready and this page will automatically update once products are published.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trackAnalyticsButtonClick({
-                        pagePath: '/',
-                        pageType: 'marketplace',
-                        buttonId: 'homepage_reset_filters',
-                        buttonLabel: 'Reset filters',
-                      });
-                      setSearchQuery('');
-                      setActiveCategory('All categories');
-                    }}
-                    className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                  >
-                    Reset filters
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </section>

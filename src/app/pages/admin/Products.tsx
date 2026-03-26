@@ -25,6 +25,7 @@ import {
   formatDraftCurrency,
   readAdminProductDrafts,
 } from '../../lib/adminProductDrafts';
+import { getProductCategoryDisplay } from '../../lib/productCategories';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 function getDraftCoverImage(draft: AdminProductDraft) {
@@ -154,7 +155,7 @@ function DraftProductCard({ draft }: { draft: AdminProductDraft }) {
 
         <div className="absolute inset-x-4 bottom-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">
-            {draft.category}
+            {getProductCategoryDisplay(draft)}
           </p>
           <h3 className="mt-2 text-2xl font-black tracking-tight text-white">
             {draft.pageName}

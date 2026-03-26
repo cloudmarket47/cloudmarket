@@ -2,7 +2,6 @@ import { Clock, DollarSign, Gift, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocale } from '../context/LocaleContext';
 import { getPackagePriceBreakdown } from '../lib/packagePricing';
-import { formatCurrency } from '../lib/utils';
 import type { Product } from '../types';
 import { ScrollReveal } from './animations/ScrollReveal';
 
@@ -19,7 +18,7 @@ export function SpecialOffer({
   product,
   selectedPackageQuantity,
 }: SpecialOfferProps) {
-  const { countryName } = useLocale();
+  const { countryName, formatPrice } = useLocale();
   const offer = product.sections.offer;
   const [timeLeft, setTimeLeft] = useState({
     hours: offer.countdownHours - 1,
@@ -121,13 +120,13 @@ export function SpecialOffer({
 
                     <h3 className="mb-2 text-2xl font-bold text-gray-900">{pkg.title}</h3>
                     <p className="text-sm font-semibold text-gray-500 line-through">
-                      Old Price: {formatCurrency(priceBreakdown.oldPrice)}
+                      Old Price: {formatPrice(priceBreakdown.oldPrice)}
                     </p>
                     <p className="mb-1 text-4xl font-bold text-[#0E7C7B]">
-                      Promo: {formatCurrency(priceBreakdown.promoPrice)}
+                      Promo: {formatPrice(priceBreakdown.promoPrice)}
                     </p>
                     <p className="mb-2 text-sm font-semibold text-emerald-600">
-                      You save {formatCurrency(priceBreakdown.savings)}
+                      You save {formatPrice(priceBreakdown.savings)}
                     </p>
                     <p className="text-gray-600">{pkg.description}</p>
 

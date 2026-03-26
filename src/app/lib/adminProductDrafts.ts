@@ -1,4 +1,9 @@
 import type { Product } from '../types';
+import { applyAlertPreset, ALERT_PRESETS } from './alertPresets';
+import {
+  DEFAULT_PRODUCT_CATEGORY_SELECTION,
+  resolveProductCategorySelection,
+} from './productCategories';
 import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './supabase';
 
 export const ADMIN_PRODUCT_DRAFTS_CHANGE_EVENT = 'cloudmarket-admin-product-drafts-change';
@@ -26,6 +31,7 @@ export interface AdminAlertItem {
   title: string;
   message: string;
   badge: string;
+  presetId?: string;
 }
 
 export interface AdminOfferPackage {
@@ -65,6 +71,10 @@ export interface AdminProductDraft {
   productName: string;
   slug: string;
   category: string;
+  categoryId: string;
+  categorySlug: string;
+  subcategory: string;
+  subcategorySlug: string;
   genderTarget: AdminGenderTarget;
   targetAudience: string;
   currency: AdminCurrency;
@@ -263,6 +273,13 @@ function normalizeVideoAspectRatio(value: AdminVideoAspectRatio | undefined) {
 }
 
 function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
+  const categorySelection = resolveProductCategorySelection({
+    categoryId: draft.categoryId,
+    categorySlug: draft.categorySlug,
+    categoryName: draft.category,
+    subcategorySlug: draft.subcategorySlug,
+    subcategoryName: draft.subcategory,
+  });
   const heroImage = normalizeMediaAsset(draft.sections.hero.image, 'image');
   const heroImagesSource =
     draft.sections.hero.images && draft.sections.hero.images.length > 0
@@ -271,6 +288,11 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
 
   return {
     ...draft,
+    category: categorySelection.category.name,
+    categoryId: categorySelection.category.id,
+    categorySlug: categorySelection.category.slug,
+    subcategory: categorySelection.subcategory.name,
+    subcategorySlug: categorySelection.subcategory.slug,
     purchaseCost: typeof draft.purchaseCost === 'number' ? Math.max(0, draft.purchaseCost) : 0,
     coverImage: normalizeMediaAsset(draft.coverImage, 'image'),
     sections: {
@@ -314,6 +336,13 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
         ratio: normalizeVideoAspectRatio(draft.sections.footerVideo.ratio),
         poster: normalizeMediaAsset(draft.sections.footerVideo.poster, 'image'),
         video: normalizeMediaAsset(draft.sections.footerVideo.video, 'video'),
+      },
+      alerts: {
+        ...draft.sections.alerts,
+        items: draft.sections.alerts.items.map((item) => ({
+          ...item,
+          presetId: item.presetId ?? undefined,
+        })),
       },
       orderForm: {
         ...draft.sections.orderForm,
@@ -426,7 +455,11 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
     pageName: 'New Product Page',
     productName: 'New Product',
     slug: 'new-product',
-    category: 'Home & Cleaning',
+    category: DEFAULT_PRODUCT_CATEGORY_SELECTION.category.name,
+    categoryId: DEFAULT_PRODUCT_CATEGORY_SELECTION.category.id,
+    categorySlug: DEFAULT_PRODUCT_CATEGORY_SELECTION.category.slug,
+    subcategory: DEFAULT_PRODUCT_CATEGORY_SELECTION.subcategory.name,
+    subcategorySlug: DEFAULT_PRODUCT_CATEGORY_SELECTION.subcategory.slug,
     genderTarget: 'all',
     targetAudience: 'Nigeria',
     currency: 'NGN',
@@ -472,10 +505,8 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         visible: true,
         items: [
           {
-            kind: 'offer',
-            title: 'Limited Offer',
+            ...applyAlertPreset(ALERT_PRESETS[0].id),
             message: 'Use popup notifications to highlight offers and mock order activity.',
-            badge: 'Offer',
           },
         ],
       },
@@ -627,13 +658,24 @@ export function createAdminProductDraftFromProduct(
 ): AdminProductDraft {
   const now = new Date().toISOString();
   const draft = createEmptyAdminProductDraft();
+  const categorySelection = resolveProductCategorySelection({
+    categoryId: product.categoryId,
+    categorySlug: product.categorySlug,
+    categoryName: product.category,
+    subcategorySlug: product.subcategorySlug,
+    subcategoryName: product.subcategory,
+  });
 
   draft.sourceProductId = product.id;
   draft.duplicatedFromId = options?.duplicate ? product.id : null;
   draft.pageName = product.name;
   draft.productName = product.name;
   draft.slug = product.slug;
-  draft.category = product.category;
+  draft.category = categorySelection.category.name;
+  draft.categoryId = categorySelection.category.id;
+  draft.categorySlug = categorySelection.category.slug;
+  draft.subcategory = categorySelection.subcategory.name;
+  draft.subcategorySlug = categorySelection.subcategory.slug;
   draft.shortDescription = product.shortDescription;
   draft.basePrice = product.price;
   draft.purchaseCost = product.purchaseCost ?? 0;
@@ -668,20 +710,20 @@ export function createAdminProductDraftFromProduct(
   };
   draft.sections.alerts = {
     visible: true,
-    items: [
-      {
-        kind: 'offer',
-        title: 'Limited Time Deal',
-        message: 'Use this list to control popup notification copy for offers and social proof.',
-        badge: 'Offer',
-      },
-      {
-        kind: 'stock',
-        title: 'Limited Stock Alert',
-        message: 'Only 60 left. Hurry now and order yours before you see sold out.',
-        badge: 'Stock',
-      },
-    ],
+    items:
+      product.sections.alerts.items.length > 0
+        ? product.sections.alerts.items.map((item) => ({ ...item }))
+        : [
+            {
+              ...applyAlertPreset(ALERT_PRESETS[0].id),
+              message: 'Use this list to control popup notification copy for offers and social proof.',
+            },
+            {
+              ...applyAlertPreset(ALERT_PRESETS[1].id),
+              title: 'Limited Stock Alert',
+              message: 'Only 60 left. Hurry now and order yours before you see sold out.',
+            },
+          ],
   };
   draft.sections.featureMarquee = {
     visible: product.sections.features.visible,

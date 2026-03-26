@@ -37,6 +37,10 @@ export const router = createBrowserRouter([
         element: <Marketplace />
       },
       {
+        path: '/category/:categorySlug',
+        element: <Marketplace />
+      },
+      {
         path: '/product/:slug',
         element: <ProductPage />
       },

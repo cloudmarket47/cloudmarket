@@ -4,8 +4,10 @@ import { Check, ChevronLeft, MapPin, MessageSquare, MoreVertical, Package, Phone
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
+import { convertNairaAmount, getCurrencyForCountry } from '../lib/currencyRates';
 import { recordSubmittedOrder } from '../lib/adminOrders';
 import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../lib/customerTokens';
+import type { SupportedCountryCode } from '../lib/localeData';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { getPackagePriceBreakdown } from '../lib/packagePricing';
 import { calculateOrderPricing, createPlacedOrder, persistPlacedOrder } from '../lib/orders';
@@ -39,7 +41,7 @@ interface CheckoutBundle {
 
 const motionEase = [0.4, 0, 0.2, 1] as const;
 
-function buildCheckoutBundles(product: Product): CheckoutBundle[] {
+function buildCheckoutBundles(product: Product, countryCode: SupportedCountryCode): CheckoutBundle[] {
   const gallery = [
     product.sections.hero.image,
     product.image,
@@ -55,13 +57,14 @@ function buildCheckoutBundles(product: Product): CheckoutBundle[] {
       promoPrice: bundle.price,
       oldPrice: bundle.oldPrice,
     });
+    const currency = getCurrencyForCountry(countryCode);
 
     return {
       id: `${product.id}-bundle-${index}`,
       title: bundle.title,
-      price: priceBreakdown.promoPrice,
-      oldPrice: priceBreakdown.oldPrice,
-      savings: priceBreakdown.savings,
+      price: convertNairaAmount(priceBreakdown.promoPrice, currency),
+      oldPrice: convertNairaAmount(priceBreakdown.oldPrice, currency),
+      savings: convertNairaAmount(priceBreakdown.savings, currency),
       description: bundle.description,
       features: bundle.features,
       isBestValue: bundle.isBestValue,
@@ -91,8 +94,8 @@ function ensurePhonePrefix(value: string, phonePrefix: string) {
 export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) {
   const navigate = useNavigate();
   const childScrollRef = useRef<HTMLDivElement>(null);
-  const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions } = useLocale();
-  const bundles = useMemo(() => buildCheckoutBundles(product), [product]);
+  const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
+  const bundles = useMemo(() => buildCheckoutBundles(product, countryCode), [countryCode, product, ratesUpdatedAt]);
   const orderFormCopy = product.sections.orderForm;
   const isDark = product.displayMode === 'dark';
   const [selectedBundleIndex, setSelectedBundleIndex] = useState<number | null>(null);

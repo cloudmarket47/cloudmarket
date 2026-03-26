@@ -8,12 +8,13 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatCurrency(amount: number, countryCode?: SupportedCountryCode): string {
   const locale = getLocaleConfig(countryCode ?? readCountryCookie());
-  const absoluteAmount = Math.abs(amount);
-  const formattedNumber = new Intl.NumberFormat(locale.localeTag, {
-    maximumFractionDigits: 0,
-  }).format(absoluteAmount);
 
-  return `${amount < 0 ? '-' : ''}${locale.currencySymbol}${formattedNumber}`;
+  return new Intl.NumberFormat(locale.localeTag, {
+    style: 'currency',
+    currency: locale.currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 export function formatDate(date: string): string {

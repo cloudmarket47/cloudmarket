@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
+import { useLocale } from '../context/LocaleContext';
+import { getProductCategoryHeroLabel } from '../lib/productCategories';
 import type { Product } from '../types';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { Button } from './design-system/Button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -39,6 +41,7 @@ interface HeroProps {
 
 export function Hero({ product, onBuyNow }: HeroProps) {
   const navigate = useNavigate();
+  const { formatPrice } = useLocale();
   const [activeSlide, setActiveSlide] = useState(0);
   const [isSharePanelOpen, setIsSharePanelOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
@@ -56,6 +59,17 @@ export function Hero({ product, onBuyNow }: HeroProps) {
   });
 
   const slides = heroImages.length > 0 ? heroImages : [product.image];
+  const heroCategoryLabel = useMemo(
+    () =>
+      getProductCategoryHeroLabel({
+        category: product.category,
+        categoryId: product.categoryId,
+        categorySlug: product.categorySlug,
+        subcategory: product.subcategory,
+        subcategorySlug: product.subcategorySlug,
+      }),
+    [product.category, product.categoryId, product.categorySlug, product.subcategory, product.subcategorySlug],
+  );
   const canonicalProductUrl = useMemo(() => {
     if (typeof window === 'undefined') {
       return `/product/${product.slug}`;
@@ -373,7 +387,7 @@ export function Hero({ product, onBuyNow }: HeroProps) {
                     {product.name}
                   </h1>
                   <p className="text-sm font-medium text-white/52 sm:text-base">
-                    Cleaning Tool | Kitchen & Bathroom
+                    {heroCategoryLabel}
                   </p>
                   <p className="max-w-xl text-base leading-relaxed text-white/82 sm:text-lg">
                     {product.sections.hero.subtitle}
@@ -386,7 +400,7 @@ export function Hero({ product, onBuyNow }: HeroProps) {
                       Price
                     </span>
                     <span className="text-lg font-bold leading-none md:text-xl">
-                      {formatCurrency(product.price)}
+                      {formatPrice(product.price)}
                     </span>
                   </div>
 

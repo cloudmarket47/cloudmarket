@@ -3,6 +3,10 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  categoryId?: string;
+  categorySlug?: string;
+  subcategory?: string;
+  subcategorySlug?: string;
   slug: string;
   price: number;
   purchaseCost?: number;
@@ -50,6 +54,7 @@ export interface Product {
         title: string;
         message: string;
         badge: string;
+        presetId?: string;
       }[];
     };
     featureMarquee: {

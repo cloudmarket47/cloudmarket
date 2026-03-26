@@ -58,6 +58,8 @@ import {
   type AdminOfferPackage,
   type AdminReviewItem,
 } from '../../lib/adminProductDrafts';
+import { ALERT_PRESETS, applyAlertPreset } from '../../lib/alertPresets';
+import { getProductCategoryDisplay } from '../../lib/productCategories';
 import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
 import { cn } from '../../lib/utils';
 import { Carousel3D } from '../animations/Carousel3D';
@@ -1339,6 +1341,10 @@ function EditableAlertsList({
   onChange: (items: AdminAlertItem[]) => void;
   isDark?: boolean;
 }) {
+  const updateItem = (index: number, patch: Partial<AdminAlertItem>) => {
+    onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, ...patch } : entry)));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1354,10 +1360,9 @@ function EditableAlertsList({
             onChange([
               ...items,
               {
-                kind: 'offer',
+                ...applyAlertPreset(ALERT_PRESETS[0].id),
                 title: 'New Alert',
                 message: 'Replace this with the real offer or stock message.',
-                badge: 'Offer',
               },
             ])
           }
@@ -1379,20 +1384,35 @@ function EditableAlertsList({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
+                <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#0E7C7B]">
+                  Alert preset
+                  <select
+                    value={item.presetId ?? ALERT_PRESETS[0].id}
+                    onChange={(event) => updateItem(index, applyAlertPreset(event.target.value, item))}
+                    className={cn(
+                      'mt-2 w-full rounded-2xl border px-3 py-2 text-sm font-medium outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/10',
+                      isDark
+                        ? 'border-slate-800 bg-slate-900 text-white'
+                        : 'border-gray-200 bg-white text-slate-900',
+                    )}
+                  >
+                    {ALERT_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.badge} - {preset.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <EditableText
                   as="p"
                   value={item.title}
-                  onSave={(value) =>
-                    onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, title: value } : entry)))
-                  }
+                  onSave={(value) => updateItem(index, { title: value })}
                   className={cn('text-sm font-bold', isDark ? 'text-white' : 'text-slate-900')}
                 />
                 <EditableText
                   as="p"
                   value={item.message}
-                  onSave={(value) =>
-                    onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, message: value } : entry)))
-                  }
+                  onSave={(value) => updateItem(index, { message: value })}
                   multiline
                   className={cn('mt-2 text-sm leading-6', isDark ? 'text-slate-300' : 'text-slate-600')}
                 />
@@ -1411,9 +1431,7 @@ function EditableAlertsList({
             <EditableText
               as="span"
               value={item.badge}
-              onSave={(value) =>
-                onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, badge: value } : entry)))
-              }
+              onSave={(value) => updateItem(index, { badge: value })}
               className="mt-3 inline-flex rounded-full bg-[#fff7ed] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c2410c]"
             />
           </div>
@@ -2459,16 +2477,9 @@ export function InlineEditableProductCanvas({
                               />
                               <EditableText
                                 as="p"
-                                value={`${pageData.category} | ${pageData.targetAudience}`}
-                                onSave={(value) => {
-                                  const [nextCategory, nextAudience] = value.split('|').map((item) => item.trim());
-                                  updatePageData((current) => ({
-                                    ...current,
-                                    category: nextCategory || current.category,
-                                    targetAudience: nextAudience || current.targetAudience,
-                                  }));
-                                }}
-                                editable={!readOnly}
+                                value={`${getProductCategoryDisplay(pageData)} | ${pageData.targetAudience}`}
+                                onSave={() => undefined}
+                                editable={false}
                                 className="text-sm font-medium text-white/52 sm:text-base"
                                 placeholder="Category | Target audience"
                               />

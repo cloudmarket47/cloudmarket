@@ -1,6 +1,7 @@
+import { convertNairaAmount } from './currencyRates';
 import { formatCurrency } from './utils';
 import type { CustomerTokenRecord, PlacedOrder, Product } from '../types';
-import type { SupportedCountryCode } from './localeData';
+import { getLocaleConfig, type SupportedCountryCode } from './localeData';
 import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './supabase';
 
 const ORDERS_DATA_CHANGE_EVENT = 'cloudmarket-orders-cache-change';
@@ -121,14 +122,15 @@ export function buildPackageOptions(
 ): Record<string, PackageOption> {
   return product.sections.offer.packages.reduce<Record<string, PackageOption>>((collection, pkg, index) => {
     const quantity = pkg.title.match(/buy\s+(\d+)/i)?.[1] ?? String(index + 1);
+    const convertedTotal = convertNairaAmount(pkg.price, getLocaleConfig(localeCountryCode).currencyCode);
 
     collection[quantity] = {
       quantity,
       title: pkg.title,
       description: pkg.description,
       sets: pkg.description,
-      label: `${pkg.title} - ${pkg.description} - ${formatCurrency(pkg.price, localeCountryCode)}`,
-      total: pkg.price,
+      label: `${pkg.title} - ${pkg.description} - ${formatCurrency(convertedTotal, localeCountryCode)}`,
+      total: convertedTotal,
     };
 
     return collection;

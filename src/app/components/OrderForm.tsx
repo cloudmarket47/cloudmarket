@@ -47,12 +47,12 @@ export function OrderForm({
   onPackageChange,
 }: OrderFormProps) {
   const navigate = useNavigate();
-  const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions } = useLocale();
+  const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const isDark = product.displayMode === 'dark';
   const orderFormCopy = product.sections.orderForm;
   const packageOptions = useMemo(
     () => buildPackageOptions(product, countryCode),
-    [countryCode, product],
+    [countryCode, product, ratesUpdatedAt],
   );
   const fallbackQuantity = Object.keys(packageOptions)[0] ?? '1';
   const [formData, setFormData] = useState({

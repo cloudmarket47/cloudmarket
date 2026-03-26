@@ -30,9 +30,18 @@ const themeLabels: Record<Product['theme'], string> = {
 interface MarketplaceHeroProps {
   products: Product[];
   searchQuery: string;
+  suggestions: MarketplaceSearchSuggestion[];
   onSearchChange: (value: string) => void;
   onOpenSidebar: () => void;
   onSearchSubmit?: () => void;
+  onSuggestionSelect?: (suggestion: MarketplaceSearchSuggestion) => void;
+}
+
+export interface MarketplaceSearchSuggestion {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
 }
 
 interface HeroSlide {
@@ -113,9 +122,11 @@ function buildHeroSlides(products: Product[]) {
 export function MarketplaceHero({
   products,
   searchQuery,
+  suggestions,
   onSearchChange,
   onOpenSidebar,
   onSearchSubmit,
+  onSuggestionSelect,
 }: MarketplaceHeroProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
@@ -173,6 +184,7 @@ export function MarketplaceHero({
     onSearchSubmit?.();
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  const shouldShowSuggestions = searchQuery.trim().length > 0 && suggestions.length > 0;
 
   const handleShareSite = async () => {
     trackAnalyticsButtonClick({
@@ -326,16 +338,46 @@ export function MarketplaceHero({
             onSubmit={handleSubmit}
             className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <label className="flex h-14 w-full max-w-[500px] items-center gap-3 rounded-full border border-slate-200 bg-white/94 px-5 text-slate-500 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md">
-              <Search className="h-4.5 w-4.5 flex-shrink-0" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search products"
-                className="h-full w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-              />
-            </label>
+            <div className="relative w-full max-w-[500px]">
+              <label className="flex h-14 w-full items-center gap-3 rounded-full border border-slate-200 bg-white/94 px-5 text-slate-500 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md">
+                <Search className="h-4.5 w-4.5 flex-shrink-0" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                  placeholder="Search products"
+                  className="h-full w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                />
+              </label>
+
+              {shouldShowSuggestions ? (
+                <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white/96 p-2 text-left shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+                  <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Suggestions
+                  </p>
+                  <div className="space-y-1">
+                    {suggestions.map((suggestion) => (
+                      <Link
+                        key={suggestion.id}
+                        to={suggestion.href}
+                        onClick={() => onSuggestionSelect?.(suggestion)}
+                        className="flex items-start justify-between gap-3 rounded-[1.15rem] px-3 py-3 transition hover:bg-slate-50"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {suggestion.title}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {suggestion.subtitle}
+                          </p>
+                        </div>
+                        <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <button
               type="submit"

@@ -1,0 +1,17 @@
+import type { RatesSnapshot } from './currencyRates';
+
+export const GENERATED_RATES_SNAPSHOT: RatesSnapshot = {
+  "base": "NGN",
+  "source": "https://latest.currency-api.pages.dev/v1/currencies/ngn.json",
+  "updatedAt": "2026-03-26T11:11:56.696Z",
+  "fetchedAt": "2026-03-26T11:11:56.696Z",
+  "sourceDate": "2026-03-26",
+  "safetyBufferMultiplier": 1.05,
+  "rates": {
+    "NGN": 1,
+    "USD": 0.0007217834,
+    "GHS": 0.0079005593,
+    "KES": 0.093769207,
+    "ZAR": 0.012276517
+  }
+};

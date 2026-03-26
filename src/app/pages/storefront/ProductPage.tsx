@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '../../components/design-system/Button';
 import { Card } from '../../components/design-system/Card';
-import { formatCurrency } from '../../lib/utils';
+import { useLocale } from '../../context/LocaleContext';
 import {
   loadStorefrontProducts,
   STOREFRONT_PRODUCTS_CHANGE_EVENT,
@@ -35,6 +35,7 @@ import type { Product } from '../../types';
 
 export function ProductPage() {
   const { slug } = useParams();
+  const { formatPrice } = useLocale();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPackageQuantity, setSelectedPackageQuantity] = useState('1');
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
@@ -301,7 +302,7 @@ export function ProductPage() {
                         </p>
                         <div className="flex items-center justify-between mb-4">
                           <p className="text-2xl font-bold text-[#0E7C7B]">
-                            {formatCurrency(recProduct.price)}
+                            {formatPrice(recProduct.price)}
                           </p>
                         </div>
                         <Link

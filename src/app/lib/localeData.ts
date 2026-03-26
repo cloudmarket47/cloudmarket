@@ -264,6 +264,83 @@ export function getLocaleConfig(countryCode?: string | null) {
   return LOCALE_DATA[normalizeCountryCode(countryCode)];
 }
 
+function detectCountryCodeFromLocale(localeTag?: string | null) {
+  if (!localeTag) {
+    return null;
+  }
+
+  const normalizedLocaleTag = localeTag.trim();
+
+  if (!normalizedLocaleTag) {
+    return null;
+  }
+
+  const region = normalizedLocaleTag.split('-').at(-1)?.toUpperCase();
+
+  return region && SUPPORTED_COUNTRY_CODES.includes(region as SupportedCountryCode)
+    ? (region as SupportedCountryCode)
+    : null;
+}
+
+function detectCountryCodeFromTimeZone(timeZone?: string | null) {
+  if (!timeZone) {
+    return null;
+  }
+
+  const normalizedTimeZone = timeZone.trim().toLowerCase();
+
+  if (!normalizedTimeZone) {
+    return null;
+  }
+
+  if (normalizedTimeZone.includes('lagos')) {
+    return 'NG';
+  }
+
+  if (normalizedTimeZone.includes('accra')) {
+    return 'GH';
+  }
+
+  if (normalizedTimeZone.includes('nairobi')) {
+    return 'KE';
+  }
+
+  if (normalizedTimeZone.includes('johannesburg')) {
+    return 'ZA';
+  }
+
+  if (normalizedTimeZone.startsWith('america/')) {
+    return 'US';
+  }
+
+  return null;
+}
+
+export function detectCountryCode() {
+  if (typeof window === 'undefined') {
+    return DEFAULT_COUNTRY_CODE;
+  }
+
+  const navigatorLocales = [
+    ...(Array.isArray(window.navigator.languages) ? window.navigator.languages : []),
+    window.navigator.language,
+  ];
+
+  for (const localeTag of navigatorLocales) {
+    const detectedCountryCode = detectCountryCodeFromLocale(localeTag);
+
+    if (detectedCountryCode) {
+      return detectedCountryCode;
+    }
+  }
+
+  const detectedFromTimeZone = detectCountryCodeFromTimeZone(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+
+  return detectedFromTimeZone ?? DEFAULT_COUNTRY_CODE;
+}
+
 export function readCountryCookie() {
   if (typeof document === 'undefined') {
     return DEFAULT_COUNTRY_CODE;
@@ -271,7 +348,7 @@ export function readCountryCookie() {
 
   const match = document.cookie.match(/(?:^|;\s*)nf_country=([^;]+)/);
 
-  return normalizeCountryCode(match?.[1]);
+  return match?.[1] ? normalizeCountryCode(match[1]) : detectCountryCode();
 }
 
 export function writeCountryCookie(countryCode: SupportedCountryCode) {
