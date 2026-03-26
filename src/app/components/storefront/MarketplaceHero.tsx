@@ -1,7 +1,25 @@
-import { CSSProperties, FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Menu, Search, Share2 } from 'lucide-react';
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Activity,
+  ArrowRight,
+  Car,
+  Home,
+  Laptop,
+  LayoutGrid,
+  Menu,
+  Search,
+  Share2,
+  ShoppingBag,
+  Smartphone,
+  Sparkles,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
+import {
+  type ProductCategoryIconName,
+  type ResolvedCategoryFilter,
+} from '../../lib/productCategories';
+import { cn } from '../../lib/utils';
 import type { Product } from '../../types';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
@@ -27,12 +45,39 @@ const themeLabels: Record<Product['theme'], string> = {
   premium: 'Premium pick',
 };
 
+const categoryIconMap: Record<ProductCategoryIconName, typeof Smartphone> = {
+  Smartphone,
+  Laptop,
+  Home,
+  ShoppingBag,
+  Sparkles,
+  Car,
+  Activity,
+};
+
+interface MarketplaceCategoryMenuItem {
+  id: string;
+  name: string;
+  slug: string;
+  icon: ProductCategoryIconName;
+  productCount: number;
+  subcategories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    productCount: number;
+  }>;
+}
+
 interface MarketplaceHeroProps {
   products: Product[];
   searchQuery: string;
   suggestions: MarketplaceSearchSuggestion[];
+  activeFilter: ResolvedCategoryFilter;
+  categoryFilters: MarketplaceCategoryMenuItem[];
   onSearchChange: (value: string) => void;
   onOpenSidebar: () => void;
+  onCategorySelect: (filterSlug: string | null, label: string) => void;
   onSearchSubmit?: () => void;
   onSuggestionSelect?: (suggestion: MarketplaceSearchSuggestion) => void;
 }
@@ -123,13 +168,18 @@ export function MarketplaceHero({
   products,
   searchQuery,
   suggestions,
+  activeFilter,
+  categoryFilters,
   onSearchChange,
   onOpenSidebar,
+  onCategorySelect,
   onSearchSubmit,
   onSuggestionSelect,
 }: MarketplaceHeroProps) {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
 
   const slides = useMemo(() => buildHeroSlides(products), [products]);
   const homepageUrl = useMemo(() => {
@@ -178,6 +228,35 @@ export function MarketplaceHero({
       window.clearTimeout(timeoutId);
     };
   }, [shareFeedback]);
+
+  useEffect(() => {
+    if (!isCategoryMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        categoryMenuRef.current &&
+        !categoryMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsCategoryMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsCategoryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCategoryMenuOpen]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -336,8 +415,150 @@ export function MarketplaceHero({
 
           <form
             onSubmit={handleSubmit}
-            className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
+            className="mt-10 flex flex-col items-center justify-center gap-3"
           >
+            <div className="flex w-full max-w-[500px] items-center justify-between gap-3">
+              <div ref={categoryMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryMenuOpen((current) => !current)}
+                  aria-label="Open category navigation"
+                  aria-expanded={isCategoryMenuOpen}
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white/94 text-slate-700 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md transition-colors hover:bg-white"
+                >
+                  <LayoutGrid className="h-5 w-5" />
+                </button>
+
+                {isCategoryMenuOpen ? (
+                  <div className="absolute left-1/2 top-[calc(100%+0.75rem)] z-30 w-[min(92vw,42rem)] -translate-x-1/2 overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white/96 p-3 text-left shadow-[0_24px_60px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+                    <div className="flex flex-wrap items-start justify-between gap-3 rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(43,99,217,0.09),rgba(14,124,123,0.08))] px-4 py-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                          Category navigation
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          Pick a category or drill into a subcategory from here.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onCategorySelect(null, 'All categories');
+                          setIsCategoryMenuOpen(false);
+                        }}
+                        className={cn(
+                          'rounded-full border px-4 py-2 text-xs font-semibold transition',
+                          activeFilter.kind === 'all'
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                        )}
+                      >
+                        All categories
+                      </button>
+                    </div>
+
+                    <div className="mt-3 max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+                      {categoryFilters.map((category) => {
+                        const Icon = categoryIconMap[category.icon];
+                        const isCategoryActive = activeFilter.category?.id === category.id;
+
+                        return (
+                          <div
+                            key={category.id}
+                            className={cn(
+                              'rounded-[1.5rem] border p-3 transition',
+                              isCategoryActive
+                                ? 'border-[#bfd5ff] bg-[#f5f9ff]'
+                                : 'border-slate-200 bg-white',
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onCategorySelect(category.slug, category.name);
+                                setIsCategoryMenuOpen(false);
+                              }}
+                              className="flex w-full items-center justify-between gap-3 rounded-[1.2rem] px-2 py-2 text-left transition hover:bg-white/70"
+                            >
+                              <span className="flex min-w-0 items-center gap-3">
+                                <span
+                                  className={cn(
+                                    'flex h-11 w-11 items-center justify-center rounded-2xl',
+                                    isCategoryActive && activeFilter.kind === 'category'
+                                      ? 'bg-[#2B63D9] text-white'
+                                      : 'bg-[#eef4ff] text-[#2B63D9]',
+                                  )}
+                                >
+                                  <Icon className="h-5 w-5" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold text-slate-950">
+                                    {category.name}
+                                  </span>
+                                  <span className="mt-1 block text-xs text-slate-500">
+                                    {category.subcategories.length} subcategories
+                                  </span>
+                                </span>
+                              </span>
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                {category.productCount}
+                              </span>
+                            </button>
+
+                            <div className="mt-3 flex flex-wrap gap-2 px-2 pb-1">
+                              {category.subcategories.map((subcategory) => {
+                                const isSubcategoryActive =
+                                  activeFilter.kind === 'subcategory' &&
+                                  activeFilter.subcategory?.slug === subcategory.slug;
+
+                                return (
+                                  <button
+                                    key={subcategory.id}
+                                    type="button"
+                                    onClick={() => {
+                                      onCategorySelect(subcategory.slug, subcategory.name);
+                                      setIsCategoryMenuOpen(false);
+                                    }}
+                                    className={cn(
+                                      'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition',
+                                      isSubcategoryActive
+                                        ? 'border-slate-900 bg-slate-900 text-white'
+                                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white',
+                                    )}
+                                  >
+                                    <span>{subcategory.name}</span>
+                                    <span
+                                      className={cn(
+                                        'rounded-full px-1.5 py-0.5 text-[10px]',
+                                        isSubcategoryActive
+                                          ? 'bg-white/14 text-white'
+                                          : 'bg-white text-slate-500',
+                                      )}
+                                    >
+                                      {subcategory.productCount}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex min-w-0 items-center gap-2 rounded-full border border-slate-200 bg-white/94 px-4 py-2.5 text-left shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Category
+                </span>
+                <span className="truncate text-sm font-semibold text-slate-800">
+                  {activeFilter.label}
+                </span>
+              </div>
+            </div>
+
             <div className="relative w-full max-w-[500px]">
               <label className="flex h-14 w-full items-center gap-3 rounded-full border border-slate-200 bg-white/94 px-5 text-slate-500 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md">
                 <Search className="h-4.5 w-4.5 flex-shrink-0" />
@@ -379,13 +600,15 @@ export function MarketplaceHero({
               ) : null}
             </div>
 
-            <button
-              type="submit"
-              className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#2B63D9] px-8 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(43,99,217,0.25)] transition-colors hover:bg-[#1f56c6]"
-            >
-              Browse products
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="flex w-full max-w-[500px] justify-center sm:justify-start">
+              <button
+                type="submit"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#2B63D9] px-8 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(43,99,217,0.25)] transition-colors hover:bg-[#1f56c6]"
+              >
+                Browse products
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </form>
 
           <p className="mt-4 text-sm text-slate-500">

@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity,
   ArrowRight,
-  Car,
   ChevronRight,
   CreditCard,
   Headphones,
-  Home,
-  Laptop,
   LayoutGrid,
   ShieldCheck,
   ShoppingBag,
-  Smartphone,
   Sparkles,
   TrendingUp,
   X,
@@ -34,7 +29,6 @@ import {
   getProductCategoryTagLabel,
   PRODUCT_CATEGORIES,
   resolveCategoryFilter,
-  type ProductCategoryIconName,
 } from '../../lib/productCategories';
 import {
   loadStorefrontProducts,
@@ -69,19 +63,6 @@ const matchesSearch = (product: Product, query: string) => {
     .join(' ')
     .toLowerCase()
     .includes(normalizedQuery);
-};
-
-const categoryIconMap: Record<
-  ProductCategoryIconName,
-  typeof Smartphone
-> = {
-  Smartphone,
-  Laptop,
-  Home,
-  ShoppingBag,
-  Sparkles,
-  Car,
-  Activity,
 };
 
 export function Marketplace() {
@@ -322,6 +303,9 @@ export function Marketplace() {
     });
 
     navigate(getCategoryRoutePath(filterSlug));
+    window.setTimeout(() => {
+      scrollToSection('products');
+    }, 0);
   };
 
   const handleResetFilters = () => {
@@ -467,8 +451,11 @@ export function Marketplace() {
           products={publishedProducts}
           searchQuery={searchQuery}
           suggestions={searchSuggestions}
+          activeFilter={activeFilter}
+          categoryFilters={categoryFilters}
           onSearchChange={setSearchQuery}
           onOpenSidebar={handleSidebarOpen}
+          onCategorySelect={handleCategoryFilterChange}
           onSearchSubmit={handleSearchSubmit}
           onSuggestionSelect={handleSuggestionSelect}
         />
@@ -494,157 +481,96 @@ export function Marketplace() {
                   All products
                 </p>
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                  Shop by category
+                  Browse the catalog
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
                   {searchQuery.trim()
                     ? `Showing products that match "${searchQuery.trim()}"${activeFilter.kind !== 'all' ? ` inside ${activeFilter.label}` : ''}.`
                     : activeFilter.kind !== 'all'
-                      ? `Browsing ${activeFilter.label}. Open a top-level category to see the full group or drill into one subcategory.`
-                      : 'Choose a category and open the product that fits what you need.'}
+                      ? `Browsing ${activeFilter.label}. Use the category icon above the homepage search bar to switch categories quickly.`
+                      : 'Use the category icon above the search bar to narrow the catalog, then open the product that fits what you need.'}
                 </p>
               </div>
 
-              <div className="mt-8 grid gap-6 xl:grid-cols-[310px,minmax(0,1fr)]">
-                <aside className="h-fit xl:sticky xl:top-24">
-                  <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/78 p-5 shadow-[0_20px_55px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-                    <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(43,99,217,0.1),rgba(14,124,123,0.08))] p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                        Filter island
-                      </p>
-                      <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
-                        Category navigation
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        Top-level filters show the full category group. Subcategories narrow the grid further without reloading the page.
-                      </p>
+              <div className="mt-8">
+                <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                        {activeFilter.label}
+                      </span>
+                      {activeFilter.kind === 'subcategory' ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCategoryFilterChange(
+                              activeFilter.category?.slug ?? null,
+                              activeFilter.category?.name ?? 'Category',
+                            )
+                          }
+                          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+                        >
+                          View full group
+                        </button>
+                      ) : null}
+                      {(activeFilter.kind !== 'all' || searchQuery.trim()) ? (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+                        >
+                          Reset filters
+                        </button>
+                      ) : null}
                     </div>
+                    <p className="text-sm text-slate-600">
+                      <span className="font-semibold text-slate-900">{visibleProducts.length}</span>{' '}
+                      product{visibleProducts.length === 1 ? '' : 's'} available
+                    </p>
+                  </div>
 
-                    <div className="mt-5 space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => handleCategoryFilterChange(null, 'All categories')}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-[1.4rem] border px-4 py-3 text-left transition',
-                          activeFilter.kind === 'all'
-                            ? 'border-slate-900 bg-slate-900 text-white'
-                            : 'border-slate-200 bg-white/85 text-slate-800 hover:border-slate-300',
-                        )}
-                      >
-                        <span>
-                          <span className="block text-sm font-semibold">All categories</span>
-                          <span className={cn('mt-1 block text-xs', activeFilter.kind === 'all' ? 'text-white/70' : 'text-slate-500')}>
-                            Browse the full catalog
-                          </span>
-                        </span>
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', activeFilter.kind === 'all' ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700')}>
-                          {publishedProducts.length}
-                        </span>
-                      </button>
+                  {activeFilter.category ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {categoryFilters
+                        .find((category) => category.id === activeFilter.category?.id)
+                        ?.subcategories.map((subcategory) => {
+                          const isSubcategoryActive =
+                            activeFilter.kind === 'subcategory' &&
+                            activeFilter.subcategory?.slug === subcategory.slug;
 
-                      {categoryFilters.map((category) => {
-                        const Icon = categoryIconMap[category.icon];
-                        const isCategoryActive = activeFilter.category?.id === category.id;
-
-                        return (
-                          <button
-                            key={category.id}
-                            type="button"
-                            onClick={() => handleCategoryFilterChange(category.slug, category.name)}
-                            className={cn(
-                              'flex w-full items-center justify-between rounded-[1.4rem] border px-4 py-3 text-left transition',
-                              isCategoryActive && activeFilter.kind === 'category'
-                                ? 'border-[#2B63D9] bg-[#2B63D9] text-white'
-                                : 'border-slate-200 bg-white/85 text-slate-900 hover:border-slate-300',
-                            )}
-                          >
-                            <span className="flex items-center gap-3">
-                              <span className={cn(
-                                'flex h-11 w-11 items-center justify-center rounded-2xl',
-                                isCategoryActive && activeFilter.kind === 'category'
-                                  ? 'bg-white/16 text-white'
-                                  : 'bg-[#eef4ff] text-[#2B63D9]',
-                              )}>
-                                <Icon className="h-5 w-5" />
-                              </span>
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold">{category.name}</span>
-                                <span className={cn('mt-1 block text-xs', isCategoryActive && activeFilter.kind === 'category' ? 'text-white/70' : 'text-slate-500')}>
-                                  {category.subcategories.length} subcategories
-                                </span>
-                              </span>
-                            </span>
-                            <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', isCategoryActive && activeFilter.kind === 'category' ? 'bg-white/16 text-white' : 'bg-slate-100 text-slate-700')}>
-                              {category.productCount}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {activeFilter.category ? (
-                      <div className="mt-6 rounded-[1.6rem] border border-slate-200 bg-slate-50/90 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                              {activeFilter.category.name}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">
-                              Subcategories
-                            </p>
-                          </div>
-                          {activeFilter.kind === 'subcategory' ? (
+                          return (
                             <button
+                              key={subcategory.id}
                               type="button"
                               onClick={() =>
-                                handleCategoryFilterChange(
-                                  activeFilter.category?.slug ?? null,
-                                  activeFilter.category?.name ?? 'Category',
-                                )
+                                handleCategoryFilterChange(subcategory.slug, subcategory.name)
                               }
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
+                              className={cn(
+                                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
+                                isSubcategoryActive
+                                  ? 'border-slate-900 bg-slate-900 text-white'
+                                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400',
+                              )}
                             >
-                              View full group
+                              <span>{subcategory.name}</span>
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-[11px]',
+                                  isSubcategoryActive
+                                    ? 'bg-white/14 text-white'
+                                    : 'bg-slate-100 text-slate-500',
+                                )}
+                              >
+                                {subcategory.productCount}
+                              </span>
                             </button>
-                          ) : null}
-                        </div>
+                          );
+                        })}
+                    </div>
+                  ) : null}
+                </div>
 
-                        <div className="mt-4 space-y-2">
-                          {categoryFilters
-                            .find((category) => category.id === activeFilter.category?.id)
-                            ?.subcategories.map((subcategory) => {
-                              const isSubcategoryActive =
-                                activeFilter.kind === 'subcategory' &&
-                                activeFilter.subcategory?.slug === subcategory.slug;
-
-                              return (
-                                <button
-                                  key={subcategory.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleCategoryFilterChange(subcategory.slug, subcategory.name)
-                                  }
-                                  className={cn(
-                                    'flex w-full items-center justify-between rounded-[1.1rem] px-3 py-3 text-left text-sm font-semibold transition',
-                                    isSubcategoryActive
-                                      ? 'bg-slate-900 text-white'
-                                      : 'bg-white text-slate-800 hover:bg-slate-100',
-                                  )}
-                                >
-                                  <span>{subcategory.name}</span>
-                                  <span className={cn('rounded-full px-2 py-0.5 text-[11px]', isSubcategoryActive ? 'bg-white/16 text-white' : 'bg-slate-100 text-slate-600')}>
-                                    {subcategory.productCount}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </aside>
-
-                <div>
+                <div className="mt-6">
                   {visibleProducts.length > 0 ? (
                     <>
                       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
