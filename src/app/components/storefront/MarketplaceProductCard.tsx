@@ -1,7 +1,6 @@
-import { ShoppingCart } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getProductCategoryDisplay, getProductCategoryTagLabel } from '../../lib/productCategories';
-import { cn } from '../../lib/utils';
+import { getProductCategoryDisplay } from '../../lib/productCategories';
 import type { Product } from '../../types';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import {
@@ -12,35 +11,28 @@ import {
 interface MarketplaceProductCardProps {
   product: Product;
   formatPrice: (amount: number) => string;
-  isAdded: boolean;
-  onAddToCart: (product: Product) => void;
   onOpenProduct: (product: Product, section: string) => void;
 }
 
 export function MarketplaceProductCard({
   product,
   formatPrice,
-  isAdded,
-  onAddToCart,
   onOpenProduct,
 }: MarketplaceProductCardProps) {
   const pricing = getMarketplaceProductPricing(product);
 
   return (
-    <article className="group rounded-[1.65rem] border border-slate-200 bg-white p-2.5 shadow-[0_16px_36px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-slate-950">
+    <article className="group rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-[0_12px_26px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.1)] sm:rounded-[1.65rem] sm:p-2.5 dark:border-slate-800 dark:bg-slate-950">
       <Link
         to={`/product/${product.slug}`}
         onClick={() => onOpenProduct(product, 'homepage_product_card')}
         className="block"
       >
-        <div className="relative overflow-hidden rounded-[1.25rem] bg-[linear-gradient(180deg,#f8fbff_0%,#f3f6fb_100%)] dark:bg-[linear-gradient(180deg,#0d203f_0%,#10284d_100%)]">
-          <div className="absolute left-3 top-3 z-10 rounded-full bg-[#ff7c45] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+        <div className="relative overflow-hidden rounded-[1.05rem] bg-[linear-gradient(180deg,#f8fbff_0%,#f3f6fb_100%)] dark:bg-[linear-gradient(180deg,#0d203f_0%,#10284d_100%)] sm:rounded-[1.25rem]">
+          <div className="absolute left-2.5 top-2.5 z-10 rounded-full bg-[#ff7c45] px-2 py-1 text-[10px] font-bold text-white shadow-sm sm:left-3 sm:top-3 sm:px-2.5 sm:text-[11px]">
             -{pricing.discountPercentage}%
           </div>
-          <div className="absolute right-3 top-3 z-10 rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/90 dark:text-slate-300">
-            {getProductCategoryTagLabel(product)}
-          </div>
-          <div className="aspect-[4/3] overflow-hidden rounded-[1.25rem]">
+          <div className="aspect-[5/3] overflow-hidden rounded-[1.05rem] sm:aspect-[4/3] sm:rounded-[1.25rem]">
             <ImageWithFallback
               src={getMarketplaceProductImage(product)}
               alt={product.name}
@@ -50,42 +42,37 @@ export function MarketplaceProductCard({
         </div>
       </Link>
 
-      <div className="space-y-3 px-1 pb-1 pt-3">
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+      <div className="space-y-2 px-1 pb-1 pt-2.5 sm:space-y-3 sm:pt-3">
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500 sm:text-[11px] sm:tracking-[0.18em]">
             {getProductCategoryDisplay(product)}
           </p>
           <Link
             to={`/product/${product.slug}`}
             onClick={() => onOpenProduct(product, 'homepage_product_title')}
-            className="block text-[1.05rem] font-bold leading-6 text-slate-950 transition group-hover:text-[#2B63D9] dark:text-white dark:group-hover:text-[#9fc0ff]"
+            className="line-clamp-2 block text-[0.94rem] font-bold leading-5 text-slate-950 transition group-hover:text-[#2B63D9] sm:text-[1.05rem] sm:leading-6 dark:text-white dark:group-hover:text-[#9fc0ff]"
           >
             {product.name}
           </Link>
         </div>
 
-        <div className="flex flex-wrap items-end gap-2">
-          <span className="text-lg font-black tracking-tight text-[#d73d32]">
+        <div className="flex flex-wrap items-end gap-1.5 sm:gap-2">
+          <span className="text-[1rem] font-black tracking-tight text-[#d73d32] sm:text-lg">
             {formatPrice(pricing.currentPrice)}
           </span>
-          <span className="text-sm font-medium text-slate-400 line-through dark:text-slate-500">
+          <span className="text-[0.78rem] font-medium text-slate-400 line-through dark:text-slate-500 sm:text-sm">
             {formatPrice(pricing.oldPrice)}
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onAddToCart(product)}
-          className={cn(
-            'inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold shadow-[0_14px_30px_rgba(43,99,217,0.2)] transition duration-200 active:scale-[0.98]',
-            isAdded
-              ? 'bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)]'
-              : 'bg-[#2B63D9] text-white hover:bg-[#1f56c6]',
-          )}
+        <Link
+          to={`/product/${product.slug}`}
+          onClick={() => onOpenProduct(product, 'homepage_view_product')}
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-[#2B63D9] text-sm font-semibold text-white shadow-[0_14px_30px_rgba(43,99,217,0.2)] transition duration-200 hover:bg-[#1f56c6] active:scale-[0.98] sm:h-11"
         >
-          <ShoppingCart className="h-4 w-4" />
-          {isAdded ? 'Added' : 'Add to Cart'}
-        </button>
+          <span>View Product</span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </article>
   );

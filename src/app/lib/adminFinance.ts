@@ -10,6 +10,7 @@ import {
   DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES,
   normalizeHomepageHighlightImages,
 } from './homepageHighlights';
+import { PRODUCT_CATEGORIES } from './productCategories';
 import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './supabase';
 import { readAppSetting, writeAppSetting } from './supabaseSettings';
 
@@ -36,6 +37,7 @@ export interface FinanceSettings {
   companyWebsite: string;
   logoUrl: string;
   homepageHighlightImages: string[];
+  homepageCategoryImages: Record<string, string>;
   reportingCountryCode: SupportedCountryCode;
   metaPixelId: string;
   metaPurchaseTrackingEnabled: boolean;
@@ -295,6 +297,20 @@ function countryCodeFromCurrency(currency: AdminCurrency): SupportedCountryCode 
   }
 }
 
+function normalizeHomepageCategoryImages(input?: Record<string, string> | null) {
+  const imageEntries = typeof input === 'object' && input ? input : {};
+
+  return PRODUCT_CATEGORIES.reduce<Record<string, string>>((accumulator, category) => {
+    const nextValue = imageEntries[category.slug];
+
+    if (typeof nextValue === 'string' && nextValue.trim()) {
+      accumulator[category.slug] = nextValue.trim();
+    }
+
+    return accumulator;
+  }, {});
+}
+
 function defaultFinanceSettings(): FinanceSettings {
   return {
     startupCapital: 0,
@@ -306,6 +322,7 @@ function defaultFinanceSettings(): FinanceSettings {
     companyWebsite: 'https://cloudmarket.ng',
     logoUrl: '/brand/cloudmarket-logo.jfif',
     homepageHighlightImages: [...DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES],
+    homepageCategoryImages: {},
     reportingCountryCode: 'NG',
     metaPixelId: '',
     metaPurchaseTrackingEnabled: false,
@@ -384,6 +401,9 @@ export async function ensureFinanceSettingsLoaded(force = false) {
       currency: normalizeFinanceCurrency(parsedSettings.currency),
       homepageHighlightImages: normalizeHomepageHighlightImages(
         parsedSettings.homepageHighlightImages,
+      ),
+      homepageCategoryImages: normalizeHomepageCategoryImages(
+        parsedSettings.homepageCategoryImages,
       ),
       reportingCountryCode: countryCodeFromCurrency(
         normalizeFinanceCurrency(parsedSettings.currency ?? defaults.currency),
@@ -722,6 +742,9 @@ export async function updateFinanceSettings(update: Partial<FinanceSettings>) {
     logoUrl: (update.logoUrl ?? currentSettings.logoUrl).trim() || currentSettings.logoUrl,
     homepageHighlightImages: normalizeHomepageHighlightImages(
       update.homepageHighlightImages ?? currentSettings.homepageHighlightImages,
+    ),
+    homepageCategoryImages: normalizeHomepageCategoryImages(
+      update.homepageCategoryImages ?? currentSettings.homepageCategoryImages,
     ),
     reportingCountryCode: countryCodeFromCurrency(
       normalizeFinanceCurrency(update.currency ?? currentSettings.currency),

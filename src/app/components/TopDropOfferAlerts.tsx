@@ -317,14 +317,14 @@ export function TopDropOfferAlerts({
   const styles = getAlertStyles(activeAlert.kind);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 left-3 right-3 z-[95] flex justify-start sm:bottom-6 sm:left-6 sm:right-auto">
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[95] flex justify-center px-3 sm:top-6 sm:px-6">
       <AnimatePresence mode="wait">
         {isVisible ? (
           <motion.div
             key={activeAlert.id}
-            initial={{ opacity: 0, x: -34, y: 28, scale: 0.98 }}
+            initial={{ opacity: 0, y: -22, scale: 0.98 }}
             animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, y: -10, scale: 0.985 }}
             transition={{ duration: ALERT_TRANSITION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             aria-live="polite"
             className="pointer-events-auto relative w-full max-w-[24rem] overflow-hidden rounded-[1.7rem] border border-white/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl"

@@ -158,7 +158,6 @@ export function Marketplace() {
   const [themeMode, setThemeMode] = useState<MarketplaceThemeMode>(() => readMarketplaceTheme());
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [cartProductIds, setCartProductIds] = useState<string[]>([]);
   const [flashSaleEndsAt] = useState(() => Date.now() + FLASH_SALE_DURATION_MS);
   const [flashSaleRemaining, setFlashSaleRemaining] = useState(() => flashSaleEndsAt - Date.now());
   const isDarkMode = themeMode === 'dark';
@@ -396,7 +395,6 @@ export function Marketplace() {
     },
   ];
   const hasPublishedProducts = publishedProducts.length > 0;
-  const cartCount = cartProductIds.length;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -537,22 +535,6 @@ export function Marketplace() {
       metadata: {
         section,
       },
-    });
-  };
-
-  const handleAddToCart = (product: Product) => {
-    setCartProductIds((currentIds) =>
-      currentIds.includes(product.id) ? currentIds : [...currentIds, product.id],
-    );
-
-    trackAnalyticsButtonClick({
-      pagePath: '/',
-      pageType: 'marketplace',
-      productId: product.id,
-      productSlug: product.slug,
-      productName: product.name,
-      buttonId: 'homepage_add_to_cart',
-      buttonLabel: 'Add to Cart',
     });
   };
 
@@ -699,21 +681,6 @@ export function Marketplace() {
               <Search className="h-5 w-5" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMobileTab('cart');
-                scrollToSection('products');
-              }}
-              className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"
-              aria-label="Cart"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -right-1.5 -top-1.5 rounded-full bg-[#ff6a45] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                {cartCount}
-              </span>
-            </button>
-
             <div className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
               <Sun className={cn('h-4 w-4', isDarkMode ? 'text-slate-500' : 'text-amber-500')} />
               <Switch
@@ -755,6 +722,7 @@ export function Marketplace() {
               <div className="flex min-w-max gap-3">
                 {categoryFilters.map((category) => {
                   const Icon = marketplaceCategoryIconMap[category.icon];
+                  const categoryImage = branding.homepageCategoryImages[category.slug] ?? '';
 
                   return (
                     <button
@@ -766,8 +734,16 @@ export function Marketplace() {
                         activeFilter.filterSlug === category.slug && 'border-[#bcd4ff] shadow-[0_18px_40px_rgba(43,99,217,0.12)] dark:border-[#315ea8]',
                       )}
                     >
-                      <div className={cn('flex h-16 w-full items-center justify-center rounded-[1.2rem] bg-gradient-to-br', marketplaceCategorySurfaceMap[category.icon])}>
-                        <Icon className="h-7 w-7 text-[#2B63D9]" />
+                      <div className={cn('flex h-16 w-full items-center justify-center overflow-hidden rounded-[1.2rem] bg-gradient-to-br', marketplaceCategorySurfaceMap[category.icon])}>
+                        {categoryImage ? (
+                          <ImageWithFallback
+                            src={categoryImage}
+                            alt={category.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Icon className="h-7 w-7 text-[#2B63D9]" />
+                        )}
                       </div>
                       <p className="mt-3 text-sm font-semibold leading-5 text-slate-900 dark:text-white">
                         {category.name}
@@ -821,16 +797,14 @@ export function Marketplace() {
 
             {trendingProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {trendingProducts.map((product) => (
-                  <MarketplaceProductCard
-                    key={`trending-${product.id}`}
-                    product={product}
-                    formatPrice={formatPrice}
-                    isAdded={cartProductIds.includes(product.id)}
-                    onAddToCart={handleAddToCart}
-                    onOpenProduct={handleOpenProduct}
-                  />
-                ))}
+                  {trendingProducts.map((product) => (
+                    <MarketplaceProductCard
+                      key={`trending-${product.id}`}
+                      product={product}
+                      formatPrice={formatPrice}
+                      onOpenProduct={handleOpenProduct}
+                    />
+                  ))}
               </div>
             ) : (
               <div className="rounded-[1.9rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -1038,8 +1012,6 @@ export function Marketplace() {
                       key={`catalog-${product.id}`}
                       product={product}
                       formatPrice={formatPrice}
-                      isAdded={cartProductIds.includes(product.id)}
-                      onAddToCart={handleAddToCart}
                       onOpenProduct={handleOpenProduct}
                     />
                   ))}
@@ -1163,7 +1135,6 @@ export function Marketplace() {
 
       <MarketplaceBottomNav
         activeTab={activeMobileTab}
-        cartCount={cartCount}
         onTabChange={setActiveMobileTab}
         onHome={() => {
           setActiveMobileTab('home');
@@ -1174,7 +1145,6 @@ export function Marketplace() {
           setIsCategorySheetOpen(true);
         }}
         onSearch={() => scrollToSection('search-panel')}
-        onCart={() => scrollToSection('products')}
       />
     </div>
   );

@@ -49,6 +49,7 @@ import {
   DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES,
   normalizeHomepageHighlightImages,
 } from '../../lib/homepageHighlights';
+import { PRODUCT_CATEGORIES } from '../../lib/productCategories';
 import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
 import { formatCurrency } from '../../lib/utils';
 
@@ -131,14 +132,18 @@ function ControlCard({
 export function Settings() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const highlightFileInputRef = useRef<HTMLInputElement | null>(null);
+  const categoryImageFileInputRef = useRef<HTMLInputElement | null>(null);
   const [brandingForm, setBrandingForm] = useState(() => ({
     companyName: 'CloudMarket',
     currency: 'NGN' as AdminCurrency,
     logoUrl: DEFAULT_LOGO_URL,
     logoUrlInput: DEFAULT_LOGO_URL,
     homepageHighlightImages: [...DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES],
+    homepageCategoryImages: {} as Record<string, string>,
     highlightImageUrlInput: '',
   }));
+  const [categoryImageUrlInputs, setCategoryImageUrlInputs] = useState<Record<string, string>>({});
+  const [activeCategoryImageSlug, setActiveCategoryImageSlug] = useState<string | null>(null);
   const [trackingForm, setTrackingForm] = useState(() => ({
     metaPixelId: '',
     metaPurchaseTrackingEnabled: false,
@@ -163,6 +168,7 @@ export function Settings() {
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [isSavingHighlights, setIsSavingHighlights] = useState(false);
+  const [isSavingCategoryImages, setIsSavingCategoryImages] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
 
@@ -175,8 +181,11 @@ export function Settings() {
         logoUrl: nextFinanceSettings.logoUrl || DEFAULT_LOGO_URL,
         logoUrlInput: nextFinanceSettings.logoUrl || DEFAULT_LOGO_URL,
         homepageHighlightImages: nextFinanceSettings.homepageHighlightImages,
+        homepageCategoryImages: nextFinanceSettings.homepageCategoryImages,
         highlightImageUrlInput: '',
       });
+      setCategoryImageUrlInputs({});
+      setActiveCategoryImageSlug(null);
       setTrackingForm({
         metaPixelId: nextFinanceSettings.metaPixelId,
         metaPurchaseTrackingEnabled: nextFinanceSettings.metaPurchaseTrackingEnabled,
@@ -337,6 +346,80 @@ export function Settings() {
       setFeedbackMessage('Homepage highlight images saved and updated on the live homepage.');
     } finally {
       setIsSavingHighlights(false);
+    }
+  };
+
+  const handleOpenCategoryImageUpload = (categorySlug: string) => {
+    setActiveCategoryImageSlug(categorySlug);
+    categoryImageFileInputRef.current?.click();
+  };
+
+  const handleCategoryImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file || !activeCategoryImageSlug) {
+      event.target.value = '';
+      return;
+    }
+
+    const nextDataUrl = await uploadAssetToSupabaseStorage(file, `homepage-category-${activeCategoryImageSlug}`);
+    setBrandingForm((current) => ({
+      ...current,
+      homepageCategoryImages: {
+        ...current.homepageCategoryImages,
+        [activeCategoryImageSlug]: nextDataUrl,
+      },
+    }));
+    setActiveCategoryImageSlug(null);
+    event.target.value = '';
+  };
+
+  const handleApplyCategoryImageUrl = (categorySlug: string) => {
+    const nextUrl = categoryImageUrlInputs[categorySlug]?.trim();
+
+    if (!nextUrl) {
+      return;
+    }
+
+    setBrandingForm((current) => ({
+      ...current,
+      homepageCategoryImages: {
+        ...current.homepageCategoryImages,
+        [categorySlug]: nextUrl,
+      },
+    }));
+    setCategoryImageUrlInputs((current) => ({
+      ...current,
+      [categorySlug]: '',
+    }));
+  };
+
+  const handleRemoveCategoryImage = (categorySlug: string) => {
+    setBrandingForm((current) => {
+      const nextImages = { ...current.homepageCategoryImages };
+      delete nextImages[categorySlug];
+
+      return {
+        ...current,
+        homepageCategoryImages: nextImages,
+      };
+    });
+    setCategoryImageUrlInputs((current) => ({
+      ...current,
+      [categorySlug]: '',
+    }));
+  };
+
+  const handleSaveHomepageCategoryImages = async () => {
+    setIsSavingCategoryImages(true);
+
+    try {
+      await updateFinanceSettings({
+        homepageCategoryImages: brandingForm.homepageCategoryImages,
+      });
+      setFeedbackMessage('Homepage category card images saved and updated on the live homepage.');
+    } finally {
+      setIsSavingCategoryImages(false);
     }
   };
 
@@ -945,6 +1028,138 @@ export function Settings() {
             >
               <Save className="h-4 w-4" />
               {isSavingHighlights ? 'Saving Homepage Highlights...' : 'Save Homepage Highlights'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-[1.8rem] border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Browse category cards
+              </p>
+              <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+                Manage the category images shown in the homepage browse section
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Upload a custom image or paste a URL for each category card. If no image is saved,
+                the storefront falls back to the default icon-based design.
+              </p>
+            </div>
+
+            <div className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Customized cards
+              </p>
+              <p className="mt-1 text-lg font-black text-slate-950">
+                {Object.keys(brandingForm.homepageCategoryImages).length} image
+                {Object.keys(brandingForm.homepageCategoryImages).length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+
+          <input
+            ref={categoryImageFileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleCategoryImageUpload}
+            className="hidden"
+          />
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-2">
+            {PRODUCT_CATEGORIES.map((category) => {
+              const currentImage = brandingForm.homepageCategoryImages[category.slug] ?? '';
+
+              return (
+                <div
+                  key={category.id}
+                  className="rounded-[1.55rem] border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="grid gap-4 md:grid-cols-[11rem,1fr]">
+                    <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100">
+                      {currentImage ? (
+                        <img
+                          src={currentImage}
+                          alt={`${category.name} category card`}
+                          className="aspect-[4/3] h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(145deg,#f7faff,#edf3ff)] px-4 text-center">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{category.name}</p>
+                            <p className="mt-1 text-xs text-slate-500">Using icon fallback on the homepage</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-base font-black tracking-tight text-slate-950">
+                          {category.name}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {category.subcategories.length} subcategories • slug: {category.slug}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCategoryImageUpload(category.slug)}
+                          className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <UploadCloud className="h-4 w-4" />
+                          Upload image
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCategoryImage(category.slug)}
+                          className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove image
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <input
+                          value={categoryImageUrlInputs[category.slug] ?? ''}
+                          onChange={(event) =>
+                            setCategoryImageUrlInputs((current) => ({
+                              ...current,
+                              [category.slug]: event.target.value,
+                            }))
+                          }
+                          placeholder={`Paste ${category.name} image URL`}
+                          className="h-11 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleApplyCategoryImageUrl(category.slug)}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#0E7C7B] px-5 text-sm font-semibold text-white transition hover:bg-[#0b6968]"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Apply URL
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5">
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              disabled={isSavingCategoryImages}
+              onClick={handleSaveHomepageCategoryImages}
+            >
+              <Save className="h-4 w-4" />
+              {isSavingCategoryImages ? 'Saving Category Images...' : 'Save Category Card Images'}
             </Button>
           </div>
         </div>

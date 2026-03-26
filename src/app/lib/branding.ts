@@ -12,6 +12,7 @@ export interface AppBrandingSettings {
   logoUrl: string;
   currency: AdminCurrency;
   homepageHighlightImages: string[];
+  homepageCategoryImages: Record<string, string>;
 }
 
 export function deriveCompanyShortName(companyName: string) {
@@ -42,6 +43,7 @@ export function readBrandingSettings(): AppBrandingSettings {
     logoUrl: financeSettings.logoUrl,
     currency: financeSettings.currency,
     homepageHighlightImages: financeSettings.homepageHighlightImages,
+    homepageCategoryImages: financeSettings.homepageCategoryImages,
   };
 }
 
