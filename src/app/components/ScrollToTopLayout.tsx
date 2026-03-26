@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { SiteTrackingManager } from './SiteTrackingManager';
 import { trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
 
@@ -39,5 +40,10 @@ export function ScrollToTopLayout() {
     });
   }, [location.pathname, location.search]);
 
-  return <Outlet />;
+  return (
+    <>
+      <SiteTrackingManager />
+      <Outlet />
+    </>
+  );
 }

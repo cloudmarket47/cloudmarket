@@ -537,12 +537,12 @@ export function trackAnalyticsButtonClick(input: Omit<TrackAnalyticsEventInput, 
   });
 }
 
-export async function readAnalyticsEvents() {
-  if (analyticsEventsLoaded) {
+export async function readAnalyticsEvents(force = false) {
+  if (analyticsEventsLoaded && !force) {
     return analyticsEventsCache;
   }
 
-  if (analyticsEventsRequest) {
+  if (analyticsEventsRequest && !force) {
     return analyticsEventsRequest;
   }
 

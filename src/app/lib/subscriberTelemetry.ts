@@ -275,12 +275,12 @@ export function setActiveSubscriberSession(
   emitSubscriberDataChange();
 }
 
-export async function readSubscriberActivityRecords() {
-  if (subscriberActivitiesLoaded) {
+export async function readSubscriberActivityRecords(force = false) {
+  if (subscriberActivitiesLoaded && !force) {
     return subscriberActivitiesCache;
   }
 
-  if (subscriberActivitiesRequest) {
+  if (subscriberActivitiesRequest && !force) {
     return subscriberActivitiesRequest;
   }
 
@@ -318,12 +318,12 @@ export async function readSubscriberActivityRecords() {
   }
 }
 
-export async function readSubscriberManagementRecords() {
-  if (subscriberManagementLoaded) {
+export async function readSubscriberManagementRecords(force = false) {
+  if (subscriberManagementLoaded && !force) {
     return subscriberManagementCache;
   }
 
-  if (subscriberManagementRequest) {
+  if (subscriberManagementRequest && !force) {
     return subscriberManagementRequest;
   }
 

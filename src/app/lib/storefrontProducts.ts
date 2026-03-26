@@ -174,9 +174,17 @@ export function getStorefrontProducts() {
     .map(adminDraftToProduct);
 }
 
-export async function loadStorefrontProducts() {
-  await ensureAdminProductDraftsLoaded();
-  const products = getStorefrontProducts();
+export function emitStorefrontProductsChange() {
   emitBrowserEvent(STOREFRONT_PRODUCTS_CHANGE_EVENT);
+}
+
+export async function loadStorefrontProducts(force = false) {
+  await ensureAdminProductDraftsLoaded(force);
+  return getStorefrontProducts();
+}
+
+export async function refreshStorefrontProducts() {
+  const products = await loadStorefrontProducts(true);
+  emitStorefrontProductsChange();
   return products;
 }

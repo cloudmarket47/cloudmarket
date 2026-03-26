@@ -10,7 +10,7 @@ import { getPlacedOrder } from '../../lib/orders';
 import { formatCurrency } from '../../lib/utils';
 import type { PlacedOrder } from '../../types';
 
-const COMPANY_PHONE = '+234 800 000 0000';
+const COMPANY_PHONE = '+1(336)4596552';
 
 export function ThankYou() {
   const location = useLocation();

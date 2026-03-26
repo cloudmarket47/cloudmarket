@@ -9,6 +9,7 @@ import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../l
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { getPackagePriceBreakdown } from '../lib/packagePricing';
 import { calculateOrderPricing, createPlacedOrder, persistPlacedOrder } from '../lib/orders';
+import { trackMetaPurchase } from '../lib/siteTracking';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
 import { formatCurrency } from '../lib/utils';
 import type { CustomerTokenRecord, Product } from '../types';
@@ -400,7 +401,12 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         });
       }
 
-      await syncOrderSubmission(placedOrder).catch(() => undefined);
+      await syncOrderSubmission(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      }).catch(() => undefined);
+      void trackMetaPurchase(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      }).catch(() => undefined);
 
       onClose();
       navigate(`/thank-you?order=${placedOrder.orderNumber}`, {

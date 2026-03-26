@@ -24,6 +24,16 @@ export function isSupabaseConfigured() {
   );
 }
 
+export function isSupabaseRealtimeEnabled() {
+  const rawValue = import.meta.env.VITE_SUPABASE_REALTIME_ENABLED?.trim().toLowerCase();
+
+  if (!rawValue) {
+    return true;
+  }
+
+  return rawValue !== 'false' && rawValue !== '0' && rawValue !== 'off';
+}
+
 export function getSupabaseTableName(name: keyof typeof DEFAULT_TABLES) {
   const envName = `VITE_SUPABASE_TABLE_${name
     .replace(/([A-Z])/g, '_$1')

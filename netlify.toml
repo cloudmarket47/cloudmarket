@@ -2,10 +2,33 @@
   command = "npm run build"
   publish = "dist"
 
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/product/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/thank-you"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
 [[edge_functions]]
   function = "localize"
   path = "/*"
-
-[[edge_functions]]
-  function = "order-notify"
-  path = "/api/order-notify"

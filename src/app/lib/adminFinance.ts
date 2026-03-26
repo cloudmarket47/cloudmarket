@@ -37,6 +37,10 @@ export interface FinanceSettings {
   logoUrl: string;
   homepageHighlightImages: string[];
   reportingCountryCode: SupportedCountryCode;
+  metaPixelId: string;
+  metaPurchaseTrackingEnabled: boolean;
+  customHeadMarkup: string;
+  customFooterMarkup: string;
 }
 
 export interface FinanceExpenseRecord {
@@ -297,12 +301,16 @@ function defaultFinanceSettings(): FinanceSettings {
     companyName: 'CloudMarket',
     currency: 'NGN',
     companyShortName: 'CM',
-    companyPhone: '+234 800 000 0000',
-    companyEmail: 'hello@cloudmarket.ng',
+    companyPhone: '+1(336)4596552',
+    companyEmail: 'cloudmarket47@gmail.com',
     companyWebsite: 'https://cloudmarket.ng',
     logoUrl: '/brand/cloudmarket-logo.jfif',
     homepageHighlightImages: [...DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES],
     reportingCountryCode: 'NG',
+    metaPixelId: '',
+    metaPurchaseTrackingEnabled: false,
+    customHeadMarkup: '',
+    customFooterMarkup: '',
   };
 }
 
@@ -380,6 +388,22 @@ export async function ensureFinanceSettingsLoaded(force = false) {
       reportingCountryCode: countryCodeFromCurrency(
         normalizeFinanceCurrency(parsedSettings.currency ?? defaults.currency),
       ),
+      metaPixelId:
+        typeof parsedSettings.metaPixelId === 'string'
+          ? parsedSettings.metaPixelId.trim()
+          : defaults.metaPixelId,
+      metaPurchaseTrackingEnabled:
+        typeof parsedSettings.metaPurchaseTrackingEnabled === 'boolean'
+          ? parsedSettings.metaPurchaseTrackingEnabled
+          : defaults.metaPurchaseTrackingEnabled,
+      customHeadMarkup:
+        typeof parsedSettings.customHeadMarkup === 'string'
+          ? parsedSettings.customHeadMarkup
+          : defaults.customHeadMarkup,
+      customFooterMarkup:
+        typeof parsedSettings.customFooterMarkup === 'string'
+          ? parsedSettings.customFooterMarkup
+          : defaults.customFooterMarkup,
     } satisfies FinanceSettings;
     financeSettingsLoaded = true;
     emitFinanceChange();
@@ -702,6 +726,13 @@ export async function updateFinanceSettings(update: Partial<FinanceSettings>) {
     reportingCountryCode: countryCodeFromCurrency(
       normalizeFinanceCurrency(update.currency ?? currentSettings.currency),
     ),
+    metaPixelId: (update.metaPixelId ?? currentSettings.metaPixelId).trim(),
+    metaPurchaseTrackingEnabled:
+      typeof update.metaPurchaseTrackingEnabled === 'boolean'
+        ? update.metaPurchaseTrackingEnabled
+        : currentSettings.metaPurchaseTrackingEnabled,
+    customHeadMarkup: update.customHeadMarkup ?? currentSettings.customHeadMarkup,
+    customFooterMarkup: update.customFooterMarkup ?? currentSettings.customFooterMarkup,
   };
 
   financeSettingsCache = nextSettings;
@@ -878,6 +909,14 @@ export async function deleteFinanceSale(saleId: string) {
   }
 
   emitFinanceChange();
+}
+
+export async function refreshFinanceData() {
+  await Promise.all([
+    ensureFinanceSettingsLoaded(true),
+    ensureFinanceExpensesLoaded(true),
+    ensureFinanceSalesLoaded(true),
+  ]);
 }
 
 export async function readFinanceSnapshot() {

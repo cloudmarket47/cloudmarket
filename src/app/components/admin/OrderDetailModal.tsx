@@ -18,7 +18,7 @@ interface OrderDetailModalProps {
   ) => void;
 }
 
-const COMPANY_PHONE = '+234 800 000 0000';
+const COMPANY_PHONE = '+1(336)4596552';
 
 function copyOrderDetails(order: AdminManagedOrder) {
   const lines = [

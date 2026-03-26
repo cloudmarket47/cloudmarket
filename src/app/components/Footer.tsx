@@ -51,11 +51,11 @@ export function Footer() {
             <div className="space-y-2 text-gray-400 text-sm">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                <span>+234 800 000 0000</span>
+                <span>+1(336)4596552</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>support@crevicebrush.ng</span>
+                <span>cloudmarket47@gmail.com</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />

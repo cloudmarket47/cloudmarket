@@ -12,6 +12,7 @@ import {
   persistPlacedOrder,
 } from '../lib/orders';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
+import { trackMetaPurchase } from '../lib/siteTracking';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
 import { formatCurrency } from '../lib/utils';
 import type { CustomerTokenRecord, Product } from '../types';
@@ -255,7 +256,12 @@ export function OrderForm({
         });
       }
 
-      await syncOrderSubmission(placedOrder).catch(() => undefined);
+      await syncOrderSubmission(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      }).catch(() => undefined);
+      void trackMetaPurchase(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      }).catch(() => undefined);
 
       navigate(`/thank-you?order=${placedOrder.orderNumber}`, {
         state: { order: placedOrder },

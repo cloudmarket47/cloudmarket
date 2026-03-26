@@ -366,15 +366,11 @@ export function FinanceDashboard() {
     };
   }, [feedbackMessage]);
 
-  if (!snapshot) {
-    return (
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="h-4 w-40 animate-pulse rounded-full bg-slate-200" />
-        <div className="mt-4 h-10 w-2/3 animate-pulse rounded-full bg-slate-200" />
-        <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-      </div>
-    );
-  }
+  const snapshotOrders = snapshot?.orders ?? [];
+  const snapshotInventory = snapshot?.inventory ?? [];
+  const snapshotMonthlyReports = snapshot?.monthlyReports ?? [];
+  const snapshotReceiptRecords = snapshot?.receiptRecords ?? [];
+  const snapshotLedgerRecords = snapshot?.ledgerRecords ?? [];
 
   useEffect(() => {
     setReceiptPage(1);
@@ -385,11 +381,11 @@ export function FinanceDashboard() {
   }, [journalDateFilter, journalSearchQuery]);
 
   useEffect(() => {
-    if (!saleForm.linkedOrderNumber) {
+    if (!snapshot || !saleForm.linkedOrderNumber) {
       return;
     }
 
-    const linkedOrder = snapshot.orders.find((order) => order.orderNumber === saleForm.linkedOrderNumber);
+    const linkedOrder = snapshotOrders.find((order) => order.orderNumber === saleForm.linkedOrderNumber);
 
     if (!linkedOrder) {
       return;
@@ -408,14 +404,14 @@ export function FinanceDashboard() {
       amount: String(linkedOrder.finalAmount),
       countsTowardRevenue: false,
     }));
-  }, [saleForm.linkedOrderNumber, snapshot.orders]);
+  }, [saleForm.linkedOrderNumber, snapshot, snapshotOrders]);
 
   useEffect(() => {
-    if (!saleForm.productId || saleForm.linkedOrderNumber) {
+    if (!snapshot || !saleForm.productId || saleForm.linkedOrderNumber) {
       return;
     }
 
-    const selectedInventoryItem = snapshot.inventory.find((item) => item.productId === saleForm.productId);
+    const selectedInventoryItem = snapshotInventory.find((item) => item.productId === saleForm.productId);
 
     if (!selectedInventoryItem) {
       return;
@@ -432,14 +428,14 @@ export function FinanceDashboard() {
       productName: selectedInventoryItem.productName,
       amount: String(selectedInventoryItem.salePrice * quantity),
     }));
-  }, [saleForm.productId, saleForm.linkedOrderNumber, saleForm.quantity, snapshot.inventory]);
+  }, [saleForm.productId, saleForm.linkedOrderNumber, saleForm.quantity, snapshot, snapshotInventory]);
 
   useEffect(() => {
-    if (!expenseForm.productId) {
+    if (!snapshot || !expenseForm.productId) {
       return;
     }
 
-    const selectedInventoryItem = snapshot.inventory.find((item) => item.productId === expenseForm.productId);
+    const selectedInventoryItem = snapshotInventory.find((item) => item.productId === expenseForm.productId);
 
     if (!selectedInventoryItem) {
       return;
@@ -455,40 +451,40 @@ export function FinanceDashboard() {
           : `${selectedInventoryItem.productName} expense`,
       amount: String(selectedInventoryItem.purchaseCost * quantity),
     }));
-  }, [expenseForm.productId, expenseForm.quantity, snapshot.inventory]);
+  }, [expenseForm.productId, expenseForm.quantity, snapshot, snapshotInventory]);
 
-  const reportingCountryCode = snapshot.settings.reportingCountryCode;
+  const reportingCountryCode = snapshot?.settings.reportingCountryCode ?? 'NG';
   const selectedExpenseProduct = useMemo(
-    () => snapshot.inventory.find((item) => item.productId === expenseForm.productId) ?? null,
-    [expenseForm.productId, snapshot.inventory],
+    () => snapshotInventory.find((item) => item.productId === expenseForm.productId) ?? null,
+    [expenseForm.productId, snapshotInventory],
   );
   const selectedSaleProduct = useMemo(
-    () => snapshot.inventory.find((item) => item.productId === saleForm.productId) ?? null,
-    [saleForm.productId, snapshot.inventory],
+    () => snapshotInventory.find((item) => item.productId === saleForm.productId) ?? null,
+    [saleForm.productId, snapshotInventory],
   );
   const linkedSaleOrder = useMemo(
-    () => snapshot.orders.find((order) => order.orderNumber === saleForm.linkedOrderNumber) ?? null,
-    [saleForm.linkedOrderNumber, snapshot.orders],
+    () => snapshotOrders.find((order) => order.orderNumber === saleForm.linkedOrderNumber) ?? null,
+    [saleForm.linkedOrderNumber, snapshotOrders],
   );
   const today = useMemo(() => new Date(), []);
-  const monthlyChartData = snapshot.monthlyReports.map((report) => ({
+  const monthlyChartData = snapshotMonthlyReports.map((report) => ({
     label: report.label,
     sales: report.sales,
     expenses: report.expenses,
     profit: report.netProfit,
   }));
   const orderStatusChartData = [
-    { name: 'Delivered', value: snapshot.metrics.deliveredOrders },
-    { name: 'Confirmed / Processing', value: snapshot.metrics.processingOrders },
-    { name: 'New', value: snapshot.metrics.newOrders },
-    { name: 'Failed', value: snapshot.metrics.failedOrders },
+    { name: 'Delivered', value: snapshot?.metrics.deliveredOrders ?? 0 },
+    { name: 'Confirmed / Processing', value: snapshot?.metrics.processingOrders ?? 0 },
+    { name: 'New', value: snapshot?.metrics.newOrders ?? 0 },
+    { name: 'Failed', value: snapshot?.metrics.failedOrders ?? 0 },
   ];
   const todaySummaryChartData = [
-    { name: 'Sales', value: snapshot.todaySummary.totalSales },
-    { name: 'Expenses', value: snapshot.todaySummary.totalExpenses },
-    { name: 'Pending', value: snapshot.todaySummary.pendingSales },
+    { name: 'Sales', value: snapshot?.todaySummary.totalSales ?? 0 },
+    { name: 'Expenses', value: snapshot?.todaySummary.totalExpenses ?? 0 },
+    { name: 'Pending', value: snapshot?.todaySummary.pendingSales ?? 0 },
   ];
-  const filteredReceiptRecords = snapshot.receiptRecords
+  const filteredReceiptRecords = snapshotReceiptRecords
     .filter((receipt) => matchesReceiptSearch(receipt, receiptSearchQuery))
     .filter((receipt) => (receiptDateFilter ? toDateInputValue(receipt.createdAt) === receiptDateFilter : true));
   const totalReceiptPages = Math.max(1, Math.ceil(filteredReceiptRecords.length / RECEIPTS_PAGE_SIZE));
@@ -496,8 +492,8 @@ export function FinanceDashboard() {
     (receiptPage - 1) * RECEIPTS_PAGE_SIZE,
     receiptPage * RECEIPTS_PAGE_SIZE,
   );
-  const todayLedgerRecords = snapshot.ledgerRecords.filter((record) => isSameLocalDay(record.createdAt, today));
-  const historicalLedgerRecords = snapshot.ledgerRecords
+  const todayLedgerRecords = snapshotLedgerRecords.filter((record) => isSameLocalDay(record.createdAt, today));
+  const historicalLedgerRecords = snapshotLedgerRecords
     .filter((record) => !isSameLocalDay(record.createdAt, today))
     .filter((record) => matchesJournalSearch(record, journalSearchQuery))
     .filter((record) => (journalDateFilter ? toDateInputValue(record.createdAt) === journalDateFilter : true));
@@ -506,6 +502,16 @@ export function FinanceDashboard() {
     (journalPage - 1) * JOURNAL_PAGE_SIZE,
     journalPage * JOURNAL_PAGE_SIZE,
   );
+
+  if (!snapshot) {
+    return (
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="h-4 w-40 animate-pulse rounded-full bg-slate-200" />
+        <div className="mt-4 h-10 w-2/3 animate-pulse rounded-full bg-slate-200" />
+        <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
+      </div>
+    );
+  }
 
   const exportDailySummary = () => {
     downloadCsvFile('finance-daily-summary.csv', [

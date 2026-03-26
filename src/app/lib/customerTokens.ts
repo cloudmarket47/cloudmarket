@@ -4,7 +4,7 @@ import {
   setActiveSubscriberSession,
   trackSubscriberActivity,
 } from './subscriberTelemetry';
-import { submitSubscriptionToNetlifyForm } from './netlifyOrders';
+import { sendSubscriptionNotification } from './netlifyOrders';
 import { getSupabaseClient, getSupabaseTableName } from './supabase';
 
 const TOKEN_DISCOUNT_PERCENTAGE = 10;
@@ -324,7 +324,7 @@ export async function createCustomerDiscountToken({
     productName: sourceProductName,
     pagePath: sourcePageUrl,
   });
-  await submitSubscriptionToNetlifyForm({
+  await sendSubscriptionNotification({
     fullName: savedRecord.fullName,
     email: savedRecord.email,
     gender: savedRecord.gender,

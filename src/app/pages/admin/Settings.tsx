@@ -139,6 +139,12 @@ export function Settings() {
     homepageHighlightImages: [...DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES],
     highlightImageUrlInput: '',
   }));
+  const [trackingForm, setTrackingForm] = useState(() => ({
+    metaPixelId: '',
+    metaPurchaseTrackingEnabled: false,
+    customHeadMarkup: '',
+    customFooterMarkup: '',
+  }));
   const [preferencesForm, setPreferencesForm] = useState<AdminPreferences>(() =>
     readAdminPreferences(),
   );
@@ -155,6 +161,7 @@ export function Settings() {
   const [notificationPreview, setNotificationPreview] =
     useState<AdminNotificationSnapshot | null>(null);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [isSavingHighlights, setIsSavingHighlights] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -169,6 +176,12 @@ export function Settings() {
         logoUrlInput: nextFinanceSettings.logoUrl || DEFAULT_LOGO_URL,
         homepageHighlightImages: nextFinanceSettings.homepageHighlightImages,
         highlightImageUrlInput: '',
+      });
+      setTrackingForm({
+        metaPixelId: nextFinanceSettings.metaPixelId,
+        metaPurchaseTrackingEnabled: nextFinanceSettings.metaPurchaseTrackingEnabled,
+        customHeadMarkup: nextFinanceSettings.customHeadMarkup,
+        customFooterMarkup: nextFinanceSettings.customFooterMarkup,
       });
       await ensureAdminPreferencesLoaded().catch(() => undefined);
       setPreferencesForm(readAdminPreferences());
@@ -324,6 +337,22 @@ export function Settings() {
       setFeedbackMessage('Homepage highlight images saved and updated on the live homepage.');
     } finally {
       setIsSavingHighlights(false);
+    }
+  };
+
+  const handleSaveTracking = async () => {
+    setIsSavingTracking(true);
+
+    try {
+      await updateFinanceSettings({
+        metaPixelId: trackingForm.metaPixelId.trim(),
+        metaPurchaseTrackingEnabled: trackingForm.metaPurchaseTrackingEnabled,
+        customHeadMarkup: trackingForm.customHeadMarkup,
+        customFooterMarkup: trackingForm.customFooterMarkup,
+      });
+      setFeedbackMessage('Tracking settings saved. Storefront scripts and purchase events are now updated.');
+    } finally {
+      setIsSavingTracking(false);
     }
   };
 
@@ -646,6 +675,129 @@ export function Settings() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] md:p-7">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Tracking and scripts
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              Manage Meta Pixel and custom header or footer tracking code
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              Use the Meta Pixel ID field for built-in storefront page views and purchase events. Use the
+              custom code fields for third-party tags or raw snippets, similar to a header and footer script plugin.
+            </p>
+          </div>
+
+          <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Purchase tracking
+            </p>
+            <p className="mt-1 text-lg font-black text-slate-950">
+              {trackingForm.metaPurchaseTrackingEnabled ? 'Enabled' : 'Disabled'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">
+          <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Setup guide
+            </p>
+            <div className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+              <p>
+                Add your Meta Pixel ID here if you want CloudMarket to load the pixel automatically on storefront pages.
+              </p>
+              <p>
+                Turn on purchase tracking to send a Meta <span className="font-semibold text-slate-900">Purchase</span> event whenever a shopper completes an order.
+              </p>
+              <p>
+                When your Netlify environment includes a Meta Conversions API access token, CloudMarket also sends the same purchase server-side with the matching event ID for Meta deduplication.
+              </p>
+              <p>
+                Paste extra tracking code into the header or footer boxes only when you need scripts beyond the built-in Meta Pixel loader.
+              </p>
+              <p className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                Avoid pasting the same Meta Pixel base code into the custom boxes if you already entered a Meta Pixel ID here, or you may create duplicate events.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <input
+              value={trackingForm.metaPixelId}
+              onChange={(event) =>
+                setTrackingForm((current) => ({
+                  ...current,
+                  metaPixelId: event.target.value,
+                }))
+              }
+              placeholder="Meta Pixel ID"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+            />
+
+            <label className="flex items-start gap-3 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={trackingForm.metaPurchaseTrackingEnabled}
+                onChange={(event) =>
+                  setTrackingForm((current) => ({
+                    ...current,
+                    metaPurchaseTrackingEnabled: event.target.checked,
+                  }))
+                }
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#0E7C7B] focus:ring-[#0E7C7B]"
+              />
+              Send a Meta Purchase event when a shopper submits a real product order.
+            </label>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-900">Header code</p>
+              <textarea
+                value={trackingForm.customHeadMarkup}
+                onChange={(event) =>
+                  setTrackingForm((current) => ({
+                    ...current,
+                    customHeadMarkup: event.target.value,
+                  }))
+                }
+                rows={7}
+                placeholder="<script>/* custom head tracking */</script>"
+                className="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-900">Footer code</p>
+              <textarea
+                value={trackingForm.customFooterMarkup}
+                onChange={(event) =>
+                  setTrackingForm((current) => ({
+                    ...current,
+                    customFooterMarkup: event.target.value,
+                  }))
+                }
+                rows={7}
+                placeholder="<script>/* custom footer tracking */</script>"
+                className="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+              />
+            </div>
+
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              disabled={isSavingTracking}
+              onClick={handleSaveTracking}
+            >
+              <Save className="h-4 w-4" />
+              {isSavingTracking ? 'Saving Tracking...' : 'Save Tracking Settings'}
+            </Button>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] md:p-7">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

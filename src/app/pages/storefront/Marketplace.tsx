@@ -19,7 +19,10 @@ import { MarketplaceCollectionsCarousel } from '../../components/storefront/Mark
 import { MarketplaceHero } from '../../components/storefront/MarketplaceHero';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
-import { loadStorefrontProducts } from '../../lib/storefrontProducts';
+import {
+  loadStorefrontProducts,
+  STOREFRONT_PRODUCTS_CHANGE_EVENT,
+} from '../../lib/storefrontProducts';
 import { cn } from '../../lib/utils';
 import type { Product } from '../../types';
 
@@ -58,22 +61,48 @@ export function Marketplace() {
   useEffect(() => {
     let isActive = true;
 
-    void loadStorefrontProducts()
-      .then((products) => {
-        if (isActive) {
-          setStorefrontProducts(products);
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsLoadingProducts(false);
-        }
-      });
+    const syncProducts = async (force = false) => {
+      const products = await loadStorefrontProducts(force).catch(() => []);
+
+      if (isActive) {
+        setStorefrontProducts(products);
+        setIsLoadingProducts(false);
+      }
+    };
+
+    void syncProducts();
+
+    const handleStorefrontProductsChange = () => {
+      void syncProducts();
+    };
+
+    window.addEventListener(
+      STOREFRONT_PRODUCTS_CHANGE_EVENT,
+      handleStorefrontProductsChange as EventListener,
+    );
 
     return () => {
+      window.removeEventListener(
+        STOREFRONT_PRODUCTS_CHANGE_EVENT,
+        handleStorefrontProductsChange as EventListener,
+      );
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingProducts) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsLoadingProducts(false);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoadingProducts]);
 
   const publishedProducts = useMemo(
     () => storefrontProducts.filter((product) => product.status === 'published'),

@@ -1,114 +1,61 @@
-# CloudMarket - eCommerce Sales OS
+# CloudMarket
 
-Production-ready eCommerce platform built with Next.js 15, TypeScript, Tailwind CSS, Prisma, and PostgreSQL.
+CloudMarket is a Vite + React storefront and admin workspace backed by Supabase.
 
-## Quick Start
+## Active Runtime
 
-```bash
-# Install dependencies
-npm install
+The active frontend app lives under `src/`.
 
-# Configure environment
-cp .env.example .env.local
-# Edit .env.local with your database URL and secrets
+Primary entry points:
 
-# Set up database
-npm run prisma:migrate
+- [src/main.tsx](c:/Users/USER/cloudmarket/src/main.tsx)
+- [src/app/App.tsx](c:/Users/USER/cloudmarket/src/app/App.tsx)
+- [src/app/routes.tsx](c:/Users/USER/cloudmarket/src/app/routes.tsx)
 
-# Run development server
-npm run dev
-```
-
-Visit `http://localhost:3000`
-
-## Architecture
-
-### Folder Structure
-
-- **`app/`** - Next.js App Router with layout groups
-  - `(storefront)/` - Public customer pages
-  - `(auth)/` - Login/register pages
-  - `(admin)/` - Admin dashboard (protected)
-  - `api/` - API endpoints
-
-- **`components/`** - Reusable React components
-- **`lib/`** - Core utilities (auth, db, api client)
-- **`services/`** - API service layer
-- **`hooks/`** - Custom React hooks
-- **`types/`** - TypeScript type definitions
-- **`utils/`** - Helper functions
-- **`themes/`** - Design tokens
-- **`prisma/`** - Database schema
-
-### Key Features
-
-✅ Next.js 15 App Router  
-✅ TypeScript for type safety  
-✅ NextAuth.js authentication  
-✅ Prisma ORM with PostgreSQL  
-✅ Tailwind CSS styling  
-✅ Zustand state management  
-✅ React Hook Form validation  
-✅ Scalable folder structure  
-✅ API route protection  
-✅ Admin dashboard layout  
-
-## Environment Setup
-
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed instructions.
-
-**Minimal .env.local:**
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/cloudmarket"
-NEXTAUTH_SECRET="your-secret-min-32-chars"
-NEXTAUTH_URL="http://localhost:3000"
-```
-
-## Development
+## Scripts
 
 ```bash
-# Development server
 npm run dev
-
-# Type checking
-npm run type-check
-
-# Linting
-npm run lint
-
-# Build for production
 npm run build
-
-# Database commands
-npm run prisma:migrate    # Create migration
-npm run prisma:studio     # Open Prisma Studio
-npm run prisma:seed       # Seed data
+npm run preview
+npm run type-check
 ```
 
-## API Endpoints
+## Environment
 
-- `GET/POST /api/products` - Product management
-- `GET/POST /api/orders` - Order management  
-- `GET/POST /api/users` - User management
-- `POST /api/auth/signin` - NextAuth signin
+This project uses Vite env variables, not Next.js env variables.
 
-All endpoints require authentication except public pages.
+See:
 
-## Next Steps
+- [.env.example](c:/Users/USER/cloudmarket/.env.example)
+- [.env.local](c:/Users/USER/cloudmarket/.env.local)
 
-1. **Define database schema** in `prisma/schema.prisma`
-2. **Create migrations** with `npm run prisma:migrate`
-3. **Build API endpoints** in `app/api/`
-4. **Create service methods** in `services/`
-5. **Build UI components** in `components/`
-6. **Add pages** in layout groups
+Required variables:
 
-## Learn More
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_REALTIME_ENABLED`
 
-- [Next.js Docs](https://nextjs.org/docs)
-- [NextAuth.js Docs](https://next-auth.js.org)
-- [Prisma Docs](https://www.prisma.io/docs)
-- [Tailwind CSS](https://tailwindcss.com)
-- [TypeScript](https://www.typescriptlang.org)
-  
+## Supabase Setup
+
+Run the SQL in:
+
+- [cloudmarket_schema.sql](c:/Users/USER/cloudmarket/supabase/cloudmarket_schema.sql)
+
+Setup notes and security guidance:
+
+- [SUPABASE_PRODUCTION_SETUP.md](c:/Users/USER/cloudmarket/SUPABASE_PRODUCTION_SETUP.md)
+
+## Netlify
+
+Netlify deployment is configured in:
+
+- [netlify.toml](c:/Users/USER/cloudmarket/netlify.toml)
+
+Netlify form scaffolding is in:
+
+- [index.html](c:/Users/USER/cloudmarket/index.html)
+
+## Notes
+
+The current admin access pattern is still client-side. If you want hardened production security, replace the footer-only admin unlock flow with real authentication and move admin-only mutations behind authenticated policies or server-side functions.

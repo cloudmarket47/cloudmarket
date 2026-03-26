@@ -4,7 +4,10 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '../../components/design-system/Button';
 import { Card } from '../../components/design-system/Card';
 import { formatCurrency } from '../../lib/utils';
-import { loadStorefrontProducts } from '../../lib/storefrontProducts';
+import {
+  loadStorefrontProducts,
+  STOREFRONT_PRODUCTS_CHANGE_EVENT,
+} from '../../lib/storefrontProducts';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 import { Hero } from '../../components/Hero';
@@ -41,19 +44,31 @@ export function ProductPage() {
   useEffect(() => {
     let isActive = true;
 
-    void loadStorefrontProducts()
-      .then((products) => {
-        if (isActive) {
-          setStorefrontProducts(products);
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsLoadingProducts(false);
-        }
-      });
+    const syncProducts = async (force = false) => {
+      const products = await loadStorefrontProducts(force).catch(() => []);
+
+      if (isActive) {
+        setStorefrontProducts(products);
+        setIsLoadingProducts(false);
+      }
+    };
+
+    void syncProducts();
+
+    const handleStorefrontProductsChange = () => {
+      void syncProducts();
+    };
+
+    window.addEventListener(
+      STOREFRONT_PRODUCTS_CHANGE_EVENT,
+      handleStorefrontProductsChange as EventListener,
+    );
 
     return () => {
+      window.removeEventListener(
+        STOREFRONT_PRODUCTS_CHANGE_EVENT,
+        handleStorefrontProductsChange as EventListener,
+      );
       isActive = false;
     };
   }, []);

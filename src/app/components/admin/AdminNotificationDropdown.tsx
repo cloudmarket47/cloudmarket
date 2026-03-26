@@ -81,7 +81,7 @@ export function AdminNotificationDropdown({
   }
 
   return (
-    <div className="absolute right-0 top-[calc(100%+0.85rem)] z-50 w-[min(92vw,26rem)] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+    <div className="fixed left-4 right-4 top-20 z-50 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+0.85rem)] sm:w-[26rem]">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
