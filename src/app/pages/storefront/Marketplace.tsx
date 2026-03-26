@@ -70,10 +70,10 @@ export function Marketplace() {
       }
     };
 
-    void syncProducts();
+    void syncProducts(true);
 
     const handleStorefrontProductsChange = () => {
-      void syncProducts();
+      void syncProducts(true);
     };
 
     window.addEventListener(

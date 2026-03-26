@@ -8,16 +8,21 @@ interface ProductFeaturesMarqueeProps {
 }
 
 export function ProductFeaturesMarquee({ product }: ProductFeaturesMarqueeProps) {
+  const marqueeSection = product.sections.featureMarquee;
   const imagePool = useMemo(() => {
-    const allImages = [
-      product.sections.hero.image,
-      product.image,
-      ...product.sections.showcase.images,
-      product.sections.solution.image,
-    ].filter(Boolean);
+    const configuredImages = marqueeSection.images.filter(Boolean);
+    const allImages =
+      configuredImages.length > 0
+        ? configuredImages
+        : [
+            product.sections.hero.image,
+            product.image,
+            ...product.sections.showcase.images,
+            product.sections.solution.image,
+          ].filter(Boolean);
 
     return allImages.filter((image, index) => allImages.indexOf(image) === index);
-  }, [product]);
+  }, [marqueeSection.images, product]);
 
   const topRowImages = useMemo(() => {
     return Array.from({ length: 5 }, (_, index) => {
@@ -60,14 +65,13 @@ export function ProductFeaturesMarquee({ product }: ProductFeaturesMarqueeProps)
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-flex rounded-full border border-[#d7e6ff] bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-[#2B7FFF] shadow-sm">
-              Product Features
+              Feature Marquee
             </span>
             <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
-              See exactly what makes this brush worth it
+              {marqueeSection.title}
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
-              Two continuous marquee rows highlight the real features, built-in benefits and daily
-              use advantages that shoppers care about most.
+              {marqueeSection.subtitle}
             </p>
           </div>
 

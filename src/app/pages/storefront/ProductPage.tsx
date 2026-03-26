@@ -53,10 +53,10 @@ export function ProductPage() {
       }
     };
 
-    void syncProducts();
+    void syncProducts(true);
 
     const handleStorefrontProductsChange = () => {
-      void syncProducts();
+      void syncProducts(true);
     };
 
     window.addEventListener(
@@ -212,30 +212,50 @@ export function ProductPage() {
 
   return (
     <div className={`min-h-screen pb-28 md:pb-0 ${isDark ? 'storefront-dark bg-[#050816]' : 'bg-white'}`}>
-      <TopDropOfferAlerts enabled={!isCheckoutOpen} />
+      <TopDropOfferAlerts
+        enabled={!isCheckoutOpen && product.sections.alerts.visible}
+        items={product.sections.alerts.items}
+      />
       <main>
         {product.sections.hero.visible && <Hero product={product} onBuyNow={openCheckout} />}
-        <ProductVideoPlaceholder
-          title="See It in Action"
-          subtitle="Use this upper-page video slot for a short product demo so visitors can immediately watch how the brush works before exploring the rest of the sales page."
-          poster={product.sections.showcase.images[0] ?? product.sections.hero.image ?? product.image}
-          badge="See It in Action"
-        />
-        <ProductHeadlineTextSection product={product} />
-        {product.sections.features.visible && <ProductFeaturesMarquee product={product} />}
-        {product.sections.problem.visible && <Problem />}
-        {product.sections.solution.visible && <Solution onBuyNow={openCheckout} />}
-        {product.sections.features.visible && <Features />}
-        {product.sections.howItWorks.visible && <HowItWorks />}
-        {product.sections.showcase.visible && <ProductShowcase />}
+        {product.sections.seeInAction.visible && (
+          <ProductVideoPlaceholder
+            title={product.sections.seeInAction.title}
+            subtitle={product.sections.seeInAction.subtitle}
+            poster={product.sections.seeInAction.poster || product.sections.hero.image || product.image}
+            badge={product.sections.seeInAction.badge}
+            videoSrc={product.sections.seeInAction.video}
+            aspectRatio={product.sections.seeInAction.ratio}
+          />
+        )}
+        {product.sections.headline.visible && <ProductHeadlineTextSection product={product} />}
+        {product.sections.featureMarquee.visible && <ProductFeaturesMarquee product={product} />}
+        {product.sections.problem.visible && <Problem product={product} />}
+        {product.sections.solution.visible && <Solution product={product} onBuyNow={openCheckout} />}
+        {product.sections.features.visible && <Features product={product} />}
+        {product.sections.howItWorks.visible && <HowItWorks product={product} />}
+        {product.sections.showcase.visible && <ProductShowcase product={product} />}
         {product.sections.testimonials.visible && <SocialProof product={product} />}
-        <ProductVideoPlaceholder
-          title="Watch the Full Walkthrough"
-          subtitle="Use this lower-page video slot for a longer review, installation guide, customer story or final conversion video close to the footer."
-          poster={product.sections.solution.image ?? product.image}
-          badge="Footer Video Slot"
-        />
-        <EmailSubscription productName={product.name} productSlug={product.slug} />
+        {product.sections.footerVideo.visible && (
+          <ProductVideoPlaceholder
+            title={product.sections.footerVideo.title}
+            subtitle={product.sections.footerVideo.subtitle}
+            poster={product.sections.footerVideo.poster || product.sections.solution.image || product.image}
+            badge={product.sections.footerVideo.badge}
+            videoSrc={product.sections.footerVideo.video}
+            aspectRatio={product.sections.footerVideo.ratio}
+          />
+        )}
+        {product.sections.subscription.visible && (
+          <EmailSubscription
+            productName={product.name}
+            productSlug={product.slug}
+            title={product.sections.subscription.title}
+            subtitle={product.sections.subscription.subtitle}
+            buttonLabel={product.sections.subscription.buttonLabel}
+            privacyNote={product.sections.subscription.privacyNote}
+          />
+        )}
         {product.sections.offer.visible && (
           <SpecialOffer
             onBuyNow={openCheckout}
@@ -249,7 +269,7 @@ export function ProductPage() {
           selectedPackage={selectedPackageQuantity}
           onPackageChange={setSelectedPackageQuantity}
         />
-        {product.sections.faq.visible && <FAQ />}
+        {product.sections.faq.visible && <FAQ product={product} />}
 
         {recommendedProducts.length > 0 && (
           <ScrollReveal>

@@ -23,8 +23,11 @@ function toProductImage(draft: AdminProductDraft) {
     draft.coverImage.src ||
     draft.sections.hero.images.find((image) => hasMedia(image.src))?.src ||
     draft.sections.hero.image.src ||
+    draft.sections.seeInAction.poster.src ||
     draft.sections.solution.image.src ||
+    draft.sections.featureMarquee.images.find((image) => hasMedia(image.src))?.src ||
     draft.sections.showcase.images.find((image) => hasMedia(image.src))?.src ||
+    draft.sections.footerVideo.poster.src ||
     ''
   );
 }
@@ -62,6 +65,33 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
         image: heroImage,
         benefits: [...draft.sections.hero.benefits],
         offers: draft.sections.hero.offers.map((item) => ({ ...item })),
+      },
+      seeInAction: {
+        visible: draft.sections.seeInAction.visible,
+        title: draft.sections.seeInAction.title,
+        subtitle: draft.sections.seeInAction.subtitle,
+        badge: draft.sections.seeInAction.badge,
+        ratio: draft.sections.seeInAction.ratio,
+        poster: draft.sections.seeInAction.poster.src || heroImage,
+        video: draft.sections.seeInAction.video.src,
+      },
+      headline: {
+        visible: draft.sections.headline.visible,
+        eyebrow: draft.sections.headline.eyebrow,
+        title: draft.sections.headline.title,
+        description: draft.sections.headline.description,
+      },
+      alerts: {
+        visible: draft.sections.alerts.visible,
+        items: draft.sections.alerts.items.map((item) => ({ ...item })),
+      },
+      featureMarquee: {
+        visible: draft.sections.featureMarquee.visible,
+        title: draft.sections.featureMarquee.title,
+        subtitle: draft.sections.featureMarquee.subtitle,
+        images: draft.sections.featureMarquee.images
+          .map((item) => item.src)
+          .filter((src): src is string => hasMedia(src)),
       },
       problem: {
         visible: draft.sections.problem.visible,
@@ -123,6 +153,22 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
           image: review.image.src,
           avatar: review.avatar?.src || review.image.src,
         })),
+      },
+      footerVideo: {
+        visible: draft.sections.footerVideo.visible,
+        title: draft.sections.footerVideo.title,
+        subtitle: draft.sections.footerVideo.subtitle,
+        badge: draft.sections.footerVideo.badge,
+        ratio: draft.sections.footerVideo.ratio,
+        poster: draft.sections.footerVideo.poster.src || draft.sections.solution.image.src || productImage,
+        video: draft.sections.footerVideo.video.src,
+      },
+      subscription: {
+        visible: draft.sections.subscription.visible,
+        title: draft.sections.subscription.title,
+        subtitle: draft.sections.subscription.subtitle,
+        buttonLabel: draft.sections.subscription.buttonLabel,
+        privacyNote: draft.sections.subscription.privacyNote,
       },
       offer: {
         visible: draft.sections.offer.visible,

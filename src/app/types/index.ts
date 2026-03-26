@@ -28,6 +28,36 @@ export interface Product {
       benefits: string[];
       offers: { text: string; highlight: string }[];
     };
+    seeInAction: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      badge: string;
+      ratio: '16:9' | '4:5' | '1:1' | '3:4';
+      poster: string;
+      video: string;
+    };
+    headline: {
+      visible: boolean;
+      eyebrow: string;
+      title: string;
+      description: string;
+    };
+    alerts: {
+      visible: boolean;
+      items: {
+        kind: 'offer' | 'stock' | 'order';
+        title: string;
+        message: string;
+        badge: string;
+      }[];
+    };
+    featureMarquee: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      images: string[];
+    };
     problem: {
       visible: boolean;
       title: string;
@@ -66,6 +96,22 @@ export interface Product {
       title: string;
       subtitle: string;
       reviews: { name: string; location: string; rating: number; text: string; image: string; avatar?: string }[];
+    };
+    footerVideo: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      badge: string;
+      ratio: '16:9' | '4:5' | '1:1' | '3:4';
+      poster: string;
+      video: string;
+    };
+    subscription: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      buttonLabel: string;
+      privacyNote: string;
     };
     offer: {
       visible: boolean;

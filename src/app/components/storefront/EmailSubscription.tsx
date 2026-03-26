@@ -9,9 +9,20 @@ import { Card } from '../design-system/Card';
 interface EmailSubscriptionProps {
   productName?: string;
   productSlug?: string;
+  title?: string;
+  subtitle?: string;
+  buttonLabel?: string;
+  privacyNote?: string;
 }
 
-export function EmailSubscription({ productName, productSlug }: EmailSubscriptionProps) {
+export function EmailSubscription({
+  productName,
+  productSlug,
+  title = 'Subscribe for Exclusive Discounts',
+  subtitle = 'Join our customer subscriber program to get a unique token for 10% off your next 5 orders.',
+  buttonLabel = 'Subscribe Now',
+  privacyNote = 'We respect customer privacy and only collect what is required for token recovery.',
+}: EmailSubscriptionProps) {
   const [subscriptionForm, setSubscriptionForm] = useState({
     fullName: '',
     gender: '',
@@ -123,7 +134,7 @@ export function EmailSubscription({ productName, productSlug }: EmailSubscriptio
               className="rounded-full bg-white px-10 py-4 text-base font-semibold text-[#0E7C7B] hover:bg-gray-100"
               onClick={() => setIsExpanded(true)}
             >
-              Subscribe Now
+              {buttonLabel}
             </Button>
           ) : (
             <>
@@ -132,10 +143,10 @@ export function EmailSubscription({ productName, productSlug }: EmailSubscriptio
               </div>
 
               <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
-                Subscribe for Exclusive Discounts
+                {title}
               </h2>
               <p className="mb-8 text-xl text-white/90">
-                Join our customer subscriber program to get a unique token for 10% off your next 5 orders.
+                {subtitle}
               </p>
 
               <Card padding="lg" className="mx-auto max-w-3xl">
@@ -244,6 +255,8 @@ export function EmailSubscription({ productName, productSlug }: EmailSubscriptio
                       </p>
                       <p className="font-semibold text-slate-900">Data we collect</p>
                       <p>Name, gender, location, and email only, so we can identify your token and support account recovery.</p>
+                      <p className="font-semibold text-slate-900">Privacy note</p>
+                      <p>{privacyNote}</p>
                       <p className="font-semibold text-slate-900">Data we do not collect</p>
                       <p>No card details, no national ID data, no passwords, and no hidden files from your device.</p>
                     </div>

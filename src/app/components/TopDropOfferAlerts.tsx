@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ShoppingBag, Tag } from 'lucide-react';
+import type { Product } from '../types';
 
 interface TopDropOfferAlertsProps {
   enabled?: boolean;
+  items?: Product['sections']['alerts']['items'];
 }
 
 type AlertKind = 'offer' | 'stock' | 'order';
@@ -44,127 +46,24 @@ function getAlertStyles(kind: AlertKind) {
   };
 }
 
-export function TopDropOfferAlerts({ enabled = true }: TopDropOfferAlertsProps) {
+export function TopDropOfferAlerts({ enabled = true, items = [] }: TopDropOfferAlertsProps) {
   const alerts = useMemo<OfferAlertItem[]>(
-    () => [
-      {
-        id: 'offer-1',
-        kind: 'offer',
-        title: 'Limited Time Deal',
-        message: 'Buy 1 Get 1 FREE now at promo price. Offer may end soon.',
-        badge: 'Offer',
-      },
-      {
-        id: 'stock-1',
-        kind: 'stock',
-        title: 'Limited Stock Alert',
-        message: 'Only 60 left. Hurry now and order yours before you see sold out.',
-        badge: 'Stock',
-      },
-      {
-        id: 'order-1',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Abuja just ordered 2 sets.',
-        badge: 'New Order',
-      },
-      {
-        id: 'offer-2',
-        kind: 'offer',
-        title: 'Bundle Offer Active',
-        message: 'Buy 2 Get 2 FREE is still available with free delivery across Nigeria.',
-        badge: 'Promo',
-      },
-      {
-        id: 'order-2',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'Two customers from Lagos just ordered 5 minutes ago.',
-        badge: 'New Order',
-      },
-      {
-        id: 'stock-2',
-        kind: 'stock',
-        title: 'Stock Moving Fast',
-        message: 'Demand is high right now. Secure your package before stock runs out.',
-        badge: 'Hot',
-      },
-      {
-        id: 'offer-3',
-        kind: 'offer',
-        title: 'Best Value Deal',
-        message: 'Buy 3 Get 3 FREE gives the highest savings on this page.',
-        badge: 'Best Value',
-      },
-      {
-        id: 'order-3',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Port Harcourt just confirmed an order.',
-        badge: 'New Order',
-      },
-      {
-        id: 'order-4',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Ibadan just ordered 1 package.',
-        badge: 'New Order',
-      },
-      {
-        id: 'stock-3',
-        kind: 'stock',
-        title: 'Final Reminder',
-        message: 'Only 60 left. Place your order now to avoid missing this batch.',
-        badge: 'Urgent',
-      },
-      {
-        id: 'offer-4',
-        kind: 'offer',
-        title: 'Today\'s Flash Offer',
-        message: 'Extra value is live now. Pick your package before this deal rotates out.',
-        badge: 'Flash',
-      },
-      {
-        id: 'order-5',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Enugu just ordered 3 sets.',
-        badge: 'New Order',
-      },
-      {
-        id: 'order-6',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Kano just completed a 2-set order.',
-        badge: 'New Order',
-      },
-      {
-        id: 'stock-4',
-        kind: 'stock',
-        title: 'Inventory Alert',
-        message: 'Only 60 left in this batch. Order now before it shows sold out.',
-        badge: 'Low Stock',
-      },
-      {
-        id: 'offer-5',
-        kind: 'offer',
-        title: 'Free Delivery Offer',
-        message: 'All active packages still include free delivery across Nigeria.',
-        badge: 'Delivery',
-      },
-      {
-        id: 'order-7',
-        kind: 'order',
-        title: 'Recent Order',
-        message: 'A customer from Benin City just ordered 1 set.',
-        badge: 'New Order',
-      },
-    ],
-    [],
+    () =>
+      items
+        .filter((item) => item.title.trim() || item.message.trim() || item.badge.trim())
+        .map((item, index) => ({
+          id: `${item.kind}-${index}-${item.title}`,
+          ...item,
+        })),
+    [items],
   );
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [alerts.length]);
 
   useEffect(() => {
     if (!enabled || alerts.length === 0) {
