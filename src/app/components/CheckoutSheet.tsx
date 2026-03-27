@@ -114,6 +114,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   const [isTokenSectionOpen, setIsTokenSectionOpen] = useState(false);
   const [isApplyingToken, setIsApplyingToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const activeBundle = bundles[selectedBundleIndex ?? 0] ?? null;
   const selectedBundle = selectedBundleIndex === null ? null : bundles[selectedBundleIndex] ?? null;
@@ -137,6 +138,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       setTokenMessage('');
       setTokenError('');
       setIsTokenSectionOpen(false);
+      setSubmitError('');
     }
   }, [isOpen, phonePrefix]);
 
@@ -259,6 +261,10 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       setTokenError('');
     }
 
+    if (submitError) {
+      setSubmitError('');
+    }
+
     setFormData((currentData) => ({
       ...currentData,
       [name]: value,
@@ -320,6 +326,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    setSubmitError('');
     setIsSubmitting(true);
 
     try {
@@ -355,7 +362,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       });
 
       await persistPlacedOrder(placedOrder);
-      await recordSubmittedOrder(placedOrder);
+      void recordSubmittedOrder(placedOrder).catch(() => undefined);
       trackAnalyticsEvent({
         type: 'form_submit',
         pagePath: `/product/${product.slug}`,
@@ -406,7 +413,9 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
 
       await syncOrderSubmission(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
-      }).catch(() => undefined);
+      }).catch((error) => {
+        console.warn('Order notification email failed.', error);
+      });
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
@@ -415,6 +424,12 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       navigate(`/thank-you?order=${placedOrder.orderNumber}`, {
         state: { order: placedOrder },
       });
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'We could not place your order right now. Please try again.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -713,6 +728,18 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
           >
             {isSubmitting ? 'Submitting Order...' : orderFormCopy.submitButtonLabel}
           </button>
+
+          {submitError ? (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+                isDark
+                  ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {submitError}
+            </div>
+          ) : null}
 
           <p className={`text-center text-sm leading-6 ${isDark ? 'text-slate-300' : 'text-stone-500'}`}>
             {orderFormCopy.confirmationNote}

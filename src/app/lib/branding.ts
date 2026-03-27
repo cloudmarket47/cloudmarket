@@ -9,6 +9,9 @@ import type { AdminCurrency } from './adminProductDrafts';
 export interface AppBrandingSettings {
   companyName: string;
   companyShortName: string;
+  companyPhone: string;
+  companyEmail: string;
+  companyWebsite: string;
   logoUrl: string;
   currency: AdminCurrency;
   homepageHighlightImages: string[];
@@ -40,6 +43,9 @@ export function readBrandingSettings(): AppBrandingSettings {
     companyName,
     companyShortName:
       financeSettings.companyShortName.trim() || deriveCompanyShortName(companyName),
+    companyPhone: financeSettings.companyPhone.trim(),
+    companyEmail: financeSettings.companyEmail.trim(),
+    companyWebsite: financeSettings.companyWebsite.trim(),
     logoUrl: financeSettings.logoUrl,
     currency: financeSettings.currency,
     homepageHighlightImages: financeSettings.homepageHighlightImages,

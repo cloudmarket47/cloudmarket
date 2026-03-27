@@ -70,6 +70,7 @@ export function OrderForm({
   const [isTokenSectionOpen, setIsTokenSectionOpen] = useState(false);
   const [isApplyingToken, setIsApplyingToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     setFormData((currentData) => ({
@@ -113,6 +114,10 @@ export function OrderForm({
 
     if (name === 'customerToken') {
       clearTokenFeedback();
+    }
+
+    if (submitError) {
+      setSubmitError('');
     }
 
     setFormData((currentData) => ({
@@ -176,6 +181,7 @@ export function OrderForm({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    setSubmitError('');
     setIsSubmitting(true);
 
     try {
@@ -207,7 +213,7 @@ export function OrderForm({
       });
 
       await persistPlacedOrder(placedOrder);
-      await recordSubmittedOrder(placedOrder);
+      void recordSubmittedOrder(placedOrder).catch(() => undefined);
       trackAnalyticsEvent({
         type: 'form_submit',
         pagePath: `/product/${product.slug}`,
@@ -258,7 +264,9 @@ export function OrderForm({
 
       await syncOrderSubmission(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
-      }).catch(() => undefined);
+      }).catch((error) => {
+        console.warn('Order notification email failed.', error);
+      });
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
@@ -266,6 +274,12 @@ export function OrderForm({
       navigate(`/thank-you?order=${placedOrder.orderNumber}`, {
         state: { order: placedOrder },
       });
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'We could not place your order right now. Please try again.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -538,6 +552,18 @@ export function OrderForm({
                     </p>
                   </div>
                 </div>
+
+                {submitError ? (
+                  <div
+                    className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                      isDark
+                        ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                        : 'border-red-200 bg-red-50 text-red-700'
+                    }`}
+                  >
+                    {submitError}
+                  </div>
+                ) : null}
 
                 <button
                   type="submit"

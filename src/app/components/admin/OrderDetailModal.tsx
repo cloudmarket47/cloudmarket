@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, FileDown, Phone, Receipt, X } from 'lucide-react';
+import { useBrandingSettings } from '../../lib/branding';
 import { downloadElementAsImage, saveElementAsPdf } from '../../lib/domExport';
 import type { AdminManagedOrder, AdminOrderStatus } from '../../lib/adminOrders';
 import { formatCurrency, formatDate } from '../../lib/utils';
@@ -17,8 +18,6 @@ interface OrderDetailModalProps {
     },
   ) => void;
 }
-
-const COMPANY_PHONE = '+1(336)4596552';
 
 function copyOrderDetails(order: AdminManagedOrder) {
   const lines = [
@@ -47,6 +46,7 @@ export function OrderDetailModal({
   onClose,
   onSaveManagement,
 }: OrderDetailModalProps) {
+  const branding = useBrandingSettings();
   const slipRef = useRef<HTMLDivElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<AdminOrderStatus>('new');
   const [deliveryExpenseInput, setDeliveryExpenseInput] = useState('');
@@ -358,8 +358,11 @@ export function OrderDetailModal({
               <OrderSlipPreview
                 ref={slipRef}
                 order={slipOrder}
-                companyPhone={COMPANY_PHONE}
-                websiteUrl={websiteUrl}
+                companyName={branding.companyName}
+                companyShortName={branding.companyShortName}
+                companyPhone={branding.companyPhone}
+                websiteUrl={branding.companyWebsite.trim() || websiteUrl}
+                logoUrl={branding.logoUrl}
               />
             </div>
           </div>

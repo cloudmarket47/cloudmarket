@@ -135,7 +135,6 @@ function mapOrderRowToAdminOrder(row: OrderRow): AdminManagedOrder {
 
 function toOrderRow(order: AdminManagedOrder): OrderRow {
   return {
-    id: order.id,
     order_number: order.orderNumber,
     locale_country_code: order.localeCountryCode,
     product_id: order.productId,

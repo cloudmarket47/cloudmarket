@@ -144,6 +144,7 @@ function buildContactHtml(payload) {
 }
 
 function buildMailOptions(payload) {
+  const recipientAddress = process.env.ORDER_NOTIFICATION_EMAIL || process.env.GMAIL_USER;
   const submissionType =
     payload.type === 'subscription'
       ? 'subscription'
@@ -166,10 +167,16 @@ function buildMailOptions(payload) {
 
   return {
     from: `CloudMarket Orders <${process.env.GMAIL_USER}>`,
-    to: process.env.GMAIL_USER,
+    to: recipientAddress,
     replyTo: payload.email || undefined,
     subject,
     html,
+    text:
+      submissionType === 'subscription'
+        ? `New subscription received from ${payload.email || payload.name || 'Subscriber'}.`
+        : submissionType === 'contact'
+          ? `New contact message from ${payload.name || payload.email || 'Visitor'}.`
+          : `New order received: ${payload.orderId || 'Order'}`,
   };
 }
 
@@ -177,6 +184,9 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ error: 'Method Not Allowed' }),
     };
   }
@@ -184,6 +194,9 @@ exports.handler = async (event) => {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     return {
       statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ error: 'Missing Gmail SMTP credentials.' }),
     };
   }
@@ -195,6 +208,9 @@ exports.handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ error: 'Invalid JSON payload.' }),
     };
   }
@@ -211,11 +227,17 @@ exports.handler = async (event) => {
     await transporter.sendMail(buildMailOptions(data));
     return {
       statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ message: 'Email Sent Successfully' }),
     };
   } catch (error) {
     return {
       statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ error: error instanceof Error ? error.message : 'Unable to send email.' }),
     };
   }

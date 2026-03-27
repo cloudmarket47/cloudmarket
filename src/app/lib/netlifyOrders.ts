@@ -75,14 +75,36 @@ async function postSubmissionNotification(payload: Record<string, unknown>) {
   const response = await fetch(SEND_ORDER_ENDPOINT, {
     method: 'POST',
     headers: {
+      Accept: 'application/json',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
     keepalive: true,
   });
 
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+  const responseText = await response.text();
+
   if (!response.ok) {
-    throw new Error(`Submission notification failed with status ${response.status}.`);
+    throw new Error(
+      responseText.trim() || `Submission notification failed with status ${response.status}.`,
+    );
+  }
+
+  if (!contentType.includes('application/json')) {
+    throw new Error('Submission notification endpoint returned an unexpected response.');
+  }
+
+  let payloadResponse: { error?: string; message?: string } | null = null;
+
+  try {
+    payloadResponse = responseText ? (JSON.parse(responseText) as { error?: string; message?: string }) : {};
+  } catch {
+    throw new Error('Submission notification endpoint returned invalid JSON.');
+  }
+
+  if (payloadResponse?.error) {
+    throw new Error(payloadResponse.error);
   }
 }
 
