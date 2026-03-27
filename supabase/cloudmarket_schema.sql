@@ -39,6 +39,7 @@ create table if not exists public.orders (
   product_name text not null default '',
   customer_name text not null default '',
   customer_phone text not null default '',
+  customer_alt_phone text not null default '',
   customer_address text not null default '',
   city text not null default '',
   quantity integer not null default 1 check (quantity > 0),

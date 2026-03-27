@@ -581,3 +581,32 @@ export async function readAnalyticsEvents(force = false) {
 export function getAnalyticsDataChangeEventName() {
   return ANALYTICS_DATA_CHANGE_EVENT;
 }
+
+export async function deleteAnalyticsEventsByOrderNumber(orderNumber: string) {
+  const normalizedOrderNumber = orderNumber.trim();
+
+  if (!normalizedOrderNumber) {
+    return;
+  }
+
+  analyticsEventsCache = analyticsEventsCache.filter(
+    (event) => event.orderNumber !== normalizedOrderNumber,
+  );
+  analyticsEventsLoaded = true;
+  emitAnalyticsDataChange();
+
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from(getSupabaseTableName('analyticsEvents'))
+    .delete()
+    .eq('order_number', normalizedOrderNumber);
+
+  if (error) {
+    throw new Error(error.message || 'Unable to delete analytics events for this order.');
+  }
+}

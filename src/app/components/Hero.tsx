@@ -378,10 +378,6 @@ export function Hero({ product, onBuyNow }: HeroProps) {
               <div className="hero-copy-shell relative max-w-[36rem] space-y-4 pt-2 md:space-y-6 md:pt-4">
                 <div className="hero-copy-pocket absolute inset-x-[-1rem] top-[-8rem] bottom-[-1.75rem] -z-10 rounded-[2.2rem] md:inset-x-[-1.5rem] md:top-[-10rem] md:bottom-[-2rem] md:rounded-[2.6rem]" />
 
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/58 md:text-sm">
-                  {product.sections.hero.badge}
-                </p>
-
                 <div className="space-y-2 md:space-y-3">
                   <h1 className="max-w-[10ch] font-sans text-4xl font-black leading-[0.95] tracking-tight text-white sm:text-5xl md:max-w-[11ch] md:text-6xl">
                     {product.name}

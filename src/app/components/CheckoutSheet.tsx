@@ -102,6 +102,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   const [formData, setFormData] = useState({
     fullName: '',
     phone: `${phonePrefix} `,
+    alternatePhone: '',
     address: '',
     city: '',
     quantity: '',
@@ -128,6 +129,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       setFormData({
         fullName: '',
         phone: `${phonePrefix} `,
+        alternatePhone: '',
         address: '',
         city: '',
         quantity: '',
@@ -150,6 +152,9 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     setFormData((currentData) => ({
       ...currentData,
       phone: ensurePhonePrefix(currentData.phone, phonePrefix),
+      alternatePhone: currentData.alternatePhone
+        ? ensurePhonePrefix(currentData.alternatePhone, phonePrefix)
+        : '',
       city: regions.includes(currentData.city) ? currentData.city : '',
     }));
   }, [isOpen, phonePrefix, regions]);
@@ -255,6 +260,10 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       value = ensurePhonePrefix(value, phonePrefix);
     }
 
+    if (name === 'alternatePhone' && value.trim()) {
+      value = ensurePhonePrefix(value, phonePrefix);
+    }
+
     if (name === 'customerToken') {
       setTokenRecord(null);
       setTokenMessage('');
@@ -353,6 +362,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         quantity: formData.quantity,
         customerName: formData.fullName,
         customerPhone: formData.phone,
+        customerAlternatePhone: formData.alternatePhone,
         customerAddress: formData.address,
         city: formData.city,
         shortDeliveryMessage: formData.shortDeliveryMessage,
@@ -601,6 +611,22 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                 className={fieldClassName}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="alternatePhone" className={labelClassName}>
+              <Phone className="h-4 w-4 text-[#2B63D9]" />
+              Alternative Phone Number
+            </Label>
+            <Input
+              id="alternatePhone"
+              name="alternatePhone"
+              type="tel"
+              value={formData.alternatePhone}
+              onChange={handleChange}
+              placeholder={`Optional: ${phoneExample}`}
+              className={fieldClassName}
+            />
           </div>
 
           <div className="space-y-2">

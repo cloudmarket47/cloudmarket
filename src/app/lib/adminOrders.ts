@@ -21,6 +21,7 @@ export interface AdminManagedOrder {
   productName: string;
   customerName: string;
   customerPhone: string;
+  customerAlternatePhone: string;
   customerAddress: string;
   city: string;
   quantity: number;
@@ -58,6 +59,7 @@ interface OrderRow {
   product_name?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_alt_phone?: string | null;
   customer_address?: string | null;
   city?: string | null;
   quantity?: number | null;
@@ -102,6 +104,7 @@ function mapOrderRowToAdminOrder(row: OrderRow): AdminManagedOrder {
     productName: row.product_name || 'Order Item',
     customerName: row.customer_name || 'Customer',
     customerPhone: row.customer_phone || '',
+    customerAlternatePhone: row.customer_alt_phone || '',
     customerAddress: row.customer_address || '',
     city: row.city || '',
     quantity: typeof row.quantity === 'number' ? row.quantity : 1,
@@ -142,6 +145,7 @@ function toOrderRow(order: AdminManagedOrder): OrderRow {
     product_name: order.productName,
     customer_name: order.customerName,
     customer_phone: order.customerPhone,
+    customer_alt_phone: order.customerAlternatePhone,
     customer_address: order.customerAddress,
     city: order.city,
     quantity: order.quantity,
@@ -179,6 +183,7 @@ export function createAdminOrderFromPlacedOrder(order: PlacedOrder): AdminManage
     productName: order.productName,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
+    customerAlternatePhone: order.customerAlternatePhone,
     customerAddress: order.customerAddress,
     city: order.city,
     quantity: order.quantity,
@@ -325,4 +330,24 @@ export async function updateManagedOrder(orderNumber: string, update: AdminOrder
   }
 
   return nextOrder;
+}
+
+export async function deleteManagedOrder(orderNumber: string) {
+  await ensureAdminOrdersLoaded();
+
+  adminOrdersCache = adminOrdersCache.filter((order) => order.orderNumber !== orderNumber);
+  emitAdminOrdersChange();
+
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { error } = await supabase
+      .from(getSupabaseTableName('orders'))
+      .delete()
+      .eq('order_number', orderNumber);
+
+    if (error) {
+      throw new Error(error.message || 'Unable to delete order.');
+    }
+  }
 }

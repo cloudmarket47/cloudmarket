@@ -63,10 +63,6 @@ export function SpecialOffer({
 
         <div className="container relative z-10 mx-auto px-4">
           <div className="mx-auto max-w-6xl text-center">
-            <div className="mb-6 inline-block">
-              <span className="badge-3d">{offer.badge}</span>
-            </div>
-
             <h2 className="mb-6 text-4xl font-bold text-white md:text-6xl">{offer.title}</h2>
 
             <p className="mb-8 text-xl text-white/90 md:text-2xl">{offer.subtitle}</p>

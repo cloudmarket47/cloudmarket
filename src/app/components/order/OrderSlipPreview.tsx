@@ -142,14 +142,19 @@ export const OrderSlipPreview = forwardRef<HTMLDivElement, OrderSlipPreviewProps
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <InfoTile label="Customer Name" value={order.customerName} />
               <InfoTile label="Phone Number" value={order.customerPhone} />
+              {order.customerAlternatePhone ? (
+                <InfoTile label="Alternative Phone" value={order.customerAlternatePhone} />
+              ) : null}
               <div className="sm:col-span-2">
                 <InfoTile label="Delivery Address" value={order.customerAddress} />
               </div>
               <InfoTile label="City / State" value={order.city} />
-              <InfoTile
-                label="Delivery Message"
-                value={order.shortDeliveryMessage || 'No delivery note provided'}
-              />
+              <div className={order.customerAlternatePhone ? '' : 'sm:col-span-2'}>
+                <InfoTile
+                  label="Delivery Message"
+                  value={order.shortDeliveryMessage || 'No delivery note provided'}
+                />
+              </div>
             </div>
           </section>
 

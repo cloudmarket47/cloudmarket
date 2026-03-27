@@ -234,7 +234,6 @@ export function ProductPage() {
             title={product.sections.seeInAction.title}
             subtitle={product.sections.seeInAction.subtitle}
             poster={product.sections.seeInAction.poster || product.sections.hero.image || product.image}
-            badge={product.sections.seeInAction.badge}
             videoSrc={product.sections.seeInAction.video}
             aspectRatio={product.sections.seeInAction.ratio}
           />
@@ -252,7 +251,6 @@ export function ProductPage() {
             title={product.sections.footerVideo.title}
             subtitle={product.sections.footerVideo.subtitle}
             poster={product.sections.footerVideo.poster || product.sections.solution.image || product.image}
-            badge={product.sections.footerVideo.badge}
             videoSrc={product.sections.footerVideo.video}
             aspectRatio={product.sections.footerVideo.ratio}
           />

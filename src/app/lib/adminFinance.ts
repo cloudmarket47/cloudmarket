@@ -934,6 +934,59 @@ export async function deleteFinanceSale(saleId: string) {
   emitFinanceChange();
 }
 
+export async function deleteFinanceEntriesForOrder(orderNumber: string) {
+  const normalizedOrderNumber = orderNumber.trim();
+
+  if (!normalizedOrderNumber) {
+    return;
+  }
+
+  await Promise.all([ensureFinanceExpensesLoaded(), ensureFinanceSalesLoaded()]);
+
+  const expenseIdsToDelete = financeExpensesCache
+    .filter((expense) => expense.linkedOrderNumber === normalizedOrderNumber)
+    .map((expense) => expense.id);
+  const saleIdsToDelete = financeSalesCache
+    .filter((sale) => sale.linkedOrderNumber === normalizedOrderNumber)
+    .map((sale) => sale.id);
+
+  financeExpensesCache = financeExpensesCache.filter(
+    (expense) => expense.linkedOrderNumber !== normalizedOrderNumber,
+  );
+  financeSalesCache = financeSalesCache.filter(
+    (sale) => sale.linkedOrderNumber !== normalizedOrderNumber,
+  );
+  emitFinanceChange();
+
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  if (expenseIdsToDelete.length > 0) {
+    const { error } = await supabase
+      .from(getSupabaseTableName('financeExpenses'))
+      .delete()
+      .in('id', expenseIdsToDelete);
+
+    if (error) {
+      throw new Error(error.message || 'Unable to delete linked finance expenses.');
+    }
+  }
+
+  if (saleIdsToDelete.length > 0) {
+    const { error } = await supabase
+      .from(getSupabaseTableName('financeSales'))
+      .delete()
+      .in('id', saleIdsToDelete);
+
+    if (error) {
+      throw new Error(error.message || 'Unable to delete linked finance sales.');
+    }
+  }
+}
+
 export async function refreshFinanceData() {
   await Promise.all([
     ensureFinanceSettingsLoaded(true),

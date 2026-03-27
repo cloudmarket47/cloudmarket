@@ -58,6 +58,7 @@ export function OrderForm({
   const [formData, setFormData] = useState({
     fullName: '',
     phone: `${phonePrefix} `,
+    alternatePhone: '',
     address: '',
     city: '',
     quantity: selectedPackage || fallbackQuantity,
@@ -83,6 +84,9 @@ export function OrderForm({
     setFormData((currentData) => ({
       ...currentData,
       phone: ensurePhonePrefix(currentData.phone, phonePrefix),
+      alternatePhone: currentData.alternatePhone
+        ? ensurePhonePrefix(currentData.alternatePhone, phonePrefix)
+        : '',
       city: regions.includes(currentData.city) ? currentData.city : '',
     }));
   }, [phonePrefix, regions]);
@@ -109,6 +113,10 @@ export function OrderForm({
     }
 
     if (name === 'phone') {
+      value = ensurePhonePrefix(value, phonePrefix);
+    }
+
+    if (name === 'alternatePhone' && value.trim()) {
       value = ensurePhonePrefix(value, phonePrefix);
     }
 
@@ -204,6 +212,7 @@ export function OrderForm({
         quantity: formData.quantity,
         customerName: formData.fullName,
         customerPhone: formData.phone,
+        customerAlternatePhone: formData.alternatePhone,
         customerAddress: formData.address,
         city: formData.city,
         shortDeliveryMessage: formData.shortDeliveryMessage,
@@ -344,6 +353,26 @@ export function OrderForm({
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder={phoneExample}
+                    className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
+                      isDark
+                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        : 'border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="alternatePhone" className={`flex items-center gap-2 font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    <Phone className="h-4 w-4 text-[#2B63D9]" />
+                    Alternative Phone Number
+                  </Label>
+                  <Input
+                    id="alternatePhone"
+                    name="alternatePhone"
+                    type="tel"
+                    value={formData.alternatePhone}
+                    onChange={handleChange}
+                    placeholder={`Optional: ${phoneExample}`}
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
                         ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'

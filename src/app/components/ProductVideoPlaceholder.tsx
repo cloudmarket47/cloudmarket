@@ -1,4 +1,4 @@
-import { Play, Video } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { ScrollReveal } from './animations/ScrollReveal';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -6,7 +6,6 @@ interface ProductVideoPlaceholderProps {
   title: string;
   subtitle: string;
   poster: string;
-  badge: string;
   videoSrc?: string;
   aspectRatio?: '16:9' | '4:5' | '1:1' | '3:4';
 }
@@ -22,7 +21,6 @@ export function ProductVideoPlaceholder({
   title,
   subtitle,
   poster,
-  badge,
   videoSrc,
   aspectRatio = '16:9',
 }: ProductVideoPlaceholderProps) {
@@ -34,11 +32,7 @@ export function ProductVideoPlaceholder({
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-5xl">
             <div className="mb-8 text-center">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#eef5ff] px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#2B63D9]">
-                <Video className="h-3.5 w-3.5" />
-                {badge}
-              </span>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">
+              <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">
                 {title}
               </h2>
               <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600 md:text-lg">

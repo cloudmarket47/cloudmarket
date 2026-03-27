@@ -9,6 +9,7 @@ import { OrderSlipPreview } from '../order/OrderSlipPreview';
 interface OrderDetailModalProps {
   order: AdminManagedOrder | null;
   onClose: () => void;
+  onDeleteOrder: (orderNumber: string) => void;
   onSaveManagement: (
     orderNumber: string,
     update: {
@@ -24,6 +25,7 @@ function copyOrderDetails(order: AdminManagedOrder) {
     `Order Number: ${order.orderNumber}`,
     `Customer: ${order.customerName}`,
     `Phone: ${order.customerPhone}`,
+    `Alternative Phone: ${order.customerAlternatePhone || 'Not provided'}`,
     `Address: ${order.customerAddress}`,
     `Location: ${order.city}`,
     `Product: ${order.productName}`,
@@ -44,6 +46,7 @@ function copyOrderDetails(order: AdminManagedOrder) {
 export function OrderDetailModal({
   order,
   onClose,
+  onDeleteOrder,
   onSaveManagement,
 }: OrderDetailModalProps) {
   const branding = useBrandingSettings();
@@ -96,6 +99,7 @@ export function OrderDetailModal({
       productName: order.productName,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
+      customerAlternatePhone: order.customerAlternatePhone,
       customerAddress: order.customerAddress,
       city: order.city,
       quantity: order.quantity,
@@ -205,6 +209,12 @@ export function OrderDetailModal({
                       <Phone className="h-4 w-4" />
                       {order.customerPhone}
                     </p>
+                    {order.customerAlternatePhone ? (
+                      <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+                        <Phone className="h-4 w-4" />
+                        {order.customerAlternatePhone}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${
@@ -311,6 +321,13 @@ export function OrderDetailModal({
                     className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Save Order Management
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteOrder(order.orderNumber)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-100"
+                  >
+                    Delete Order Permanently
                   </button>
                 </div>
               </div>

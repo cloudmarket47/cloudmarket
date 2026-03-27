@@ -12,12 +12,16 @@ import {
 import { OrderDetailModal } from '../../components/admin/OrderDetailModal';
 import { Button } from '../../components/design-system/Button';
 import {
+  deleteManagedOrder,
   ensureAdminOrdersLoaded,
   readAdminOrders,
   type AdminManagedOrder,
   type AdminOrderStatus,
   updateManagedOrder,
 } from '../../lib/adminOrders';
+import { deleteFinanceEntriesForOrder } from '../../lib/adminFinance';
+import { deleteAnalyticsEventsByOrderNumber } from '../../lib/analyticsTelemetry';
+import { deleteSubscriberActivitiesByOrderNumber } from '../../lib/subscriberTelemetry';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 const HISTORY_PAGE_SIZE = 10;
@@ -50,6 +54,7 @@ function matchesOrderSearch(order: AdminManagedOrder, query: string) {
     order.orderNumber,
     order.customerName,
     order.customerPhone,
+    order.customerAlternatePhone,
     order.customerAddress,
     order.city,
     order.productName,
@@ -316,6 +321,26 @@ export function Orders() {
     setSelectedOrder(updatedOrder);
   };
 
+  const handleDeleteOrder = async (orderNumber: string) => {
+    const didConfirmDelete = window.confirm(
+      `Delete order ${orderNumber}? This will also remove linked finance, analytics, and subscriber order records.`,
+    );
+
+    if (!didConfirmDelete) {
+      return;
+    }
+
+    await deleteManagedOrder(orderNumber);
+    await Promise.all([
+      deleteFinanceEntriesForOrder(orderNumber),
+      deleteAnalyticsEventsByOrderNumber(orderNumber),
+      deleteSubscriberActivitiesByOrderNumber(orderNumber),
+    ]);
+
+    setOrders(readAdminOrders());
+    setSelectedOrder(null);
+  };
+
   return (
     <div className="space-y-8">
       <div className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff,rgba(239,246,255,0.95))] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] md:p-7">
@@ -557,6 +582,7 @@ export function Orders() {
       <OrderDetailModal
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
+        onDeleteOrder={(orderNumber) => void handleDeleteOrder(orderNumber)}
         onSaveManagement={(orderNumber, update) => void handleSaveManagement(orderNumber, update)}
       />
     </div>

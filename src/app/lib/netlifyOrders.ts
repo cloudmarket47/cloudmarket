@@ -50,6 +50,7 @@ function buildOrderPayload(order: PlacedOrder, context?: OrderSubmissionContext)
       customerName: order.customerName,
       customerEmail: context?.customerEmail ?? '',
       customerPhone: order.customerPhone,
+      customerAlternatePhone: order.customerAlternatePhone,
       customerAddress: order.customerAddress,
       city: order.city,
       quantity: order.quantity,

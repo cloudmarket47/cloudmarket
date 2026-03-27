@@ -31,12 +31,6 @@ export function Solution({ product, onBuyNow }: SolutionProps) {
             </div>
 
             <div className="order-1 lg:order-2 space-y-6">
-              <div className="inline-block">
-                <span className="badge-3d">
-                  {section.badge}
-                </span>
-              </div>
-
               <h2 className="text-3xl md:text-5xl font-bold text-gray-900">
                 {section.title}
               </h2>

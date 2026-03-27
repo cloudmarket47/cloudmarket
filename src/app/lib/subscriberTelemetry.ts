@@ -459,3 +459,32 @@ export function formatSubscriberActivityLabel(activity: SubscriberActivityRecord
       return 'Visited page';
   }
 }
+
+export async function deleteSubscriberActivitiesByOrderNumber(orderNumber: string) {
+  const normalizedOrderNumber = orderNumber.trim();
+
+  if (!normalizedOrderNumber) {
+    return;
+  }
+
+  subscriberActivitiesCache = subscriberActivitiesCache.filter(
+    (activity) => activity.orderNumber !== normalizedOrderNumber,
+  );
+  subscriberActivitiesLoaded = true;
+  emitSubscriberDataChange();
+
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from(getSupabaseTableName('subscriberActivities'))
+    .delete()
+    .eq('order_number', normalizedOrderNumber);
+
+  if (error) {
+    throw new Error(error.message || 'Unable to delete subscriber activity for this order.');
+  }
+}

@@ -169,6 +169,7 @@ export interface Order {
   productName: string;
   customerName: string;
   customerPhone: string;
+  customerAlternatePhone?: string;
   customerAddress: string;
   city: string;
   quantity: number;
@@ -209,6 +210,7 @@ export interface PlacedOrder {
   productName: string;
   customerName: string;
   customerPhone: string;
+  customerAlternatePhone: string;
   customerAddress: string;
   city: string;
   quantity: number;

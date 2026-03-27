@@ -89,6 +89,7 @@ function buildOrderHtml(payload) {
           ['Sets Included', order.setsIncluded || ''],
           ['Quantity', order.quantity || ''],
           ['Phone', order.customerPhone || ''],
+          ['Alternative Phone', order.customerAlternatePhone || ''],
           ['Address', order.customerAddress || ''],
           ['City / Region', order.city || ''],
           ['Delivery Note', order.shortDeliveryMessage || ''],

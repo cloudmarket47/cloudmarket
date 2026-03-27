@@ -24,6 +24,7 @@ interface OrderRow {
   product_name: string;
   customer_name: string;
   customer_phone: string;
+  customer_alt_phone: string;
   customer_address: string;
   city: string;
   quantity: number;
@@ -44,6 +45,7 @@ interface BuildPlacedOrderParams {
   quantity: string;
   customerName: string;
   customerPhone: string;
+  customerAlternatePhone: string;
   customerAddress: string;
   city: string;
   shortDeliveryMessage: string;
@@ -66,6 +68,7 @@ function mapOrderRowToPlacedOrder(row: OrderRow): PlacedOrder {
     productName: row.product_name,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
+    customerAlternatePhone: row.customer_alt_phone,
     customerAddress: row.customer_address,
     city: row.city,
     quantity: row.quantity,
@@ -92,6 +95,7 @@ function toOrderRow(order: PlacedOrder): OrderRow {
     product_name: order.productName,
     customer_name: order.customerName,
     customer_phone: order.customerPhone,
+    customer_alt_phone: order.customerAlternatePhone,
     customer_address: order.customerAddress,
     city: order.city,
     quantity: order.quantity,
@@ -158,6 +162,7 @@ export function createPlacedOrder({
   quantity,
   customerName,
   customerPhone,
+  customerAlternatePhone,
   customerAddress,
   city,
   shortDeliveryMessage,
@@ -181,6 +186,7 @@ export function createPlacedOrder({
     productName: product.name,
     customerName,
     customerPhone,
+    customerAlternatePhone: customerAlternatePhone.trim(),
     customerAddress,
     city,
     quantity: Number(quantity),
@@ -228,6 +234,7 @@ export async function ensurePlacedOrdersLoaded(force = false) {
         product_name,
         customer_name,
         customer_phone,
+        customer_alt_phone,
         customer_address,
         city,
         quantity,
