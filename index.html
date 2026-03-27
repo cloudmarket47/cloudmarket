@@ -13,10 +13,86 @@
       <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png" />
       <link rel="icon" type="image/png" sizes="32x32" href="/pwa/favicon-32.png" />
       <link rel="icon" type="image/png" sizes="64x64" href="/pwa/favicon-64.png" />
+      <style>
+        :root {
+          color-scheme: light;
+        }
+
+        body {
+          margin: 0;
+          background: #f5f8ff;
+        }
+
+        .app-splash {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: grid;
+          place-items: center;
+          background:
+            radial-gradient(110% 90% at 50% 0%, rgba(43, 99, 217, 0.18) 0%, rgba(43, 99, 217, 0) 55%),
+            linear-gradient(160deg, #f9fbff 0%, #f3f8ff 48%, #ecf4ff 100%);
+          opacity: 1;
+          transition: opacity 320ms ease;
+        }
+
+        .app-splash--hidden {
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .app-splash__brand {
+          margin: 0;
+          padding: 0 1.2rem;
+          text-align: center;
+          font-family: "Outfit", "Sora", "Poppins", system-ui, -apple-system, Segoe UI, sans-serif;
+          font-size: clamp(2rem, 8.5vw, 4rem);
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          line-height: 1.02;
+          background: linear-gradient(120deg, #2b63d9 0%, #0b92ff 24%, #2ec5ff 48%, #8fe5ff 64%, #0b92ff 82%, #2b63d9 100%);
+          background-size: 220% 220%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation: splash-gradient-shift 2.8s linear infinite, splash-brand-pulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes splash-gradient-shift {
+          0% {
+            background-position: 0% 50%;
+          }
+          100% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes splash-brand-pulse {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.92;
+          }
+          50% {
+            transform: scale(1.035);
+            opacity: 1;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .app-splash__brand {
+            animation: none;
+          }
+        }
+      </style>
       <title>CloudMarket</title>
     </head>
 
     <body>
+      <div id="app-splash" class="app-splash" aria-live="polite" aria-label="Loading CloudMarket">
+        <h1 class="app-splash__brand">CloudMarket</h1>
+      </div>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
     </body>
