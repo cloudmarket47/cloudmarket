@@ -129,12 +129,13 @@ export function formatConvertedAmount(
   countryCode?: SupportedCountryCode,
 ) {
   const locale = getLocaleConfig(countryCode);
+  const fractionDigits = targetCurrency === 'NGN' ? 0 : 2;
 
   return new Intl.NumberFormat(locale.localeTag, {
     style: 'currency',
     currency: targetCurrency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(amount);
 }
 

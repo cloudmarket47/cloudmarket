@@ -8,12 +8,13 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatCurrency(amount: number, countryCode?: SupportedCountryCode): string {
   const locale = getLocaleConfig(countryCode ?? readCountryCookie());
+  const fractionDigits = locale.currencyCode === 'NGN' ? 0 : 2;
 
   return new Intl.NumberFormat(locale.localeTag, {
     style: 'currency',
     currency: locale.currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(amount);
 }
 

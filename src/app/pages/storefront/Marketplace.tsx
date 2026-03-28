@@ -26,6 +26,7 @@ import { MarketplaceBottomNav, type MarketplaceMobileNavTab } from '../../compon
 import { MarketplaceCategorySheet } from '../../components/storefront/MarketplaceCategorySheet';
 import { MarketplaceProductCard } from '../../components/storefront/MarketplaceProductCard';
 import { MarketplacePromoHero } from '../../components/storefront/MarketplacePromoHero';
+import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import {
   buildMarketplaceTrendingKeywords,
   type CategoryFilterItem,
@@ -158,6 +159,7 @@ export function Marketplace() {
   const [themeMode, setThemeMode] = useState<MarketplaceThemeMode>(() => readMarketplaceTheme());
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [storefrontError, setStorefrontError] = useState<string | null>(null);
   const [flashSaleEndsAt] = useState(() => Date.now() + FLASH_SALE_DURATION_MS);
   const [flashSaleRemaining, setFlashSaleRemaining] = useState(() => flashSaleEndsAt - Date.now());
   const isDarkMode = themeMode === 'dark';
@@ -166,11 +168,23 @@ export function Marketplace() {
     let isActive = true;
 
     const syncProducts = async (force = false) => {
-      const products = await loadStorefrontProducts(force, { includeDrafts: true }).catch(() => []);
-
       if (isActive) {
-        setStorefrontProducts(products);
-        setIsLoadingProducts(false);
+        setStorefrontError(null);
+      }
+
+      try {
+        const products = await loadStorefrontProducts(force, { includeDrafts: true });
+
+        if (isActive) {
+          setStorefrontError(null);
+          setStorefrontProducts(products);
+          setIsLoadingProducts(false);
+        }
+      } catch {
+        if (isActive) {
+          setIsLoadingProducts(false);
+          setStorefrontError('We could not load the homepage catalog from Supabase. Please reload the page and try again.');
+        }
       }
     };
 
@@ -195,18 +209,19 @@ export function Marketplace() {
   }, []);
 
   useEffect(() => {
-    if (!isLoadingProducts) {
+    if (!isLoadingProducts || storefrontError) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
       setIsLoadingProducts(false);
-    }, 5000);
+      setStorefrontError('We could not load the homepage catalog from Supabase. Please reload the page and try again.');
+    }, 12000);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [isLoadingProducts]);
+  }, [isLoadingProducts, storefrontError]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -534,6 +549,15 @@ export function Marketplace() {
       },
     });
   };
+
+  if (storefrontError) {
+    return (
+      <StorefrontReloadNotice
+        title="Unable to load the homepage"
+        message={storefrontError}
+      />
+    );
+  }
 
   if (isLoadingProducts) {
     return (

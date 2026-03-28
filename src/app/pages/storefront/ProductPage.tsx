@@ -29,28 +29,45 @@ import { TopDropOfferAlerts } from '../../components/TopDropOfferAlerts';
 import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { EmailSubscription } from '../../components/storefront/EmailSubscription';
 import { CheckoutSheet } from '../../components/CheckoutSheet';
+import { ProductPageGlassLoader } from '../../components/storefront/ProductPageGlassLoader';
+import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
+import { useBrandingSettings } from '../../lib/branding';
 import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
 import type { Product } from '../../types';
 
 export function ProductPage() {
   const { slug } = useParams();
   const { formatPrice } = useLocale();
+  const branding = useBrandingSettings();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPackageQuantity, setSelectedPackageQuantity] = useState('1');
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [storefrontError, setStorefrontError] = useState<string | null>(null);
   const product = storefrontProducts.find((p) => p.slug === slug);
 
   useEffect(() => {
     let isActive = true;
 
     const syncProducts = async (force = false) => {
-      const products = await loadStorefrontProducts(force, { includeDrafts: true }).catch(() => []);
-
       if (isActive) {
-        setStorefrontProducts(products);
-        setIsLoadingProducts(false);
+        setStorefrontError(null);
+      }
+
+      try {
+        const products = await loadStorefrontProducts(force, { includeDrafts: true });
+
+        if (isActive) {
+          setStorefrontError(null);
+          setStorefrontProducts(products);
+          setIsLoadingProducts(false);
+        }
+      } catch {
+        if (isActive) {
+          setIsLoadingProducts(false);
+          setStorefrontError('We could not load this product page from Supabase. Please reload the page and try again.');
+        }
       }
     };
 
@@ -75,6 +92,21 @@ export function ProductPage() {
   }, []);
 
   useEffect(() => {
+    if (!isLoadingProducts || storefrontError) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsLoadingProducts(false);
+      setStorefrontError('We could not load this product page from Supabase. Please reload the page and try again.');
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoadingProducts, storefrontError]);
+
+  useEffect(() => {
     if (!product) {
       return;
     }
@@ -97,15 +129,18 @@ export function ProductPage() {
     });
   }, [product]);
 
-  if (isLoadingProducts) {
+  if (storefrontError) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Loading product</h1>
-          <p className="text-gray-600">Fetching the live product page from Supabase.</p>
-        </div>
-      </div>
+      <StorefrontReloadNotice
+        title="Unable to load this product page"
+        message={storefrontError}
+        className="min-h-screen bg-white"
+      />
     );
+  }
+
+  if (isLoadingProducts) {
+    return <ProductPageGlassLoader companyName={branding.companyName} />;
   }
 
   if (!product) {

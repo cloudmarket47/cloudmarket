@@ -6,6 +6,7 @@ import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { OrderSlipPreview } from '../../components/order/OrderSlipPreview';
 import { SuccessSticker } from '../../components/order/SuccessSticker';
+import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import { getMarketplaceProductImage, getMarketplaceProductPricing } from '../../components/storefront/marketplaceShared';
 import { useLocale } from '../../context/LocaleContext';
 import { useBrandingSettings } from '../../lib/branding';
@@ -25,10 +26,15 @@ export function ThankYou() {
   const routedOrder = (location.state as { order?: PlacedOrder } | null)?.order ?? null;
   const [order, setOrder] = useState<PlacedOrder | null>(routedOrder);
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
+  const [isLoadingStorefrontProducts, setIsLoadingStorefrontProducts] = useState(true);
+  const [isLoadingOrder, setIsLoadingOrder] = useState(() => !routedOrder && Boolean(orderNumber));
+  const [storefrontError, setStorefrontError] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const slipRef = useRef<HTMLDivElement>(null);
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isSlipPreviewOpen, setIsSlipPreviewOpen] = useState(false);
+  const pageError = orderError ?? storefrontError;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -37,17 +43,27 @@ export function ThankYou() {
   useEffect(() => {
     let isActive = true;
 
-    void loadStorefrontProducts()
-      .then((products) => {
+    const syncProducts = async () => {
+      if (isActive) {
+        setStorefrontError(null);
+      }
+
+      try {
+        const products = await loadStorefrontProducts();
+
         if (isActive) {
           setStorefrontProducts(products);
+          setIsLoadingStorefrontProducts(false);
         }
-      })
-      .catch(() => {
+      } catch {
         if (isActive) {
-          setStorefrontProducts([]);
+          setIsLoadingStorefrontProducts(false);
+          setStorefrontError('We could not load this page from Supabase. Please reload the page and try again.');
         }
-      });
+      }
+    };
+
+    void syncProducts();
 
     return () => {
       isActive = false;
@@ -57,21 +73,71 @@ export function ThankYou() {
   useEffect(() => {
     if (routedOrder) {
       setOrder(routedOrder);
+      setOrderError(null);
+      setIsLoadingOrder(false);
       return;
     }
 
     let isActive = true;
 
-    void getPlacedOrder(orderNumber).then((loadedOrder) => {
-      if (isActive) {
-        setOrder(loadedOrder);
+    const syncOrder = async () => {
+      if (!orderNumber) {
+        if (isActive) {
+          setOrder(null);
+          setOrderError(null);
+          setIsLoadingOrder(false);
+        }
+        return;
       }
-    });
+
+      if (isActive) {
+        setOrderError(null);
+      }
+
+      try {
+        const loadedOrder = await getPlacedOrder(orderNumber);
+
+        if (isActive) {
+          setOrder(loadedOrder);
+          setOrderError(null);
+          setIsLoadingOrder(false);
+        }
+      } catch {
+        if (isActive) {
+          setIsLoadingOrder(false);
+          setOrderError('We could not load your order details from Supabase. Please reload the page and try again.');
+        }
+      }
+    };
+
+    void syncOrder();
 
     return () => {
       isActive = false;
     };
   }, [orderNumber, routedOrder]);
+
+  useEffect(() => {
+    if (pageError || (!isLoadingOrder && !isLoadingStorefrontProducts)) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (isLoadingOrder) {
+        setOrderError('We could not load your order details from Supabase. Please reload the page and try again.');
+        setIsLoadingOrder(false);
+      }
+
+      if (isLoadingStorefrontProducts) {
+        setStorefrontError('We could not load this page from Supabase. Please reload the page and try again.');
+        setIsLoadingStorefrontProducts(false);
+      }
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoadingOrder, isLoadingStorefrontProducts, pageError]);
 
   const orderedProduct = useMemo(() => {
     if (!order) {
@@ -125,6 +191,34 @@ export function ThankYou() {
   const websiteUrl =
     branding.companyWebsite.trim() ||
     (typeof window === 'undefined' ? 'https://cloudmarket.ng' : window.location.origin);
+
+  if (pageError) {
+    return (
+      <StorefrontReloadNotice
+        title="Unable to load this page"
+        message={pageError}
+        className="min-h-screen bg-[#f7f6f2] px-4 py-12"
+      />
+    );
+  }
+
+  if (isLoadingOrder || isLoadingStorefrontProducts) {
+    return (
+      <div className="min-h-screen bg-[#f7f6f2] px-4 py-16">
+        <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center">
+          <div className="w-full rounded-[2.4rem] border border-slate-200 bg-white/92 p-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="mx-auto h-14 w-14 animate-spin rounded-full border-[3px] border-[#2B63D9]/15 border-t-[#2B63D9] border-r-[#0E7C7B]" />
+            <h1 className="mt-6 text-3xl font-black tracking-tight text-slate-950">
+              Loading your order
+            </h1>
+            <p className="mt-3 text-base leading-7 text-slate-600">
+              Please wait while we prepare your order details.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleDownloadImage = async () => {
     if (!slipRef.current || !order) {
