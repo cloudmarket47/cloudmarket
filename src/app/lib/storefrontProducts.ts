@@ -58,6 +58,9 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
     orders: 0,
     theme: mapDraftThemeModeToProductTheme(draft.themeMode),
     displayMode: draft.themeMode,
+    genderTarget: draft.genderTarget,
+    targetAudience: draft.targetAudience,
+    customerIdentityPools: draft.customerIdentityPools,
     createdAt: draft.createdAt,
     sections: {
       hero: {

@@ -1,3 +1,8 @@
+import type {
+  CustomerGenderTarget,
+  CustomerIdentityPools,
+} from '../lib/customerIdentityPools';
+
 // Product data structure
 export interface Product {
   id: string;
@@ -18,6 +23,9 @@ export interface Product {
   orders: number;
   theme: 'classic' | 'modern' | 'bold' | 'premium';
   displayMode?: 'light' | 'dark';
+  genderTarget?: CustomerGenderTarget;
+  targetAudience?: string;
+  customerIdentityPools?: CustomerIdentityPools;
   createdAt: string;
   
   // Product page sections

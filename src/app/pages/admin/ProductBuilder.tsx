@@ -35,12 +35,17 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/design-system/Button';
 import { Card } from '../../components/design-system/Card';
 import { InlineEditableProductCanvas } from '../../components/admin/InlineEditableProductCanvas';
+import { useLocale } from '../../context/LocaleContext';
 import {
   cloneAdminProductDraft,
+  createAutoPricedOfferPackage,
   createEmptyAdminProductDraft,
+  createAdminProductLibraryItem,
   formatDraftCurrency,
   getAdminProductDraftById,
   getCurrencyLabel,
+  normalizeAdminProductDraft,
+  removeMediaAssetFromDraft,
   saveAdminProductDraft,
   type AdminAlertItem,
   type AdminContentCard,
@@ -48,6 +53,7 @@ import {
   type AdminFaqItem,
   type AdminGenderTarget,
   type AdminMediaAsset,
+  type AdminProductLibraryItem,
   type AdminOfferHighlight,
   type AdminOfferPackage,
   type AdminProductDraft,
@@ -61,7 +67,22 @@ import {
   PRODUCT_CATEGORIES,
   resolveProductCategorySelection,
 } from '../../lib/productCategories';
-import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
+import {
+  getCountryCustomerPoolLabel,
+  getDeterministicCustomerNameForIndex,
+} from '../../lib/customerIdentityPools';
+import type { SupportedCountryCode } from '../../lib/localeData';
+import {
+  deleteAssetFromSupabaseStorage,
+  uploadAssetToSupabaseStorageDetailed,
+} from '../../lib/supabaseStorage';
+import {
+  getProductLibraryCountLimit,
+  getProductLibraryLimitLabel,
+  inferProductLibraryKindFromUrl,
+  type ProductLibraryMediaKind,
+  validateProductLibraryUpload,
+} from '../../lib/productMediaLibrary';
 
 const inputClasses =
   'mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/10';
@@ -378,10 +399,6 @@ function getLivePreviewSections(draft: AdminProductDraft): LivePreviewSection[] 
   ];
 }
 
-function fileToDataUrl(file: File) {
-  return uploadAssetToSupabaseStorage(file, 'product-builder');
-}
-
 async function resolveInitialDraft(
   id: string | undefined,
   duplicateFrom: string | null,
@@ -611,11 +628,12 @@ function MediaAssetField({
     setError('');
 
     try {
-      const src = await fileToDataUrl(file);
+      const uploaded = await uploadAssetToSupabaseStorageDetailed(file, 'product-builder');
       onChange({
-        src,
+        src: uploaded.publicUrl,
         source: 'upload',
         kind,
+        storagePath: uploaded.storagePath,
       });
     } catch {
       setError('This file could not be loaded. Try a smaller file or a direct URL.');
@@ -729,6 +747,272 @@ function MediaAssetField({
         </div>
       </div>
     </div>
+  );
+}
+
+function ProductLibraryManager({
+  draft,
+  onChange,
+}: {
+  draft: AdminProductDraft;
+  onChange: (value: AdminProductDraft) => void;
+}) {
+  const [libraryName, setLibraryName] = useState('');
+  const [libraryUrl, setLibraryUrl] = useState('');
+  const [libraryKind, setLibraryKind] = useState<ProductLibraryMediaKind>('image');
+  const [feedback, setFeedback] = useState('');
+  const [isWorking, setIsWorking] = useState(false);
+
+  const imageCount = draft.mediaLibrary.filter((item) => item.asset.kind === 'image').length;
+  const videoCount = draft.mediaLibrary.filter((item) => item.asset.kind === 'video').length;
+
+  const appendLibraryItem = (item: AdminProductLibraryItem) => {
+    onChange({
+      ...draft,
+      mediaLibrary: [...draft.mediaLibrary, item],
+    });
+  };
+
+  const handleUrlAdd = () => {
+    const nextUrl = libraryUrl.trim();
+
+    if (!nextUrl) {
+      setFeedback('Enter a media URL before adding it to the product library.');
+      return;
+    }
+
+    const nextKind = libraryKind || inferProductLibraryKindFromUrl(nextUrl);
+    const existingCount = nextKind === 'image' ? imageCount : videoCount;
+
+    if (existingCount >= getProductLibraryCountLimit(nextKind)) {
+      setFeedback(
+        `This product library already reached the ${getProductLibraryCountLimit(nextKind)} ${nextKind} limit.`,
+      );
+      return;
+    }
+
+    appendLibraryItem(
+      createAdminProductLibraryItem(
+        libraryName.trim() || `Library ${nextKind} ${existingCount + 1}`,
+        {
+          src: nextUrl,
+          source: 'url',
+          kind: nextKind,
+          storagePath: undefined,
+        },
+      ),
+    );
+    setLibraryName('');
+    setLibraryUrl('');
+    setFeedback('Media URL added to the product library.');
+  };
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const nextKind: ProductLibraryMediaKind = file.type.startsWith('video/') ? 'video' : 'image';
+    const existingCount = nextKind === 'image' ? imageCount : videoCount;
+    const validationError = validateProductLibraryUpload({
+      file,
+      kind: nextKind,
+      existingCount,
+    });
+
+    if (validationError) {
+      setFeedback(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    setIsWorking(true);
+    setFeedback('');
+
+    try {
+      const uploaded = await uploadAssetToSupabaseStorageDetailed(
+        file,
+        `product-library/${draft.slug || draft.id}`,
+      );
+
+      appendLibraryItem(
+        createAdminProductLibraryItem(
+          libraryName.trim() || file.name || `Library ${nextKind} ${existingCount + 1}`,
+          {
+            src: uploaded.publicUrl,
+            source: 'upload',
+            kind: nextKind,
+            storagePath: uploaded.storagePath,
+          },
+        ),
+      );
+      setLibraryName('');
+      setFeedback('Media uploaded into the product library.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Upload failed.');
+    } finally {
+      setIsWorking(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleDelete = async (item: AdminProductLibraryItem) => {
+    setIsWorking(true);
+    setFeedback('');
+
+    try {
+      if (item.asset.source === 'upload') {
+        await deleteAssetFromSupabaseStorage(item.asset.storagePath || item.asset.src);
+      }
+
+      onChange(removeMediaAssetFromDraft(draft, item.asset));
+      setFeedback('Media deleted from the library and removed from this product draft.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Unable to delete this media file.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  return (
+    <Card className="rounded-[2rem] border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef7f6] text-[#0E7C7B]">
+              <Layers3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Product Library</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Upload reusable page media once, then pull it into image and video placeholders across this product page.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[1.5rem] border border-gray-200 bg-gray-50 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Images</p>
+            <p className="mt-2 text-sm font-semibold text-gray-900">
+              {imageCount}/{getProductLibraryCountLimit('image')}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{getProductLibraryLimitLabel('image')}</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-gray-200 bg-gray-50 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Videos</p>
+            <p className="mt-2 text-sm font-semibold text-gray-900">
+              {videoCount}/{getProductLibraryCountLimit('video')}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{getProductLibraryLimitLabel('video')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[1.75rem] border border-gray-200 bg-gray-50/80 p-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Media label"
+              value={libraryName}
+              onChange={setLibraryName}
+              placeholder="Hero close-up shot"
+              hint="Optional. Helps the admin identify this file quickly inside the library."
+            />
+            <SelectField
+              label="Media type"
+              value={libraryKind}
+              options={[
+                { value: 'image', label: 'Image' },
+                { value: 'video', label: 'Video' },
+              ]}
+              onChange={setLibraryKind}
+              hint="Use this when adding a direct URL into the library."
+            />
+          </div>
+
+          <div className="mt-5">
+            <TextField
+              label="Direct media URL"
+              value={libraryUrl}
+              onChange={setLibraryUrl}
+              placeholder="https://example.com/product-demo.mp4"
+              hint="Adds an external image or video link directly into this product library."
+            />
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleUrlAdd}
+              disabled={isWorking}
+              className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0a5f5e] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              Add URL to Library
+            </button>
+
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50">
+              <Upload className="h-4 w-4" />
+              {isWorking ? 'Uploading...' : 'Upload from Device'}
+              <input
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleUpload}
+              />
+            </label>
+          </div>
+
+          {feedback ? <p className="mt-4 text-sm font-medium text-[#0E7C7B]">{feedback}</p> : null}
+        </div>
+
+        <div className="rounded-[1.75rem] border border-gray-200 bg-white p-5">
+          <p className="text-sm font-semibold text-gray-900">Library rules</p>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
+            <p>Images: maximum 30 items, 5MB each.</p>
+            <p>Videos: maximum 3 items, 15MB each.</p>
+            <p>Deleting an uploaded file removes it from this draft and permanently deletes it from Supabase Storage.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {draft.mediaLibrary.map((item) => (
+          <div key={item.id} className="overflow-hidden rounded-[1.6rem] border border-gray-200 bg-white shadow-sm">
+            <div className="aspect-[4/3] overflow-hidden bg-gray-100">
+              {item.asset.kind === 'image' ? (
+                <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
+              ) : (
+                <video src={item.asset.src} className="h-full w-full object-cover" controls />
+              )}
+            </div>
+            <div className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900">{item.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gray-500">
+                    {item.asset.kind} • {item.asset.source}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(item)}
+                  disabled={isWorking}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={`Delete ${item.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="truncate text-xs text-gray-500">{item.asset.src}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -1205,15 +1489,7 @@ function PackageEditor({
           onClick={() =>
             onChange([
               ...packages,
-              {
-                title: '',
-                price: 0,
-                oldPrice: 0,
-                description: '',
-                features: [''],
-                isBestValue: false,
-                image: { src: '', source: 'url', kind: 'image' },
-              },
+              createAutoPricedOfferPackage(packages),
             ])
           }
           className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#0E7C7B] ring-1 ring-inset ring-[#0E7C7B]/15 transition hover:bg-[#eef7f6]"
@@ -1302,13 +1578,33 @@ function PackageEditor({
 function ReviewEditor({
   reviews,
   onChange,
+  customerIdentityPools,
+  genderTarget,
+  previewCountryCode,
 }: {
   reviews: AdminReviewItem[];
   onChange: (items: AdminReviewItem[]) => void;
+  customerIdentityPools: AdminProductDraft['customerIdentityPools'];
+  genderTarget: AdminProductDraft['genderTarget'];
+  previewCountryCode: SupportedCountryCode;
 }) {
   const updateItem = (index: number, patch: Partial<AdminReviewItem>) => {
     onChange(reviews.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   };
+  const reviewNames = useMemo(
+    () =>
+      reviews.map((review, index) =>
+        getDeterministicCustomerNameForIndex({
+          customerIdentityPools,
+          countryCode: previewCountryCode,
+          genderTarget,
+          index,
+          seed: `${review.text}-${review.image.src}`,
+          fallbackName: review.name || 'Verified Customer',
+        }),
+      ),
+    [customerIdentityPools, genderTarget, previewCountryCode, reviews],
+  );
 
   return (
     <div className="space-y-4">
@@ -1338,19 +1634,16 @@ function ReviewEditor({
       <div className="space-y-4">
         {reviews.map((review, index) => (
           <div key={`review-${index}`} className="rounded-[1.75rem] border border-gray-200 bg-white p-4">
+            <div className="mb-4 rounded-[1.25rem] border border-[#0E7C7B]/10 bg-[#eef7f6] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0E7C7B]">
+                Auto customer identity
+              </p>
+              <p className="mt-2 text-sm font-semibold text-gray-900">{reviewNames[index] ?? review.name}</p>
+              <p className="mt-1 text-xs text-gray-500">
+                This name auto-switches for {getCountryCustomerPoolLabel(previewCountryCode)} and follows the page gender target.
+              </p>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField
-                label="Customer name"
-                value={review.name}
-                onChange={(value) => updateItem(index, { name: value })}
-                placeholder="Adaobi Okafor"
-              />
-              <TextField
-                label="Location"
-                value={review.location}
-                onChange={(value) => updateItem(index, { location: value })}
-                placeholder="Lagos"
-              />
               <TextField
                 label="Rating"
                 type="number"
@@ -1687,6 +1980,7 @@ function SectionPreviewContent({
   draft: AdminProductDraft;
   sectionId: PreviewSectionId;
 }) {
+  const { countryCode } = useLocale();
   const isDark = draft.themeMode === 'dark';
   const shellClass = isDark ? 'bg-slate-950 text-white' : 'bg-[#f8f8f8] text-gray-900';
   const cardClass = isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white';
@@ -1911,7 +2205,11 @@ function SectionPreviewContent({
       );
 
     case 'testimonials':
-      return review ? (
+      if (!review) {
+        return null;
+      }
+
+      return (
         <div className={`overflow-hidden rounded-[1.75rem] border ${cardClass}`}>
           <div className="relative">
             {hasMedia(review.image) ? (
@@ -1925,13 +2223,24 @@ function SectionPreviewContent({
               </div>
               <p className="mt-3 text-sm leading-6">{review.text}</p>
               <div className="mt-4">
-                <p className="text-sm font-semibold">{review.name}</p>
-                <p className="text-xs text-white/70">{review.location}</p>
+                <p className="text-sm font-semibold">
+                  {getDeterministicCustomerNameForIndex({
+                    customerIdentityPools: draft.customerIdentityPools,
+                    countryCode,
+                    genderTarget: draft.genderTarget,
+                    index: draft.sections.testimonials.reviews.indexOf(review),
+                    seed: `${review.text}-${review.image.src}`,
+                    fallbackName: review.name || 'Verified Customer',
+                  })}
+                </p>
+                <p className="text-xs text-white/70">
+                  Auto-switched for {getCountryCustomerPoolLabel(countryCode)}
+                </p>
               </div>
             </div>
           </div>
         </div>
-      ) : null;
+      );
 
     case 'subscription':
       return (
@@ -2286,6 +2595,7 @@ function ElementEditorModal({
   draft,
   setTopLevel,
   patchSection,
+  onChangeDraft,
   handlePageNameChange,
   handleProductNameChange,
   handleCategoryChange,
@@ -2302,6 +2612,7 @@ function ElementEditorModal({
   draft: AdminProductDraft;
   setTopLevel: SetTopLevelFn;
   patchSection: PatchSectionFn;
+  onChangeDraft: (value: AdminProductDraft) => void;
   handlePageNameChange: (value: string) => void;
   handleProductNameChange: (value: string) => void;
   handleCategoryChange: (categoryId: string) => void;
@@ -2385,6 +2696,7 @@ function ElementEditorModal({
                   handleProductNameChange={handleProductNameChange}
                   handleCategoryChange={handleCategoryChange}
                   handleSubcategoryChange={handleSubcategoryChange}
+                  onChangeDraft={onChangeDraft}
                 />
               ) : isStorySection ? (
                 <StorySections draft={draft} patchSection={patchSection} onlySectionId={target} />
@@ -2495,6 +2807,7 @@ function CoreSettingsSections({
   handleProductNameChange,
   handleCategoryChange,
   handleSubcategoryChange,
+  onChangeDraft,
 }: {
   draft: AdminProductDraft;
   setTopLevel: SetTopLevelFn;
@@ -2502,6 +2815,7 @@ function CoreSettingsSections({
   handleProductNameChange: (value: string) => void;
   handleCategoryChange: (categoryId: string) => void;
   handleSubcategoryChange: (subcategorySlug: string) => void;
+  onChangeDraft: (value: AdminProductDraft) => void;
 }) {
   const subcategoryOptions = getProductSubcategories(draft.categoryId);
 
@@ -2624,6 +2938,11 @@ function CoreSettingsSections({
         />
         </div>
       </Card>
+
+      <ProductLibraryManager
+        draft={draft}
+        onChange={(value) => onChangeDraft(normalizeAdminProductDraft(value))}
+      />
 
       <Card className="rounded-[2rem] border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -3027,6 +3346,8 @@ function CommerceSections({
   patchSection: PatchSectionFn;
   onlySectionId?: PreviewSectionId;
 }) {
+  const { countryCode } = useLocale();
+
   return (
     <>
       {(!onlySectionId || onlySectionId === 'showcase') ? (
@@ -3081,6 +3402,9 @@ function CommerceSections({
         <ReviewEditor
           reviews={draft.sections.testimonials.reviews}
           onChange={(reviews) => patchSection('testimonials', { reviews })}
+          customerIdentityPools={draft.customerIdentityPools}
+          genderTarget={draft.genderTarget}
+          previewCountryCode={countryCode}
         />
       </SectionCard>
       ) : null}
@@ -3370,33 +3694,29 @@ export function ProductBuilder() {
     return null;
   }
 
+  const updateDraft = (updater: (current: AdminProductDraft) => AdminProductDraft) => {
+    setDraft((current) => (current ? normalizeAdminProductDraft(updater(current)) : current));
+  };
+
   const setTopLevel: SetTopLevelFn = (key, value) => {
-    setDraft((current) => (current ? { ...current, [key]: value } : current));
+    updateDraft((current) => ({ ...current, [key]: value }));
   };
 
   const patchSection: PatchSectionFn = (key, patch) => {
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            sections: {
-              ...current.sections,
-              [key]: {
-                ...current.sections[key],
-                ...patch,
-              },
-            },
-          }
-        : current,
-    );
+    updateDraft((current) => ({
+      ...current,
+      sections: {
+        ...current.sections,
+        [key]: {
+          ...current.sections[key],
+          ...patch,
+        },
+      },
+    }));
   };
 
   const handlePageNameChange = (value: string) => {
-    setDraft((current) => {
-      if (!current) {
-        return current;
-      }
-
+    updateDraft((current) => {
       const currentDerivedSlug = normalizeSlug(current.pageName || current.productName);
       const nextSlug =
         !current.slug || current.slug === currentDerivedSlug
@@ -3412,11 +3732,7 @@ export function ProductBuilder() {
   };
 
   const handleProductNameChange = (value: string) => {
-    setDraft((current) => {
-      if (!current) {
-        return current;
-      }
-
+    updateDraft((current) => {
       const currentDerivedSlug = normalizeSlug(current.pageName || current.productName);
       const nextSlug =
         !current.slug || current.slug === currentDerivedSlug
@@ -3469,11 +3785,7 @@ export function ProductBuilder() {
   };
 
   const handleCategoryChange = (categoryId: string) => {
-    setDraft((current) => {
-      if (!current) {
-        return current;
-      }
-
+    updateDraft((current) => {
       const selection = resolveProductCategorySelection({ categoryId });
 
       return {
@@ -3488,11 +3800,7 @@ export function ProductBuilder() {
   };
 
   const handleSubcategoryChange = (subcategorySlug: string) => {
-    setDraft((current) => {
-      if (!current) {
-        return current;
-      }
-
+    updateDraft((current) => {
       const selection = resolveProductCategorySelection({
         categoryId: current.categoryId,
         subcategorySlug,
@@ -3764,9 +4072,7 @@ export function ProductBuilder() {
           pageData={draft}
           deviceView={deviceView}
           readOnly={previewMode}
-          onChange={(updater) =>
-            setDraft((current) => (current ? updater(current) : current))
-          }
+          onChange={updateDraft}
         />
       </div>
 
@@ -3775,6 +4081,7 @@ export function ProductBuilder() {
         draft={draft}
         setTopLevel={setTopLevel}
         patchSection={patchSection}
+        onChangeDraft={(value) => setDraft(normalizeAdminProductDraft(value))}
         handlePageNameChange={handlePageNameChange}
         handleProductNameChange={handleProductNameChange}
         handleCategoryChange={handleCategoryChange}

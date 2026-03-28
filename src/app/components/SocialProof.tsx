@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Star } from 'lucide-react';
+import { useLocale } from '../context/LocaleContext';
+import { getDeterministicCustomerNameForIndex } from '../lib/customerIdentityPools';
 import type { Product } from '../types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ScrollReveal } from './animations/ScrollReveal';
@@ -70,9 +72,23 @@ function AnimatedStat({
 }
 
 export function SocialProof({ product }: SocialProofProps) {
+  const { countryCode } = useLocale();
   const reviews = product.sections.testimonials.reviews;
   const statsRef = useRef<HTMLDivElement | null>(null);
   const [shouldAnimateStats, setShouldAnimateStats] = useState(false);
+  const resolvedReviews = useMemo(() => {
+    return reviews.map((review, index) => ({
+      ...review,
+      displayName: getDeterministicCustomerNameForIndex({
+        customerIdentityPools: product.customerIdentityPools,
+        countryCode,
+        genderTarget: product.genderTarget,
+        index,
+        seed: `${product.id}-${product.slug}-${review.text}`,
+        fallbackName: review.name || 'Verified Customer',
+      }),
+    }));
+  }, [countryCode, product.customerIdentityPools, product.genderTarget, product.id, product.slug, reviews]);
 
   useEffect(() => {
     const targetNode = statsRef.current;
@@ -114,14 +130,14 @@ export function SocialProof({ product }: SocialProofProps) {
           </div>
 
           <StaggeredReveal className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8" staggerDelay={120}>
-            {reviews.map((review, index) => (
+            {resolvedReviews.map((review, index) => (
               <article
-                key={`${review.name}-${index}`}
+                key={`${review.displayName}-${index}`}
                 className="stagger-item relative min-h-[420px] overflow-hidden rounded-[2.25rem] shadow-[0_22px_50px_rgba(15,23,42,0.16)]"
               >
                 <ImageWithFallback
                   src={review.image}
-                  alt={review.name}
+                  alt={review.displayName}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
 
@@ -146,13 +162,13 @@ export function SocialProof({ product }: SocialProofProps) {
                     <div className="h-12 w-12 overflow-hidden rounded-full border border-white/35 shadow-md">
                       <ImageWithFallback
                         src={review.avatar ?? review.image}
-                        alt={`${review.name} avatar`}
+                        alt={`${review.displayName} avatar`}
                         className="h-full w-full object-cover"
                       />
                     </div>
 
                     <div>
-                      <p className="font-semibold text-white">{review.name}</p>
+                      <p className="font-semibold text-white">{review.displayName}</p>
                     </div>
                   </div>
                 </div>

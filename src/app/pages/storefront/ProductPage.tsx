@@ -226,6 +226,8 @@ export function ProductPage() {
         items={product.sections.alerts.items}
         currentProductName={product.name}
         productNames={socialProofProductNames}
+        genderTarget={product.genderTarget}
+        customerIdentityPools={product.customerIdentityPools}
       />
       <main>
         {product.sections.hero.visible && <Hero product={product} onBuyNow={openCheckout} />}
@@ -239,7 +241,9 @@ export function ProductPage() {
           />
         )}
         {product.sections.headline.visible && <ProductHeadlineTextSection product={product} />}
-        {product.sections.featureMarquee.visible && <ProductFeaturesMarquee product={product} />}
+        {product.sections.featureMarquee.visible && (
+          <ProductFeaturesMarquee product={product} onBuyNow={openCheckout} />
+        )}
         {product.sections.problem.visible && <Problem product={product} />}
         {product.sections.solution.visible && <Solution product={product} onBuyNow={openCheckout} />}
         {product.sections.features.visible && <Features product={product} />}

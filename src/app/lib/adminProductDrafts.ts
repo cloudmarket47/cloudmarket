@@ -1,6 +1,12 @@
 import type { Product } from '../types';
 import { applyAlertPreset, ALERT_PRESETS } from './alertPresets';
 import {
+  createDefaultCustomerIdentityPools,
+  normalizeCustomerIdentityPools,
+  type CustomerGenderTarget,
+  type CustomerIdentityPools,
+} from './customerIdentityPools';
+import {
   DEFAULT_PRODUCT_CATEGORY_SELECTION,
   resolveProductCategorySelection,
 } from './productCategories';
@@ -10,7 +16,7 @@ export const ADMIN_PRODUCT_DRAFTS_CHANGE_EVENT = 'cloudmarket-admin-product-draf
 
 export type AdminThemeMode = 'light' | 'dark';
 export type AdminCurrency = 'NGN' | 'USD' | 'GHS' | 'KES' | 'ZAR';
-export type AdminGenderTarget = 'all' | 'men' | 'women' | 'unisex' | 'kids';
+export type AdminGenderTarget = CustomerGenderTarget;
 export type AdminAssetKind = 'image' | 'video';
 export type AdminVideoAspectRatio = '16:9' | '4:5' | '1:1' | '3:4';
 
@@ -18,6 +24,13 @@ export interface AdminMediaAsset {
   src: string;
   source: 'url' | 'upload';
   kind: AdminAssetKind;
+  storagePath?: string;
+}
+
+export interface AdminProductLibraryItem {
+  id: string;
+  name: string;
+  asset: AdminMediaAsset;
 }
 
 export interface AdminContentCard {
@@ -80,6 +93,8 @@ export interface AdminProductDraft {
   currency: AdminCurrency;
   themeMode: AdminThemeMode;
   status: 'draft' | 'published';
+  customerIdentityPools: CustomerIdentityPools;
+  mediaLibrary: AdminProductLibraryItem[];
   createdAt: string;
   updatedAt: string;
   shortDescription: string;
@@ -255,6 +270,7 @@ function asset(src = '', kind: AdminAssetKind = 'image'): AdminMediaAsset {
     src,
     source: 'url',
     kind,
+    storagePath: undefined,
   };
 }
 
@@ -264,12 +280,134 @@ function normalizeMediaAsset(value: AdminMediaAsset | undefined, kind: AdminAsse
         src: value.src ?? '',
         source: value.source ?? 'url',
         kind: value.kind ?? kind,
+        storagePath: value.storagePath?.trim() || undefined,
       }
     : asset('', kind);
 }
 
 function normalizeVideoAspectRatio(value: AdminVideoAspectRatio | undefined) {
   return value ?? '16:9';
+}
+
+function normalizeLibraryItemName(value: string | undefined, fallback: string) {
+  const normalizedValue = value?.trim();
+  return normalizedValue && normalizedValue.length > 0 ? normalizedValue : fallback;
+}
+
+function normalizeMediaLibraryItem(
+  item: AdminProductLibraryItem | undefined,
+  fallbackName: string,
+): AdminProductLibraryItem {
+  return {
+    id: item?.id?.trim() || createId('library'),
+    name: normalizeLibraryItemName(item?.name, fallbackName),
+    asset: normalizeMediaAsset(item?.asset, item?.asset?.kind ?? 'image'),
+  };
+}
+
+function appendLibraryItem(
+  collection: AdminProductLibraryItem[],
+  name: string,
+  mediaAsset: AdminMediaAsset | undefined,
+) {
+  if (!mediaAsset || !mediaAsset.src.trim()) {
+    return;
+  }
+
+  collection.push(
+    normalizeMediaLibraryItem(
+      {
+        id: '',
+        name,
+        asset: mediaAsset,
+      },
+      name,
+    ),
+  );
+}
+
+function collectDraftMediaLibraryItems(draft: AdminProductDraft) {
+  const collected: AdminProductLibraryItem[] = [];
+
+  appendLibraryItem(collected, 'Primary Cover Image', draft.coverImage);
+  appendLibraryItem(collected, 'Hero Primary Image', draft.sections.hero.image);
+  draft.sections.hero.images.forEach((item, index) =>
+    appendLibraryItem(collected, `Hero Slide ${index + 1}`, item),
+  );
+  appendLibraryItem(collected, 'See in Action Poster', draft.sections.seeInAction.poster);
+  appendLibraryItem(collected, 'See in Action Video', draft.sections.seeInAction.video);
+  draft.sections.featureMarquee.images.forEach((item, index) =>
+    appendLibraryItem(collected, `Feature Marquee Image ${index + 1}`, item),
+  );
+  appendLibraryItem(collected, 'Solution Image', draft.sections.solution.image);
+  draft.sections.showcase.images.forEach((item, index) =>
+    appendLibraryItem(collected, `Showcase Image ${index + 1}`, item),
+  );
+  draft.sections.testimonials.reviews.forEach((review, index) => {
+    appendLibraryItem(collected, `Review Background ${index + 1}`, review.image);
+    appendLibraryItem(collected, `Review Avatar ${index + 1}`, review.avatar);
+  });
+  appendLibraryItem(collected, 'Footer Video Poster', draft.sections.footerVideo.poster);
+  appendLibraryItem(collected, 'Footer Video File', draft.sections.footerVideo.video);
+  draft.sections.offer.packages.forEach((item, index) =>
+    appendLibraryItem(collected, `Package Image ${index + 1}`, item.image),
+  );
+
+  return collected;
+}
+
+function mergeMediaLibraryItems(
+  existingItems: AdminProductLibraryItem[],
+  collectedItems: AdminProductLibraryItem[],
+) {
+  const merged: AdminProductLibraryItem[] = [];
+  const seen = new Set<string>();
+
+  const registerItem = (item: AdminProductLibraryItem, fallbackName: string) => {
+    const normalizedItem = normalizeMediaLibraryItem(item, fallbackName);
+    const keys = [
+      normalizedItem.asset.storagePath?.trim().toLowerCase(),
+      normalizedItem.asset.src.trim().toLowerCase(),
+    ].filter((value): value is string => Boolean(value));
+
+    if (keys.length === 0 || keys.some((key) => seen.has(key))) {
+      return;
+    }
+
+    keys.forEach((key) => seen.add(key));
+    merged.push(normalizedItem);
+  };
+
+  existingItems.forEach((item) => registerItem(item, item.name || 'Library Asset'));
+  collectedItems.forEach((item) => registerItem(item, item.name || 'Page Asset'));
+
+  return merged;
+}
+
+function mediaAssetMatches(
+  left: AdminMediaAsset | undefined,
+  right: AdminMediaAsset | undefined,
+) {
+  if (!left || !right) {
+    return false;
+  }
+
+  const leftStoragePath = left.storagePath?.trim();
+  const rightStoragePath = right.storagePath?.trim();
+
+  if (leftStoragePath && rightStoragePath && leftStoragePath === rightStoragePath) {
+    return true;
+  }
+
+  return left.src.trim().length > 0 && left.src.trim() === right.src.trim();
+}
+
+function clearMatchingMediaAsset(
+  mediaAsset: AdminMediaAsset | undefined,
+  targetAsset: AdminMediaAsset,
+  kind: AdminAssetKind,
+) {
+  return mediaAssetMatches(mediaAsset, targetAsset) ? asset('', kind) : normalizeMediaAsset(mediaAsset, kind);
 }
 
 function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
@@ -285,8 +423,7 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
     draft.sections.hero.images && draft.sections.hero.images.length > 0
       ? draft.sections.hero.images
       : [heroImage];
-
-  return {
+  const normalizedDraft: AdminProductDraft = {
     ...draft,
     category: categorySelection.category.name,
     categoryId: categorySelection.category.id,
@@ -295,6 +432,7 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
     subcategorySlug: categorySelection.subcategory.slug,
     purchaseCost: typeof draft.purchaseCost === 'number' ? Math.max(0, draft.purchaseCost) : 0,
     coverImage: normalizeMediaAsset(draft.coverImage, 'image'),
+    customerIdentityPools: normalizeCustomerIdentityPools(draft.customerIdentityPools),
     sections: {
       ...draft.sections,
       hero: {
@@ -363,6 +501,13 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
       },
     },
   };
+
+  normalizedDraft.mediaLibrary = mergeMediaLibraryItems(
+    (draft.mediaLibrary ?? []).map((item) => normalizeMediaLibraryItem(item, item.name || 'Library Asset')),
+    collectDraftMediaLibraryItems(normalizedDraft),
+  );
+
+  return normalizedDraft;
 }
 
 function mapProductPageRowToDraft(row: ProductPageRow): AdminProductDraft {
@@ -384,6 +529,7 @@ function mapProductPageRowToDraft(row: ProductPageRow): AdminProductDraft {
     currency: row.currency || baseDraft.currency,
     themeMode: row.theme_mode || baseDraft.themeMode,
     status: row.status || baseDraft.status,
+    customerIdentityPools: normalizeCustomerIdentityPools(baseDraft.customerIdentityPools),
     shortDescription: row.short_description || baseDraft.shortDescription,
     basePrice: typeof row.base_price === 'number' ? row.base_price : baseDraft.basePrice,
     purchaseCost:
@@ -465,6 +611,8 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
     currency: 'NGN',
     themeMode: 'light',
     status: 'draft',
+    customerIdentityPools: createDefaultCustomerIdentityPools(),
+    mediaLibrary: [],
     createdAt: now,
     updatedAt: now,
     shortDescription: 'Short product summary for cards, previews and quick admin review.',
@@ -650,6 +798,111 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       },
     },
   };
+}
+
+export function createAdminProductLibraryItem(
+  name: string,
+  mediaAsset: AdminMediaAsset,
+): AdminProductLibraryItem {
+  return normalizeMediaLibraryItem(
+    {
+      id: createId('library'),
+      name,
+      asset: mediaAsset,
+    },
+    name,
+  );
+}
+
+export function createAutoPricedOfferPackage(
+  packages: AdminOfferPackage[],
+  multiplier = packages.length + 1,
+): AdminOfferPackage {
+  const safeMultiplier = Math.max(1, multiplier);
+  const basePackage = packages[0];
+  const basePrice = Math.max(0, basePackage?.price ?? 0);
+  const baseOldPrice = Math.max(basePrice, basePackage?.oldPrice ?? 0);
+  const nextFeatures = basePackage?.features.filter((feature) => feature.trim().length > 0) ?? [];
+
+  return {
+    title: `Package ${safeMultiplier}`,
+    price: basePrice * safeMultiplier,
+    oldPrice: baseOldPrice * safeMultiplier,
+    description: basePackage?.description ?? '',
+    features: nextFeatures.length > 0 ? nextFeatures : [''],
+    isBestValue: false,
+    image: asset('', 'image'),
+  };
+}
+
+export function appendMediaLibraryItemToDraft(
+  draft: AdminProductDraft,
+  item: AdminProductLibraryItem,
+) {
+  return normalizeDraft({
+    ...draft,
+    mediaLibrary: [...draft.mediaLibrary, item],
+  });
+}
+
+export function removeMediaAssetFromDraft(
+  draft: AdminProductDraft,
+  targetAsset: AdminMediaAsset,
+) {
+  return normalizeDraft({
+    ...draft,
+    coverImage: clearMatchingMediaAsset(draft.coverImage, targetAsset, 'image'),
+    mediaLibrary: draft.mediaLibrary.filter((item) => !mediaAssetMatches(item.asset, targetAsset)),
+    sections: {
+      ...draft.sections,
+      hero: {
+        ...draft.sections.hero,
+        image: clearMatchingMediaAsset(draft.sections.hero.image, targetAsset, 'image'),
+        images: draft.sections.hero.images.filter((item) => !mediaAssetMatches(item, targetAsset)),
+      },
+      seeInAction: {
+        ...draft.sections.seeInAction,
+        poster: clearMatchingMediaAsset(draft.sections.seeInAction.poster, targetAsset, 'image'),
+        video: clearMatchingMediaAsset(draft.sections.seeInAction.video, targetAsset, 'video'),
+      },
+      featureMarquee: {
+        ...draft.sections.featureMarquee,
+        images: draft.sections.featureMarquee.images.filter((item) => !mediaAssetMatches(item, targetAsset)),
+      },
+      solution: {
+        ...draft.sections.solution,
+        image: clearMatchingMediaAsset(draft.sections.solution.image, targetAsset, 'image'),
+      },
+      showcase: {
+        ...draft.sections.showcase,
+        images: draft.sections.showcase.images.filter((item) => !mediaAssetMatches(item, targetAsset)),
+      },
+      testimonials: {
+        ...draft.sections.testimonials,
+        reviews: draft.sections.testimonials.reviews.map((review) => ({
+          ...review,
+          image: clearMatchingMediaAsset(review.image, targetAsset, 'image'),
+          avatar: clearMatchingMediaAsset(review.avatar, targetAsset, 'image'),
+        })),
+      },
+      footerVideo: {
+        ...draft.sections.footerVideo,
+        poster: clearMatchingMediaAsset(draft.sections.footerVideo.poster, targetAsset, 'image'),
+        video: clearMatchingMediaAsset(draft.sections.footerVideo.video, targetAsset, 'video'),
+      },
+      offer: {
+        ...draft.sections.offer,
+        packages: draft.sections.offer.packages.map((item) => ({
+          ...item,
+          image: clearMatchingMediaAsset(item.image, targetAsset, 'image'),
+        })),
+      },
+    },
+  });
+}
+
+export function normalizeAdminProductDraft(draft: AdminProductDraft) {
+  return normalizeDraft(draft);
 }
 
 export function createAdminProductDraftFromProduct(
@@ -848,8 +1101,10 @@ export function createAdminProductDraftFromProduct(
   draft.createdAt = now;
   draft.updatedAt = now;
   draft.themeMode = 'light';
-  draft.targetAudience = 'Nigeria';
   draft.currency = product.currencyCode ?? 'NGN';
+  draft.genderTarget = product.genderTarget ?? 'all';
+  draft.targetAudience = product.targetAudience ?? 'Nigeria';
+  draft.customerIdentityPools = normalizeCustomerIdentityPools(product.customerIdentityPools);
 
   if (options?.duplicate) {
     draft.id = createId('draft');
@@ -857,7 +1112,7 @@ export function createAdminProductDraftFromProduct(
     draft.pageName = `${product.name} Copy`;
   }
 
-  return draft;
+  return normalizeDraft(draft);
 }
 
 export function cloneAdminProductDraft(draft: AdminProductDraft): AdminProductDraft {

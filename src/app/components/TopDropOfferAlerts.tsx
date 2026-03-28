@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ShoppingBag, Tag } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
+import {
+  getCustomerNamePoolForContext,
+  LOCATION_POOLS,
+  type CustomerGenderTarget,
+  type CustomerIdentityPools,
+} from '../lib/customerIdentityPools';
 import type { SupportedCountryCode } from '../lib/localeData';
 import type { Product } from '../types';
 
@@ -10,6 +16,8 @@ interface TopDropOfferAlertsProps {
   items?: Product['sections']['alerts']['items'];
   currentProductName: string;
   productNames?: string[];
+  genderTarget?: CustomerGenderTarget;
+  customerIdentityPools?: CustomerIdentityPools;
 }
 
 type AlertKind = 'offer' | 'stock' | 'order';
@@ -34,24 +42,6 @@ interface ActiveAlert {
 interface AlertCandidate extends ActiveAlert {
   signature: string;
 }
-
-const LOCATION_POOLS: Record<SupportedCountryCode | 'DEFAULT', string[]> = {
-  NG: ['Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Enugu'],
-  GH: ['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Tema'],
-  US: ['New York', 'Houston', 'Los Angeles', 'Atlanta', 'Miami', 'Chicago'],
-  KE: ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru'],
-  ZA: ['Johannesburg', 'Cape Town', 'Durban', 'Pretoria'],
-  DEFAULT: ['London', 'Dubai', 'Toronto', 'Berlin'],
-};
-
-const NAME_POOLS: Record<SupportedCountryCode | 'DEFAULT', string[]> = {
-  NG: ['Aisha', 'Chinedu', 'Tolu', 'Amaka', 'Ibrahim', 'Kemi', 'Uche', 'Sade'],
-  GH: ['Kwame', 'Abena', 'Kofi', 'Akosua', 'Kojo', 'Efua', 'Nana', 'Ama'],
-  US: ['Mia', 'Jordan', 'Noah', 'Sophia', 'Marcus', 'Ava', 'Taylor', 'Olivia'],
-  KE: ['Amina', 'Brian', 'Njeri', 'Otieno', 'Joy', 'Kevin', 'Wanjiku', 'Achieng'],
-  ZA: ['Thabo', 'Lerato', 'Naledi', 'Anele', 'Kabelo', 'Ayanda', 'Zanele', 'Sibusiso'],
-  DEFAULT: ['Maya', 'Daniel', 'Layla', 'Lucas', 'Emma', 'Ethan', 'Sofia', 'Leo'],
-};
 
 const ALERT_HISTORY_SESSION_KEY = 'cloudmarket.social-proof-history';
 const ALERT_VISIBLE_MS = 5000;
@@ -131,6 +121,8 @@ export function TopDropOfferAlerts({
   items = [],
   currentProductName,
   productNames = [],
+  genderTarget = 'all',
+  customerIdentityPools,
 }: TopDropOfferAlertsProps) {
   const { countryCode } = useLocale();
   const alerts = useMemo<OfferAlertItem[]>(
@@ -191,7 +183,11 @@ export function TopDropOfferAlerts({
 
     const buildDynamicOrderAlert = (template: OfferAlertItem) => {
       const cityPool = LOCATION_POOLS[countryCode] ?? LOCATION_POOLS.DEFAULT;
-      const namePool = NAME_POOLS[countryCode] ?? NAME_POOLS.DEFAULT;
+      const namePool = getCustomerNamePoolForContext({
+        customerIdentityPools,
+        countryCode,
+        genderTarget,
+      });
       let nextName = namePool[0];
       let nextCity = cityPool[0];
       let nextProduct = productPool[0];
@@ -308,7 +304,7 @@ export function TopDropOfferAlerts({
       window.clearTimeout(showTimer);
       window.clearTimeout(hideTimer);
     };
-  }, [alerts, countryCode, enabled, productPool]);
+  }, [alerts, countryCode, customerIdentityPools, enabled, genderTarget, productPool]);
 
   if (!enabled || alerts.length === 0 || !activeAlert) {
     return null;

@@ -49,18 +49,43 @@ import {
 } from 'lucide-react';
 import {
   type AdminVideoAspectRatio,
+  appendMediaLibraryItemToDraft,
+  createAutoPricedOfferPackage,
+  createAdminProductLibraryItem,
   formatDraftCurrency,
   type AdminContentCard,
+  type AdminProductLibraryItem,
   type AdminMediaAsset,
   type AdminProductDraft,
   type AdminAlertItem,
   type AdminFaqItem,
   type AdminOfferPackage,
+  removeMediaAssetFromDraft,
   type AdminReviewItem,
 } from '../../lib/adminProductDrafts';
 import { ALERT_PRESETS, applyAlertPreset } from '../../lib/alertPresets';
+import {
+  getCountryCustomerPoolLabel,
+  getCustomerPoolGenderLabel,
+  getDeterministicCustomerNameForIndex,
+  normalizeCustomerIdentityPools,
+  type CustomerGenderTarget,
+  type CustomerIdentityPools,
+  type CustomerNameGender,
+} from '../../lib/customerIdentityPools';
+import { useLocale } from '../../context/LocaleContext';
+import { SUPPORTED_COUNTRY_CODES, type SupportedCountryCode } from '../../lib/localeData';
 import { getProductCategoryDisplay } from '../../lib/productCategories';
-import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
+import {
+  deleteAssetFromSupabaseStorage,
+  uploadAssetToSupabaseStorage,
+  uploadAssetToSupabaseStorageDetailed,
+} from '../../lib/supabaseStorage';
+import {
+  getProductLibraryLimitLabel,
+  getProductLibraryCountLimit,
+  validateProductLibraryUpload,
+} from '../../lib/productMediaLibrary';
 import { cn } from '../../lib/utils';
 import { Carousel3D } from '../animations/Carousel3D';
 
@@ -156,6 +181,13 @@ function reorderItems<T>(items: T[], fromIndex: number, toIndex: number) {
   const [movedItem] = nextItems.splice(fromIndex, 1);
   nextItems.splice(toIndex, 0, movedItem);
   return nextItems;
+}
+
+function countLibraryItemsByKind(
+  items: AdminProductLibraryItem[],
+  kind: 'image' | 'video',
+) {
+  return items.filter((item) => item.asset.kind === kind).length;
 }
 
 interface TextEditorPanelConfig {
@@ -429,17 +461,25 @@ function EditableImage({
 function InlineEditorDrawer({
   editor,
   deviceView,
+  libraryItems,
+  onUploadToLibrary,
+  onDeleteLibraryItem,
   isDark = false,
   onClose,
 }: {
   editor: EditorPanelState;
   deviceView: 'desktop' | 'mobile';
+  libraryItems: AdminProductLibraryItem[];
+  onUploadToLibrary: (file: File, kind: 'image' | 'video') => Promise<AdminProductLibraryItem>;
+  onDeleteLibraryItem: (item: AdminProductLibraryItem) => Promise<void>;
   isDark?: boolean;
   onClose: () => void;
 }) {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [draftSource, setDraftSource] = useState<'url' | 'upload'>('url');
+  const [isProcessingMedia, setIsProcessingMedia] = useState(false);
+  const [mediaFeedback, setMediaFeedback] = useState('');
 
   useEffect(() => {
     if (!editor) {
@@ -448,6 +488,8 @@ function InlineEditorDrawer({
 
     setDraftValue(editor.value);
     setDraftSource('url');
+    setMediaFeedback('');
+    setIsProcessingMedia(false);
   }, [editor]);
 
   useEffect(() => {
@@ -473,6 +515,14 @@ function InlineEditorDrawer({
   }
 
   const isDesktop = deviceView === 'desktop';
+  const matchingLibraryItems =
+    editor.mode === 'media'
+      ? libraryItems.filter((item) => item.asset.kind === editor.kind)
+      : [];
+  const libraryCount =
+    editor.mode === 'media' ? countLibraryItemsByKind(libraryItems, editor.kind) : 0;
+  const libraryLimit =
+    editor.mode === 'media' ? getProductLibraryCountLimit(editor.kind) : 0;
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -481,12 +531,45 @@ function InlineEditorDrawer({
       return;
     }
 
+    setIsProcessingMedia(true);
+    setMediaFeedback('');
+
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setDraftValue(dataUrl);
-      setDraftSource('upload');
+      const libraryItem = await onUploadToLibrary(file, editor.kind);
+      setDraftValue(libraryItem.asset.src);
+      setDraftSource(libraryItem.asset.source);
+      setMediaFeedback(`${libraryItem.name} uploaded to the product library and selected.`);
+    } catch (error) {
+      setMediaFeedback(error instanceof Error ? error.message : 'Upload failed.');
     } finally {
+      setIsProcessingMedia(false);
       event.target.value = '';
+    }
+  };
+
+  const handleUseLibraryItem = (item: AdminProductLibraryItem) => {
+    setDraftValue(item.asset.src);
+    setDraftSource(item.asset.source);
+    setMediaFeedback(`${item.name} selected from the product library.`);
+  };
+
+  const handleDeleteLibrarySelection = async (item: AdminProductLibraryItem) => {
+    setIsProcessingMedia(true);
+    setMediaFeedback('');
+
+    try {
+      await onDeleteLibraryItem(item);
+
+      if (draftValue === item.asset.src) {
+        setDraftValue('');
+        setDraftSource('url');
+      }
+
+      setMediaFeedback(`${item.name} was deleted from the product library.`);
+    } catch (error) {
+      setMediaFeedback(error instanceof Error ? error.message : 'Unable to delete this media item.');
+    } finally {
+      setIsProcessingMedia(false);
     }
   };
 
@@ -603,6 +686,118 @@ function InlineEditorDrawer({
               </div>
             ) : (
               <div className="space-y-5">
+                <div
+                  className={cn(
+                    'rounded-[1.5rem] border p-4',
+                    isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-gray-50',
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                        Product Library
+                      </p>
+                      <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                        {libraryCount}/{libraryLimit} {editor.kind}s used. {getProductLibraryLimitLabel(editor.kind)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {matchingLibraryItems.length > 0 ? (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {matchingLibraryItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            'overflow-hidden rounded-[1.35rem] border',
+                            isDark ? 'border-slate-800 bg-slate-950' : 'border-gray-200 bg-white',
+                          )}
+                        >
+                          <div className={cn('aspect-[4/3] overflow-hidden', isDark ? 'bg-slate-900' : 'bg-gray-100')}>
+                            {item.asset.kind === 'image' ? (
+                              <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <video src={item.asset.src} className="h-full w-full object-cover" />
+                            )}
+                          </div>
+                          <div className="space-y-3 p-3">
+                            <div>
+                              <p className={cn('truncate text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                {item.name}
+                              </p>
+                              <p className={cn('mt-1 truncate text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                                {item.asset.source === 'upload' ? 'Stored in Supabase' : 'External URL'}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleUseLibraryItem(item)}
+                                disabled={isProcessingMedia}
+                                className="inline-flex flex-1 items-center justify-center rounded-full bg-[#0E7C7B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0a5f5e] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Use Media
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteLibrarySelection(item)}
+                                disabled={isProcessingMedia}
+                                className="inline-flex items-center justify-center rounded-full bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                aria-label={`Delete ${item.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        'mt-4 rounded-[1.25rem] border border-dashed px-4 py-5 text-sm',
+                        isDark ? 'border-slate-700 text-slate-400' : 'border-gray-300 text-gray-500',
+                      )}
+                    >
+                      No {editor.kind}s in this product library yet. Upload from device below or add a direct URL in market settings.
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className={cn(
+                    'rounded-[1.5rem] border p-4',
+                    isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-gray-50',
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                        Upload from Device
+                      </p>
+                      <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                        Uploading here stores the file in the product library first, then links it to this placeholder.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => uploadInputRef.current?.click()}
+                      disabled={isProcessingMedia}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5f5e] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {isProcessingMedia ? 'Uploading...' : 'Upload'}
+                    </button>
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept={editor.accept}
+                      className="hidden"
+                      onChange={handleUpload}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <label className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                     Direct URL
@@ -624,38 +819,11 @@ function InlineEditorDrawer({
                   />
                 </div>
 
-                <div
-                  className={cn(
-                    'rounded-[1.5rem] border p-4',
-                    isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-gray-50',
-                  )}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                        Upload from device
-                      </p>
-                      <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
-                        Choose a file instead of pasting a URL.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => uploadInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5f5e]"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Upload
-                    </button>
-                    <input
-                      ref={uploadInputRef}
-                      type="file"
-                      accept={editor.accept}
-                      className="hidden"
-                      onChange={handleUpload}
-                    />
-                  </div>
-                </div>
+                {mediaFeedback ? (
+                  <p className={cn('text-sm font-medium', isDark ? 'text-[#70d6d4]' : 'text-[#0E7C7B]')}>
+                    {mediaFeedback}
+                  </p>
+                ) : null}
 
                 {draftValue ? (
                   <div
@@ -694,8 +862,9 @@ function InlineEditorDrawer({
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isProcessingMedia}
                 className={cn(
-                  'inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition',
+                  'inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
                   isDark
                     ? 'bg-slate-900 text-slate-200 hover:bg-slate-800'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
@@ -706,7 +875,8 @@ function InlineEditorDrawer({
               <button
                 type="button"
                 onClick={handleSave}
-                className="inline-flex items-center justify-center rounded-full bg-[#0E7C7B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0a5f5e]"
+                disabled={isProcessingMedia}
+                className="inline-flex items-center justify-center rounded-full bg-[#0E7C7B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0a5f5e] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {editor.saveLabel ?? 'Save Changes'}
               </button>
@@ -850,11 +1020,18 @@ function EditableAssetControls({
           </button>
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
+            onClick={() => {
+              if (editorContext) {
+                handlePrompt();
+                return;
+              }
+
+              inputRef.current?.click();
+            }}
             className="inline-flex min-w-0 items-center justify-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5f5e]"
           >
             <Upload className="h-4 w-4" />
-            {asset.src ? 'Replace' : 'Upload'}
+            {editorContext ? 'Choose Media' : asset.src ? 'Replace' : 'Upload'}
           </button>
           {asset.src ? (
             <button
@@ -998,11 +1175,18 @@ function EditableMediaList({
           </button>
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
+            onClick={() => {
+              if (editorContext) {
+                appendUrl();
+                return;
+              }
+
+              inputRef.current?.click();
+            }}
             className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5f5e]"
           >
             <Upload className="h-4 w-4" />
-            {uploadButtonLabel ?? 'Upload'}
+            {editorContext ? 'Library or Upload' : uploadButtonLabel ?? 'Upload'}
           </button>
           <input
             ref={inputRef}
@@ -1632,17 +1816,234 @@ function EditableCardGlyph({
   );
 }
 
+function EditableRegionalCustomerPools({
+  pools,
+  onChange,
+  genderTarget,
+  previewCountryCode,
+  editable = true,
+  isDark = false,
+}: {
+  pools: CustomerIdentityPools;
+  onChange: (value: CustomerIdentityPools) => void;
+  genderTarget: CustomerGenderTarget;
+  previewCountryCode: SupportedCountryCode;
+  editable?: boolean;
+  isDark?: boolean;
+}) {
+  const editorContext = useContext(InlineEditorContext);
+  const normalizedPools = useMemo(() => normalizeCustomerIdentityPools(pools), [pools]);
+  const genderAudienceLabel =
+    genderTarget === 'women'
+      ? 'female names only'
+      : genderTarget === 'men'
+        ? 'male names only'
+        : 'a mixed male and female name rotation';
+
+  const updatePool = (
+    countryCode: SupportedCountryCode,
+    gender: CustomerNameGender,
+    nextNames: string[],
+  ) => {
+    const cleanedNames = nextNames
+      .map((name) => name.trim().replace(/\s+/g, ' '))
+      .filter((name) => name.length > 0);
+
+    onChange({
+      ...normalizedPools,
+      [countryCode]: {
+        ...normalizedPools[countryCode],
+        [gender]: cleanedNames,
+      },
+    });
+  };
+
+  const openAddNameEditor = (countryCode: SupportedCountryCode, gender: CustomerNameGender) => {
+    if (!editable || !editorContext) {
+      return;
+    }
+
+    editorContext.openTextEditor({
+      title: `Add ${getCustomerPoolGenderLabel(gender).toLowerCase()} for ${getCountryCustomerPoolLabel(countryCode)}`,
+      value: '',
+      placeholder: 'Full customer name',
+      description: 'This name becomes available to review cards and purchase alerts for this country.',
+      saveLabel: 'Add Name',
+      onSave: (value) => {
+        if (!value.trim()) {
+          return;
+        }
+
+        updatePool(countryCode, gender, [...normalizedPools[countryCode][gender], value]);
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+            Regional customer name library
+          </p>
+          <p className={cn('mt-1 text-xs leading-5', isDark ? 'text-slate-400' : 'text-gray-500')}>
+            Live product pages automatically switch to the visitor&apos;s country and use {genderAudienceLabel}.
+            The current canvas preview is reading from {getCountryCustomerPoolLabel(previewCountryCode)}.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {SUPPORTED_COUNTRY_CODES.map((countryCode) => {
+          const countryPool = normalizedPools[countryCode];
+
+          return (
+            <div
+              key={`customer-pool-${countryCode}`}
+              className={cn(
+                'rounded-[1.6rem] border p-5',
+                isDark ? 'border-slate-800 bg-slate-950' : 'border-gray-200 bg-white',
+              )}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                    {getCountryCustomerPoolLabel(countryCode)}
+                  </p>
+                  <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                    {countryCode === previewCountryCode
+                      ? 'Current live preview country'
+                      : 'Available for auto-switch when visitors view this product'}
+                  </p>
+                </div>
+                {countryCode === previewCountryCode ? (
+                  <span className="inline-flex rounded-full bg-[#eef5ff] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2B63D9]">
+                    Preview country
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                {(['female', 'male'] as CustomerNameGender[]).map((gender) => (
+                  <div
+                    key={`${countryCode}-${gender}`}
+                    className={cn(
+                      'rounded-[1.3rem] border p-4',
+                      isDark ? 'border-slate-800 bg-slate-900/80' : 'border-gray-200 bg-gray-50',
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                          {getCustomerPoolGenderLabel(gender)}
+                        </p>
+                        <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                          {countryPool[gender].length} saved name{countryPool[gender].length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      {editable ? (
+                        <button
+                          type="button"
+                          onClick={() => openAddNameEditor(countryCode, gender)}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0a5f5e]"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add name
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {countryPool[gender].map((name, index) => (
+                        <div
+                          key={`${countryCode}-${gender}-${index}`}
+                          className={cn(
+                            'inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2',
+                            isDark ? 'border-slate-700 bg-slate-950 text-slate-100' : 'border-gray-200 bg-white text-slate-800',
+                          )}
+                        >
+                          <EditableText
+                            as="span"
+                            value={name}
+                            onSave={(value) =>
+                              updatePool(
+                                countryCode,
+                                gender,
+                                countryPool[gender].map((entry, entryIndex) =>
+                                  entryIndex === index ? value : entry,
+                                ),
+                              )
+                            }
+                            editable={editable}
+                            className="max-w-[14rem] truncate text-xs font-semibold"
+                            placeholder="Customer name"
+                            editorTitle={`${getCountryCustomerPoolLabel(countryCode)} ${getCustomerPoolGenderLabel(gender)} name`}
+                            editorDescription="Double-click to rename this saved customer identity."
+                            editorSaveLabel="Save Name"
+                          />
+                          {editable ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updatePool(
+                                  countryCode,
+                                  gender,
+                                  countryPool[gender].filter((_, entryIndex) => entryIndex !== index),
+                                )
+                              }
+                              className={cn(
+                                'inline-flex h-6 w-6 items-center justify-center rounded-full transition hover:bg-red-50 hover:text-red-500',
+                                isDark ? 'bg-slate-900 text-slate-400' : 'bg-gray-100 text-gray-500',
+                              )}
+                              aria-label={`Remove ${name}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function EditableReviewsList({
   items,
   onChange,
+  customerIdentityPools,
+  genderTarget,
+  previewCountryCode,
   editable = true,
   isDark = false,
 }: {
   items: AdminReviewItem[];
   onChange: (items: AdminReviewItem[]) => void;
+  customerIdentityPools: CustomerIdentityPools;
+  genderTarget: CustomerGenderTarget;
+  previewCountryCode: SupportedCountryCode;
   editable?: boolean;
   isDark?: boolean;
 }) {
+  const resolvedReviewNames = useMemo(() => {
+    return items.map((item, index) =>
+      getDeterministicCustomerNameForIndex({
+        customerIdentityPools,
+        countryCode: previewCountryCode,
+        genderTarget,
+        index,
+        seed: `${item.text}-${item.image.src}-${item.avatar?.src ?? ''}`,
+        fallbackName: item.name || 'Verified Customer',
+      }),
+    );
+  }, [customerIdentityPools, genderTarget, items, previewCountryCode]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1816,24 +2217,10 @@ function EditableReviewsList({
                   isDark={isDark}
                 />
                 <div>
-                  <EditableText
-                    as="p"
-                    value={item.name}
-                    onSave={(value) =>
-                      onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, name: value } : entry)))
-                    }
-                    editable={editable}
-                    className="font-semibold text-white"
-                  />
-                  <EditableText
-                    as="p"
-                    value={item.location}
-                    onSave={(value) =>
-                      onChange(items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, location: value } : entry)))
-                    }
-                    editable={editable}
-                    className="text-sm text-white/66"
-                  />
+                  <p className="font-semibold text-white">{resolvedReviewNames[index] ?? item.name}</p>
+                  <p className="text-sm text-white/66">
+                    Auto-switched for {getCountryCustomerPoolLabel(previewCountryCode)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1875,15 +2262,7 @@ function EditablePackagesList({
           onClick={() =>
             onChange([
               ...items,
-              {
-                title: 'Buy 4 Get 4 FREE',
-                price: 60000,
-                oldPrice: 88000,
-                description: '8 Sets Total',
-                features: ['Free Delivery', 'Pay on Delivery'],
-                isBestValue: false,
-                image: createImageAsset(),
-              },
+              createAutoPricedOfferPackage(items),
             ])
           }
           className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0E7C7B] transition hover:bg-gray-100"
@@ -2006,6 +2385,7 @@ export function InlineEditableProductCanvas({
   onChange,
   readOnly = false,
 }: InlineEditableProductCanvasProps) {
+  const { countryCode } = useLocale();
   const isDark = pageData.themeMode === 'dark';
   const isMobileView = deviceView === 'mobile';
   const heroSlides = useMemo(() => getHeroSlides(pageData), [pageData]);
@@ -2150,6 +2530,45 @@ export function InlineEditableProductCanvas({
     }));
   };
 
+  const handleUploadToLibrary = async (
+    file: File,
+    kind: 'image' | 'video',
+  ): Promise<AdminProductLibraryItem> => {
+    const validationError = validateProductLibraryUpload({
+      file,
+      kind,
+      existingCount: countLibraryItemsByKind(pageData.mediaLibrary, kind),
+    });
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const uploaded = await uploadAssetToSupabaseStorageDetailed(
+      file,
+      `product-library/${pageData.slug || pageData.id}`,
+    );
+
+    const libraryItem = createAdminProductLibraryItem(file.name, {
+      src: uploaded.publicUrl,
+      source: 'upload',
+      kind,
+      storagePath: uploaded.storagePath,
+    });
+
+    updatePageData((current) => appendMediaLibraryItemToDraft(current, libraryItem));
+
+    return libraryItem;
+  };
+
+  const handleDeleteLibraryItem = async (item: AdminProductLibraryItem) => {
+    if (item.asset.source === 'upload') {
+      await deleteAssetFromSupabaseStorage(item.asset.storagePath || item.asset.src);
+    }
+
+    updatePageData((current) => removeMediaAssetFromDraft(current, item.asset));
+  };
+
   const handleAppendSlideUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
@@ -2158,12 +2577,12 @@ export function InlineEditableProductCanvas({
     }
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const libraryItem = await handleUploadToLibrary(file, 'image');
       updateHeroSlides([
         ...heroSlides,
         {
-          src: dataUrl,
-          source: 'upload',
+          src: libraryItem.asset.src,
+          source: libraryItem.asset.source,
           kind: 'image',
         },
       ]);
@@ -3372,9 +3791,29 @@ export function InlineEditableProductCanvas({
                     <EditableReviewsList
                       items={pageData.sections.testimonials.reviews}
                       onChange={(reviews) => updateSection('testimonials', { reviews })}
+                      customerIdentityPools={pageData.customerIdentityPools}
+                      genderTarget={pageData.genderTarget}
+                      previewCountryCode={countryCode}
                       editable={!readOnly}
                       isDark={isDark}
                     />
+                    {!readOnly ? (
+                      <div className="mt-8">
+                        <EditableRegionalCustomerPools
+                          pools={pageData.customerIdentityPools}
+                          genderTarget={pageData.genderTarget}
+                          previewCountryCode={countryCode}
+                          onChange={(customerIdentityPools) =>
+                            updatePageData((current) => ({
+                              ...current,
+                              customerIdentityPools,
+                            }))
+                          }
+                          editable
+                          isDark={isDark}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </section>
               ) : (
@@ -4346,6 +4785,9 @@ export function InlineEditableProductCanvas({
       <InlineEditorDrawer
         editor={editorPanel}
         deviceView={deviceView}
+        libraryItems={pageData.mediaLibrary}
+        onUploadToLibrary={handleUploadToLibrary}
+        onDeleteLibraryItem={handleDeleteLibraryItem}
         isDark={isDark}
         onClose={() => setEditorPanel(null)}
       />
