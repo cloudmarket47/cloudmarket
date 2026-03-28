@@ -1240,6 +1240,37 @@ export async function saveAdminProductDraft(draft: AdminProductDraft) {
   return nextDraft;
 }
 
+export async function deleteAdminProductDraft(id: string) {
+  if (!id) {
+    return false;
+  }
+
+  await ensureAdminProductDraftsLoaded();
+  const nextDrafts = adminProductDraftsCache.filter((draft) => draft.id !== id);
+
+  if (nextDrafts.length === adminProductDraftsCache.length) {
+    return false;
+  }
+
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { error } = await supabase
+      .from(getSupabaseTableName('productPages'))
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message || 'Unable to delete product page.');
+    }
+  }
+
+  adminProductDraftsCache = nextDrafts;
+  adminProductDraftsLoaded = true;
+  emitAdminProductDraftsChange();
+  return true;
+}
+
 export async function getAdminProductDraftById(id: string | undefined) {
   if (!id) {
     return null;

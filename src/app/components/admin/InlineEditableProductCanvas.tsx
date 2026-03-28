@@ -91,6 +91,8 @@ import { cn } from '../../lib/utils';
 import { Carousel3D } from '../animations/Carousel3D';
 
 const HERO_SLIDE_DURATION_MS = 8000;
+const DEFAULT_HERO_SUBTITLE_PLACEHOLDER =
+  'Add the main conversion message that introduces the product clearly.';
 const videoAspectRatioOptions: { value: AdminVideoAspectRatio; label: string; className: string }[] = [
   { value: '16:9', label: '16:9', className: 'aspect-video' },
   { value: '4:5', label: '4:5', className: 'aspect-[4/5]' },
@@ -143,6 +145,16 @@ function getHeroSlides(pageData: AdminProductDraft) {
   }
 
   return [createImageAsset()];
+}
+
+function resolveHeroSubtitlePreviewValue(pageData: AdminProductDraft) {
+  const heroSubtitle = pageData.sections.hero.subtitle.trim();
+
+  if (heroSubtitle && heroSubtitle !== DEFAULT_HERO_SUBTITLE_PLACEHOLDER) {
+    return pageData.sections.hero.subtitle;
+  }
+
+  return pageData.shortDescription;
 }
 
 function CardGlyph({
@@ -2778,6 +2790,13 @@ export function InlineEditableProductCanvas({
     : 'border border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]';
   const marqueeImages = pageData.sections.featureMarquee.images.filter((item) => hasMedia(item));
   const showcaseImages = pageData.sections.showcase.images.filter((item) => hasMedia(item));
+  const keySettingsPreviewImage =
+    pageData.coverImage.src ||
+    heroSlides.find((item) => hasMedia(item))?.src ||
+    '';
+  const heroSubtitlePreviewValue =
+    resolveHeroSubtitlePreviewValue(pageData).trim() ||
+    'Your short product description will appear here after saving your market settings.';
   const checkoutPreviewGallery = [
     ...heroSlides.map((item) => item.src),
     ...showcaseImages.map((item) => item.src),
@@ -2823,6 +2842,52 @@ export function InlineEditableProductCanvas({
               images to replace them, or use the slide rail below to upload, add URLs and reorder
               the carousel.
             </p>
+            <div
+              className={cn(
+                'mt-4 grid max-w-3xl gap-4 overflow-hidden rounded-[1.6rem] border p-3 sm:grid-cols-[140px,1fr]',
+                isDark ? 'border-slate-800 bg-slate-900/80' : 'border-gray-200 bg-gray-50',
+              )}
+            >
+              <div className="relative overflow-hidden rounded-[1.25rem]">
+                {keySettingsPreviewImage ? (
+                  <img
+                    src={keySettingsPreviewImage}
+                    alt={pageData.productName}
+                    className="aspect-[5/4] h-full w-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      'flex aspect-[5/4] items-center justify-center',
+                      isDark ? 'bg-slate-950 text-slate-500' : 'bg-white text-gray-300',
+                    )}
+                  >
+                    <ImagePlus className="h-8 w-8" />
+                  </div>
+                )}
+                <span className="absolute left-2 top-2 rounded-full bg-slate-950/78 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
+                  Cover image
+                </span>
+              </div>
+
+              <div className="min-w-0">
+                <p className={cn('text-[11px] font-semibold uppercase tracking-[0.2em]', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                  Page setup preview
+                </p>
+                <h3 className={cn('mt-2 text-lg font-bold tracking-tight', isDark ? 'text-white' : 'text-gray-900')}>
+                  {pageData.pageName}
+                </h3>
+                <p className={cn('mt-1 text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>
+                  {pageData.productName}
+                </p>
+                <p className={cn('mt-3 text-sm leading-6', isDark ? 'text-slate-300' : 'text-gray-600')}>
+                  {heroSubtitlePreviewValue}
+                </p>
+                <p className={cn('mt-3 text-xs font-medium uppercase tracking-[0.18em]', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                  {getProductCategoryDisplay(pageData)} | {pageData.targetAudience} | {pageData.currency}
+                </p>
+              </div>
+            </div>
           </div>
 
           {!readOnly ? (
@@ -2897,7 +2962,7 @@ export function InlineEditableProductCanvas({
                 )}
               >
                 <p className="text-xs uppercase tracking-[0.18em]">
-                  Current Crevice Brush template canvas
+                  Current {pageData.pageName || pageData.productName} canvas
                 </p>
               </div>
             )}
@@ -2984,7 +3049,7 @@ export function InlineEditableProductCanvas({
 
                               <EditableText
                                 as="p"
-                                value={pageData.sections.hero.subtitle}
+                                value={heroSubtitlePreviewValue}
                                 onSave={(value) => updateHeroText('subtitle', value)}
                                 editable={!readOnly}
                                 multiline

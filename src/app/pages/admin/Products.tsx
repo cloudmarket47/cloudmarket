@@ -12,6 +12,7 @@ import {
   Sparkles,
   Tag,
   Target,
+  Trash2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/design-system/Card';
@@ -19,6 +20,7 @@ import { Button } from '../../components/design-system/Button';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import {
   ADMIN_PRODUCT_DRAFTS_CHANGE_EVENT,
+  deleteAdminProductDraft,
   ensureAdminProductDraftsLoaded,
   type AdminCurrency,
   type AdminProductDraft,
@@ -114,7 +116,15 @@ function AdminMetricCard({
   );
 }
 
-function DraftProductCard({ draft }: { draft: AdminProductDraft }) {
+function DraftProductCard({
+  draft,
+  isDeleting,
+  onDelete,
+}: {
+  draft: AdminProductDraft;
+  isDeleting: boolean;
+  onDelete: (draft: AdminProductDraft) => void;
+}) {
   const isPublished = draft.status === 'published';
 
   return (
@@ -221,6 +231,16 @@ function DraftProductCard({ draft }: { draft: AdminProductDraft }) {
             </Button>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => onDelete(draft)}
+          disabled={isDeleting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeleting ? 'Deleting page...' : 'Delete Page'}
+        </button>
       </div>
     </Card>
   );
@@ -239,6 +259,11 @@ interface InventoryItem {
 
 export function Products() {
   const [draftProducts, setDraftProducts] = useState<AdminProductDraft[]>([]);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{
+    tone: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const loadDrafts = async () => {
@@ -284,6 +309,45 @@ export function Products() {
 
     return Array.from(items.values()).sort((left, right) => left.name.localeCompare(right.name));
   }, [draftProducts]);
+
+  const handleDeleteDraft = async (draft: AdminProductDraft) => {
+    const confirmed = window.confirm(
+      `Delete "${draft.pageName}"? This will remove the product page from the admin dashboard and storefront.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingDraftId(draft.id);
+    setActionFeedback(null);
+
+    try {
+      const deleted = await deleteAdminProductDraft(draft.id);
+
+      setActionFeedback(
+        deleted
+          ? {
+              tone: 'success',
+              message: `${draft.pageName} was deleted successfully.`,
+            }
+          : {
+              tone: 'error',
+              message: 'This product page could not be deleted.',
+            },
+      );
+    } catch (error) {
+      setActionFeedback({
+        tone: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to delete this product page right now.',
+      });
+    } finally {
+      setDeletingDraftId(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -332,6 +396,16 @@ export function Products() {
         </div>
       </div>
 
+      {actionFeedback ? (
+        <p
+          className={`text-sm font-medium ${
+            actionFeedback.tone === 'success' ? 'text-emerald-600' : 'text-red-600'
+          }`}
+        >
+          {actionFeedback.message}
+        </p>
+      ) : null}
+
       {draftProducts.length > 0 ? (
         <SectionShell
           title="Saved Product Pages"
@@ -339,7 +413,12 @@ export function Products() {
         >
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 2xl:grid-cols-3">
             {draftProducts.map((draft) => (
-              <DraftProductCard key={draft.id} draft={draft} />
+              <DraftProductCard
+                key={draft.id}
+                draft={draft}
+                isDeleting={deletingDraftId === draft.id}
+                onDelete={handleDeleteDraft}
+              />
             ))}
           </div>
         </SectionShell>

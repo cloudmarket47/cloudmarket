@@ -41,6 +41,7 @@ import {
   createAutoPricedOfferPackage,
   createEmptyAdminProductDraft,
   createAdminProductLibraryItem,
+  deleteAdminProductDraft,
   formatDraftCurrency,
   getAdminProductDraftById,
   getCurrencyLabel,
@@ -90,6 +91,8 @@ const inputClasses =
 const textareaClasses = `${inputClasses} min-h-[112px] resize-y`;
 const sectionChipClasses =
   'inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600';
+const DEFAULT_HERO_SUBTITLE_PLACEHOLDER =
+  'Add the main conversion message that introduces the product clearly.';
 
 const currencyOptions: AdminCurrency[] = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'];
 const genderOptions: { value: AdminGenderTarget; label: string }[] = [
@@ -1835,7 +1838,12 @@ function FaqEditor({
 function PreviewPanel({ draft }: { draft: AdminProductDraft }) {
   const packages = draft.sections.offer.packages;
   const heroImages = getHeroCarouselAssets(draft.sections.hero);
-  const heroPreviewImage = heroImages[0]?.src ?? '';
+  const heroPreviewImage = heroImages[0]?.src || draft.coverImage.src || '';
+  const heroPreviewDescription =
+    draft.sections.hero.subtitle.trim() &&
+    draft.sections.hero.subtitle.trim() !== DEFAULT_HERO_SUBTITLE_PLACEHOLDER
+      ? draft.sections.hero.subtitle
+      : draft.shortDescription;
 
   return (
     <div
@@ -1886,7 +1894,7 @@ function PreviewPanel({ draft }: { draft: AdminProductDraft }) {
               draft.themeMode === 'dark' ? 'text-slate-300' : 'text-gray-600'
             }`}
           >
-            {draft.sections.hero.subtitle || draft.shortDescription}
+            {heroPreviewDescription}
           </p>
         </div>
       </div>
@@ -3713,7 +3721,7 @@ export function ProductBuilder() {
   const [selectedPreviewSectionId, setSelectedPreviewSectionId] = useState<PreviewSectionId | null>(null);
   const [saveFeedback, setSaveFeedback] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [saveIntent, setSaveIntent] = useState<'draft' | 'publish' | null>(null);
+  const [saveIntent, setSaveIntent] = useState<'draft' | 'publish' | 'delete' | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -3915,6 +3923,37 @@ export function ProductBuilder() {
     );
   };
 
+  const handleDeletePage = async () => {
+    if (!id) {
+      setSaveFeedback('Save this page first before trying to delete it.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${draft.pageName}"? This will remove the product page from the admin dashboard and storefront.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveIntent('delete');
+    setSaveFeedback('');
+
+    try {
+      await deleteAdminProductDraft(draft.id);
+      navigate('/admin/products', { replace: true });
+    } catch {
+      setSaveFeedback(
+        'Unable to delete this product page right now. Check your Supabase connection and try again.',
+      );
+    } finally {
+      setIsSaving(false);
+      setSaveIntent(null);
+    }
+  };
+
   const handleSectionSave = async () => {
     const saved = await persistDraft(
       `${getEditorTargetLabel(activeEditorTarget ?? 'pageSetup')} saved. Continue with the next section.`,
@@ -3961,7 +4000,7 @@ export function ProductBuilder() {
             Back to products
           </Link>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             <button
               type="button"
               onClick={() => setDeviceView('desktop')}
@@ -4009,6 +4048,18 @@ export function ProductBuilder() {
               <ArrowLeft className="h-4 w-4" />
               Exit builder
             </button>
+
+            {id ? (
+              <button
+                type="button"
+                onClick={() => void handleDeletePage()}
+                disabled={isSaving}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isSaving && saveIntent === 'delete' ? 'Deleting...' : 'Delete page'}
+              </button>
+            ) : null}
 
             <Button
               type="button"
