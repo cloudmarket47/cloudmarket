@@ -1,11 +1,18 @@
 import {
   Activity,
+  Baby,
+  BookOpen,
   Car,
+  Gamepad2,
+  Hammer,
   Home,
   Laptop,
+  PawPrint,
   ShoppingBag,
+  ShoppingBasket,
   Smartphone,
   Sparkles,
+  Trees,
 } from 'lucide-react';
 import type { ProductCategoryIconName } from '../../lib/productCategories';
 import type { Product } from '../../types';
@@ -42,6 +49,13 @@ export const marketplaceCategoryIconMap: Record<
   Sparkles,
   Car,
   Activity,
+  Hammer,
+  ShoppingBasket,
+  Baby,
+  Gamepad2,
+  BookOpen,
+  PawPrint,
+  Trees,
 };
 
 export const marketplaceCategorySurfaceMap: Record<ProductCategoryIconName, string> = {
@@ -52,6 +66,13 @@ export const marketplaceCategorySurfaceMap: Record<ProductCategoryIconName, stri
   Sparkles: 'from-[#f7e8ff] via-[#fbf2ff] to-[#fff9ff]',
   Car: 'from-[#fff0e4] via-[#fff5ee] to-[#fffaf7]',
   Activity: 'from-[#e3fbf6] via-[#edfffb] to-[#f7fffd]',
+  Hammer: 'from-[#fef1e8] via-[#fff6ef] to-[#fffaf7]',
+  ShoppingBasket: 'from-[#eef8df] via-[#f6fbe9] to-[#fbfff4]',
+  Baby: 'from-[#ffe8f3] via-[#fff1f7] to-[#fff8fb]',
+  Gamepad2: 'from-[#edeaff] via-[#f4f2ff] to-[#faf9ff]',
+  BookOpen: 'from-[#f7eddc] via-[#fbf5e9] to-[#fffaf2]',
+  PawPrint: 'from-[#ffe9dc] via-[#fff2ea] to-[#fff9f5]',
+  Trees: 'from-[#e3f7ea] via-[#edfdf2] to-[#f7fff9]',
 };
 
 const TRENDING_KEYWORD_FALLBACK = ['iPhone', 'Sneakers', 'Hair', 'Laptop'];

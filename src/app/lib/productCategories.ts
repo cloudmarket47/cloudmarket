@@ -5,7 +5,14 @@ export type ProductCategoryIconName =
   | 'ShoppingBag'
   | 'Sparkles'
   | 'Car'
-  | 'Activity';
+  | 'Activity'
+  | 'Hammer'
+  | 'ShoppingBasket'
+  | 'Baby'
+  | 'Gamepad2'
+  | 'BookOpen'
+  | 'PawPrint'
+  | 'Trees';
 
 export interface ProductSubcategory {
   id: string;
@@ -144,6 +151,102 @@ const rawCategories: RawCategory[] = [
     icon: 'Activity',
     subcategories: ['Fitness Gear', 'Wellness Gadgets', 'Supplements', 'Massagers'],
   },
+  {
+    id: 'cat_08',
+    name: 'Tools & Home Improvement',
+    slug: 'tools-home-improvement',
+    icon: 'Hammer',
+    subcategories: [
+      'Power Tools',
+      'Hand Tools',
+      'Electrical & Plumbing',
+      'Paint & Wall Repair',
+    ],
+  },
+  {
+    id: 'cat_09',
+    name: 'Groceries & Beverages',
+    slug: 'groceries-beverages',
+    icon: 'ShoppingBasket',
+    subcategories: [
+      'Pantry Staples',
+      'Snacks & Confectionery',
+      'Beverages',
+      'Breakfast & Cereals',
+    ],
+  },
+  {
+    id: 'cat_10',
+    name: 'Baby & Kids',
+    slug: 'baby-kids',
+    icon: 'Baby',
+    subcategories: [
+      'Diapering & Feeding',
+      'Baby Gear',
+      'Kids Fashion',
+      'Learning & School',
+    ],
+  },
+  {
+    id: 'cat_11',
+    name: 'Toys & Games',
+    slug: 'toys-games',
+    icon: 'Gamepad2',
+    subcategories: [
+      'Educational Toys',
+      'Board Games',
+      'Outdoor Play',
+      'Action Figures & Dolls',
+    ],
+  },
+  {
+    id: 'cat_12',
+    name: 'Books & Stationery',
+    slug: 'books-stationery',
+    icon: 'BookOpen',
+    subcategories: [
+      'Books & E-books',
+      'Office Stationery',
+      'Art Supplies',
+      'School Essentials',
+    ],
+  },
+  {
+    id: 'cat_13',
+    name: 'Pet Supplies',
+    slug: 'pet-supplies',
+    icon: 'PawPrint',
+    subcategories: [
+      'Pet Food',
+      'Pet Grooming',
+      'Pet Accessories',
+      'Pet Health',
+    ],
+  },
+  {
+    id: 'cat_14',
+    name: 'Garden & Outdoor Living',
+    slug: 'garden-outdoor-living',
+    icon: 'Trees',
+    subcategories: [
+      'Garden Tools',
+      'Outdoor Furniture',
+      'BBQ & Picnic',
+      'Camping & Hiking',
+    ],
+  },
+  {
+    id: 'cat_15',
+    name: 'Sports & Outdoors',
+    slug: 'sports-outdoors',
+    icon: 'Activity',
+    subcategories: [
+      'Team Sports',
+      'Outdoor Adventure',
+      'Cycling',
+      'Workout Accessories',
+    ],
+  },
 ];
 
 function slugify(value: string) {
@@ -218,6 +321,38 @@ const CATEGORY_KEYWORD_MAP: Array<{ categorySlug: string; keywords: string[] }> 
   {
     categorySlug: 'health-fitness',
     keywords: ['health', 'fitness', 'wellness', 'supplement', 'massager'],
+  },
+  {
+    categorySlug: 'tools-home-improvement',
+    keywords: ['tool', 'drill', 'repair', 'electrical', 'plumbing', 'paint', 'hardware', 'improvement'],
+  },
+  {
+    categorySlug: 'groceries-beverages',
+    keywords: ['grocery', 'food', 'snack', 'drink', 'beverage', 'cereal', 'pantry'],
+  },
+  {
+    categorySlug: 'baby-kids',
+    keywords: ['baby', 'kid', 'kids', 'diaper', 'feeding', 'school', 'learning'],
+  },
+  {
+    categorySlug: 'toys-games',
+    keywords: ['toy', 'toys', 'game', 'board', 'doll', 'figure', 'play'],
+  },
+  {
+    categorySlug: 'books-stationery',
+    keywords: ['book', 'books', 'stationery', 'school', 'office', 'pen', 'paper', 'art'],
+  },
+  {
+    categorySlug: 'pet-supplies',
+    keywords: ['pet', 'dog', 'cat', 'food', 'grooming', 'leash', 'animal'],
+  },
+  {
+    categorySlug: 'garden-outdoor-living',
+    keywords: ['garden', 'outdoor', 'camping', 'hiking', 'picnic', 'bbq', 'furniture'],
+  },
+  {
+    categorySlug: 'sports-outdoors',
+    keywords: ['sport', 'sports', 'cycling', 'workout', 'gym', 'outdoor', 'adventure'],
   },
 ];
 
