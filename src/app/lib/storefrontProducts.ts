@@ -275,9 +275,9 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
   };
 }
 
-export function getStorefrontProducts() {
+export function getStorefrontProducts(options?: { includeDrafts?: boolean }) {
   return readAdminProductDrafts()
-    .filter((draft) => draft.status === 'published')
+    .filter((draft) => options?.includeDrafts || draft.status === 'published')
     .map(adminDraftToProduct);
 }
 
@@ -285,9 +285,12 @@ export function emitStorefrontProductsChange() {
   emitBrowserEvent(STOREFRONT_PRODUCTS_CHANGE_EVENT);
 }
 
-export async function loadStorefrontProducts(force = false) {
+export async function loadStorefrontProducts(
+  force = false,
+  options?: { includeDrafts?: boolean },
+) {
   await ensureAdminProductDraftsLoaded(force);
-  return getStorefrontProducts();
+  return getStorefrontProducts(options);
 }
 
 export async function refreshStorefrontProducts() {

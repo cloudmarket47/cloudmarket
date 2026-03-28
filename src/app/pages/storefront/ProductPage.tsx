@@ -46,7 +46,7 @@ export function ProductPage() {
     let isActive = true;
 
     const syncProducts = async (force = false) => {
-      const products = await loadStorefrontProducts(force).catch(() => []);
+      const products = await loadStorefrontProducts(force, { includeDrafts: true }).catch(() => []);
 
       if (isActive) {
         setStorefrontProducts(products);
@@ -130,14 +130,6 @@ export function ProductPage() {
   const recommendedProducts = storefrontProducts
     .filter((p) => p.id !== product.id && p.status === 'published')
     .slice(0, 3);
-  const socialProofProductNames = Array.from(
-    new Set(
-      storefrontProducts
-        .filter((entry) => entry.status === 'published')
-        .map((entry) => entry.name.trim())
-        .filter(Boolean),
-    ),
-  );
   const isDark = product.displayMode === 'dark';
 
   const openCheckout = (source = 'product_checkout_open') => {
@@ -225,7 +217,6 @@ export function ProductPage() {
         enabled={!isCheckoutOpen && product.sections.alerts.visible}
         items={product.sections.alerts.items}
         currentProductName={product.name}
-        productNames={socialProofProductNames}
         genderTarget={product.genderTarget}
         customerIdentityPools={product.customerIdentityPools}
       />

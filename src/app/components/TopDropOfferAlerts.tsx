@@ -8,14 +8,12 @@ import {
   type CustomerGenderTarget,
   type CustomerIdentityPools,
 } from '../lib/customerIdentityPools';
-import type { SupportedCountryCode } from '../lib/localeData';
 import type { Product } from '../types';
 
 interface TopDropOfferAlertsProps {
   enabled?: boolean;
   items?: Product['sections']['alerts']['items'];
   currentProductName: string;
-  productNames?: string[];
   genderTarget?: CustomerGenderTarget;
   customerIdentityPools?: CustomerIdentityPools;
 }
@@ -48,6 +46,151 @@ const ALERT_VISIBLE_MS = 5000;
 const ALERT_INTERVAL_MIN_MS = 15000;
 const ALERT_INTERVAL_MAX_MS = 25000;
 const ALERT_TRANSITION_SECONDS = 0.55;
+const DEFAULT_AUTOMATED_ALERTS: OfferAlertItem[] = [
+  {
+    id: 'default-order-1',
+    kind: 'order',
+    badge: 'Hot Orders',
+    title: '{name} in {city}',
+    message: 'just ordered {quantity} {itemLabel} of {product}.',
+  },
+  {
+    id: 'default-order-2',
+    kind: 'order',
+    badge: 'Verified',
+    title: '{name} near {city}',
+    message: 'placed an order for {quantity} {itemLabel} of {product}.',
+  },
+  {
+    id: 'default-order-3',
+    kind: 'order',
+    badge: 'Dispatch',
+    title: 'Dispatch queued for {name}',
+    message: '{quantity} {itemLabel} of {product} just entered the delivery queue.',
+  },
+  {
+    id: 'default-order-4',
+    kind: 'order',
+    badge: 'Nearby Order',
+    title: 'A new order near {city}',
+    message: '{name} just checked out {quantity} {itemLabel} of {product}.',
+  },
+  {
+    id: 'default-order-5',
+    kind: 'order',
+    badge: 'Checkout Pulse',
+    title: '{name} just checked out',
+    message: '{quantity} {itemLabel} of {product} were added to a pay-on-delivery order.',
+  },
+  {
+    id: 'default-order-6',
+    kind: 'order',
+    badge: 'Local Buyer',
+    title: '{name} from {city}',
+    message: 'confirmed {quantity} {itemLabel} of {product} from this page.',
+  },
+  {
+    id: 'default-order-7',
+    kind: 'order',
+    badge: 'Fast Move',
+    title: 'Fresh order in {city}',
+    message: '{name} just reserved {quantity} {itemLabel} of {product}.',
+  },
+  {
+    id: 'default-order-8',
+    kind: 'order',
+    badge: 'Demand Signal',
+    title: '{name} placed a new order',
+    message: '{product} just picked up another checkout for {quantity} {itemLabel}.',
+  },
+  {
+    id: 'default-order-9',
+    kind: 'order',
+    badge: 'Queue Update',
+    title: '{name} is next in line',
+    message: '{quantity} {itemLabel} of {product} just moved into processing.',
+  },
+  {
+    id: 'default-order-10',
+    kind: 'order',
+    badge: 'Recent Purchase',
+    title: '{name} in {city}',
+    message: 'just completed an order for {quantity} {itemLabel} of {product}.',
+  },
+  {
+    id: 'default-stock-1',
+    kind: 'stock',
+    badge: 'Low Stock',
+    title: 'Stock running low',
+    message: 'Only about {stockCount} units are left in the current batch of {product}.',
+  },
+  {
+    id: 'default-stock-2',
+    kind: 'stock',
+    badge: 'Almost Gone',
+    title: 'This batch is moving fast',
+    message: '{product} is down to roughly {stockCount} units for this stock window.',
+  },
+  {
+    id: 'default-stock-3',
+    kind: 'stock',
+    badge: 'Batch Alert',
+    title: 'Inventory pressure rising',
+    message: 'Demand is eating into the last {stockCount} units available right now.',
+  },
+  {
+    id: 'default-stock-4',
+    kind: 'stock',
+    badge: 'Restock Watch',
+    title: 'Restock may be needed soon',
+    message: '{product} has only around {stockCount} units left before the next refill.',
+  },
+  {
+    id: 'default-stock-5',
+    kind: 'stock',
+    badge: 'Limited Units',
+    title: 'Current stock window is tightening',
+    message: 'This page is working through the final {stockCount} units in the active batch.',
+  },
+  {
+    id: 'default-offer-1',
+    kind: 'offer',
+    badge: 'Flash Deal',
+    title: 'Promo window is still live',
+    message: 'Customers can still unlock up to {discount}% savings on {product} today.',
+  },
+  {
+    id: 'default-offer-2',
+    kind: 'offer',
+    badge: 'Free Delivery',
+    title: 'Delivery perk is active',
+    message: 'This page still includes free delivery support on qualifying orders.',
+  },
+  {
+    id: 'default-offer-3',
+    kind: 'offer',
+    badge: 'Bundle Save',
+    title: 'Bundle buyers are saving more',
+    message: 'Multi-pack orders are still unlocking stronger savings on {product}.',
+  },
+  {
+    id: 'default-offer-4',
+    kind: 'offer',
+    badge: 'Weekend Drop',
+    title: 'Short pricing window live',
+    message: '{product} is still running a short promo push for today’s visitors.',
+  },
+  {
+    id: 'default-offer-5',
+    kind: 'offer',
+    badge: 'Launch Deal',
+    title: 'Offer still open',
+    message: 'Early shoppers can still grab {product} before this pricing window resets.',
+  },
+];
+
+type AlertAudioContextConstructor = typeof AudioContext;
+let sharedAlertAudioContext: AudioContext | null = null;
 
 function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -55,6 +198,56 @@ function getRandomInt(min: number, max: number) {
 
 function pickRandom<T>(items: T[]) {
   return items[getRandomInt(0, items.length - 1)];
+}
+
+function resolveAlertTemplate(
+  value: string,
+  context: Record<string, string | number>,
+) {
+  return value.replace(/\{(\w+)\}/g, (_, key: string) => String(context[key] ?? ''));
+}
+
+function playAlertPopSound() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const extendedWindow = window as Window &
+    typeof globalThis & {
+      webkitAudioContext?: AlertAudioContextConstructor;
+    };
+  const AudioContextCtor =
+    extendedWindow.AudioContext ?? extendedWindow.webkitAudioContext ?? null;
+
+  if (!AudioContextCtor) {
+    return;
+  }
+
+  if (!sharedAlertAudioContext) {
+    sharedAlertAudioContext = new AudioContextCtor();
+  }
+
+  const audioContext = sharedAlertAudioContext;
+  const now = audioContext.currentTime;
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+
+  if (audioContext.state === 'suspended') {
+    void audioContext.resume().catch(() => undefined);
+  }
+
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(680, now);
+  oscillator.frequency.exponentialRampToValueAtTime(420, now + 0.08);
+
+  gainNode.gain.setValueAtTime(0.0001, now);
+  gainNode.gain.exponentialRampToValueAtTime(0.035, now + 0.014);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.18);
 }
 
 function readAlertHistory() {
@@ -120,40 +313,26 @@ export function TopDropOfferAlerts({
   enabled = true,
   items = [],
   currentProductName,
-  productNames = [],
   genderTarget = 'all',
   customerIdentityPools,
 }: TopDropOfferAlertsProps) {
   const { countryCode } = useLocale();
-  const alerts = useMemo<OfferAlertItem[]>(
-    () =>
-      items
-        .filter((item) => item.title.trim() || item.message.trim() || item.badge.trim())
-        .map((item, index) => ({
-          id: `${item.kind}-${index}-${item.title}`,
-          ...item,
-        })),
-    [items],
-  );
+  const alerts = useMemo<OfferAlertItem[]>(() => {
+    const configuredAlerts = items
+      .filter((item) => item.title.trim() || item.message.trim() || item.badge.trim())
+      .map((item, index) => ({
+        id: `${item.kind}-${index}-${item.title}`,
+        ...item,
+      }));
+
+    return configuredAlerts.length > 0 ? configuredAlerts : DEFAULT_AUTOMATED_ALERTS;
+  }, [items]);
 
   const productPool = useMemo(() => {
-    const seen = new Set<string>();
-    const normalizedNames = [currentProductName, ...productNames]
-      .map((name) => name.trim())
-      .filter((name) => name.length > 0)
-      .filter((name) => {
-        const key = name.toLowerCase();
+    const normalizedName = currentProductName.trim();
 
-        if (seen.has(key)) {
-          return false;
-        }
-
-        seen.add(key);
-        return true;
-      });
-
-    return normalizedNames.length > 0 ? normalizedNames : ['this product'];
-  }, [currentProductName, productNames]);
+    return normalizedName ? [normalizedName] : ['this product'];
+  }, [currentProductName]);
 
   const historyRef = useRef<Set<string>>(readAlertHistory());
   const previousAlertKeyRef = useRef<string | null>(null);
@@ -171,6 +350,12 @@ export function TopDropOfferAlerts({
   }, [alerts, currentProductName, productPool]);
 
   useEffect(() => {
+    if (isVisible && activeAlert) {
+      playAlertPopSound();
+    }
+  }, [activeAlert, isVisible]);
+
+  useEffect(() => {
     if (!enabled || alerts.length === 0) {
       setIsVisible(false);
       setActiveAlert(null);
@@ -181,25 +366,44 @@ export function TopDropOfferAlerts({
     let showTimer = 0;
     let hideTimer = 0;
 
-    const buildDynamicOrderAlert = (template: OfferAlertItem) => {
+    const buildAlertContext = () => {
       const cityPool = LOCATION_POOLS[countryCode] ?? LOCATION_POOLS.DEFAULT;
       const namePool = getCustomerNamePoolForContext({
         customerIdentityPools,
         countryCode,
         genderTarget,
       });
-      let nextName = namePool[0];
-      let nextCity = cityPool[0];
-      let nextProduct = productPool[0];
-      let nextMinutesAgo = 2;
+      const product = productPool[0] ?? 'this product';
+      const quantity = getRandomInt(1, 6);
+      const unitWord = pickRandom(['unit', 'pack', 'set']);
+      const minutesAgo = getRandomInt(2, 59);
+
+      return {
+        name: pickRandom(namePool),
+        city: pickRandom(cityPool),
+        product,
+        quantity,
+        itemLabel: `${unitWord}${quantity === 1 ? '' : 's'}`,
+        minutesAgo,
+        stockCount: getRandomInt(6, 35),
+        discount: getRandomInt(5, 18),
+      };
+    };
+
+    const buildDynamicOrderAlert = (template: OfferAlertItem) => {
+      let nextContext = buildAlertContext();
       let nextSignature = '';
 
       for (let attempt = 0; attempt < 24; attempt += 1) {
-        nextName = pickRandom(namePool);
-        nextCity = pickRandom(cityPool);
-        nextProduct = pickRandom(productPool);
-        nextMinutesAgo = getRandomInt(2, 59);
-        nextSignature = `${nextName}|${nextCity}|${nextProduct}|${nextMinutesAgo}`;
+        nextContext = buildAlertContext();
+        nextSignature = [
+          template.id,
+          nextContext.name,
+          nextContext.city,
+          nextContext.product,
+          nextContext.quantity,
+          nextContext.minutesAgo,
+        ].join('|');
 
         if (
           nextSignature !== previousAlertKeyRef.current &&
@@ -214,22 +418,25 @@ export function TopDropOfferAlerts({
         signature: nextSignature,
         kind: template.kind,
         badge: template.badge || 'Recent purchase',
-        title: `${nextName} from ${nextCity}`,
-        message: `purchased ${nextProduct}`,
-        timestampLabel: `${nextMinutesAgo} mins ago`,
+        title: resolveAlertTemplate(template.title, nextContext),
+        message: resolveAlertTemplate(template.message, nextContext),
+        timestampLabel: `${nextContext.minutesAgo} mins ago`,
       } satisfies AlertCandidate;
     };
 
     const buildStaticAlert = (template: OfferAlertItem) => {
-      const signature = `${template.kind}|${template.badge}|${template.title}|${template.message}`;
+      const nextContext = buildAlertContext();
+      const title = resolveAlertTemplate(template.title, nextContext);
+      const message = resolveAlertTemplate(template.message, nextContext);
+      const signature = `${template.kind}|${template.badge}|${title}|${message}`;
 
       return {
         id: `${template.id}-${Date.now()}`,
         signature,
         kind: template.kind,
         badge: template.badge,
-        title: template.title,
-        message: template.message,
+        title,
+        message,
       } satisfies AlertCandidate;
     };
 

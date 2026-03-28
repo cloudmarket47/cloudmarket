@@ -166,7 +166,7 @@ export function Marketplace() {
     let isActive = true;
 
     const syncProducts = async (force = false) => {
-      const products = await loadStorefrontProducts(force).catch(() => []);
+      const products = await loadStorefrontProducts(force, { includeDrafts: true }).catch(() => []);
 
       if (isActive) {
         setStorefrontProducts(products);
@@ -222,10 +222,7 @@ export function Marketplace() {
     writeMarketplaceTheme(themeMode);
   }, [themeMode]);
 
-  const publishedProducts = useMemo(
-    () => storefrontProducts.filter((product) => product.status === 'published'),
-    [storefrontProducts],
-  );
+  const publishedProducts = useMemo(() => storefrontProducts, [storefrontProducts]);
   const activeFilter = useMemo(() => resolveCategoryFilter(categorySlug), [categorySlug]);
   const categoryScopedProducts = useMemo(
     () => filterProductsByCategory(publishedProducts, categorySlug ?? 'all'),
@@ -1064,12 +1061,12 @@ export function Marketplace() {
             ) : (
               <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-950">
                 <p className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                  {hasPublishedProducts ? 'No matching products' : 'No products published yet'}
+                  {hasPublishedProducts ? 'No matching products' : 'No products available yet'}
                 </p>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">
                   {hasPublishedProducts
                     ? 'Try a broader search term, switch categories, or reset the filters to reopen the full grid.'
-                    : 'This storefront is ready. Publish products from the admin dashboard and the homepage will fill automatically.'}
+                    : 'This storefront is ready. Add product pages from the admin dashboard and the homepage catalog will fill automatically.'}
                 </p>
               </div>
             )}
