@@ -1,5 +1,4 @@
 import type { Product } from '../types';
-import { applyAlertPreset, ALERT_PRESETS } from './alertPresets';
 import {
   createDefaultCustomerIdentityPools,
   normalizeCustomerIdentityPools,
@@ -294,6 +293,31 @@ function normalizeLibraryItemName(value: string | undefined, fallback: string) {
   return normalizedValue && normalizedValue.length > 0 ? normalizedValue : fallback;
 }
 
+function isLegacyAutomatedAlertPlaceholder(item: AdminAlertItem | undefined) {
+  if (!item) {
+    return false;
+  }
+
+  const normalizedTitle = item.title.trim().toLowerCase();
+  const normalizedMessage = item.message.trim().toLowerCase();
+
+  if (
+    normalizedMessage === 'use popup notifications to highlight offers and mock order activity.' ||
+    normalizedMessage === 'use this list to control popup notification copy for offers and social proof.'
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedTitle === 'limited stock alert' &&
+    normalizedMessage === 'only 60 left. hurry now and order yours before you see sold out.'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function normalizeMediaLibraryItem(
   item: AdminProductLibraryItem | undefined,
   fallbackName: string,
@@ -477,10 +501,12 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
       },
       alerts: {
         ...draft.sections.alerts,
-        items: draft.sections.alerts.items.map((item) => ({
-          ...item,
-          presetId: item.presetId ?? undefined,
-        })),
+        items: draft.sections.alerts.items
+          .filter((item) => !isLegacyAutomatedAlertPlaceholder(item))
+          .map((item) => ({
+            ...item,
+            presetId: item.presetId ?? undefined,
+          })),
       },
       orderForm: {
         ...draft.sections.orderForm,
@@ -651,12 +677,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       },
       alerts: {
         visible: true,
-        items: [
-          {
-            ...applyAlertPreset(ALERT_PRESETS[0].id),
-            message: 'Use popup notifications to highlight offers and mock order activity.',
-          },
-        ],
+        items: [],
       },
       featureMarquee: {
         visible: true,
@@ -817,10 +838,11 @@ export function createAdminProductLibraryItem(
 export function createAutoPricedOfferPackage(
   packages: AdminOfferPackage[],
   multiplier = packages.length + 1,
+  fallbackBasePrice = 0,
 ): AdminOfferPackage {
   const safeMultiplier = Math.max(1, multiplier);
   const basePackage = packages[0];
-  const basePrice = Math.max(0, basePackage?.price ?? 0);
+  const basePrice = Math.max(0, basePackage?.price ?? fallbackBasePrice);
   const baseOldPrice = Math.max(basePrice, basePackage?.oldPrice ?? 0);
   const nextFeatures = basePackage?.features.filter((feature) => feature.trim().length > 0) ?? [];
 
@@ -828,7 +850,9 @@ export function createAutoPricedOfferPackage(
     title: `Package ${safeMultiplier}`,
     price: basePrice * safeMultiplier,
     oldPrice: baseOldPrice * safeMultiplier,
-    description: basePackage?.description ?? '',
+    description:
+      basePackage?.description ??
+      `${safeMultiplier} unit${safeMultiplier === 1 ? '' : 's'} total`,
     features: nextFeatures.length > 0 ? nextFeatures : [''],
     isBestValue: false,
     image: asset('', 'image'),
@@ -966,17 +990,7 @@ export function createAdminProductDraftFromProduct(
     items:
       product.sections.alerts.items.length > 0
         ? product.sections.alerts.items.map((item) => ({ ...item }))
-        : [
-            {
-              ...applyAlertPreset(ALERT_PRESETS[0].id),
-              message: 'Use this list to control popup notification copy for offers and social proof.',
-            },
-            {
-              ...applyAlertPreset(ALERT_PRESETS[1].id),
-              title: 'Limited Stock Alert',
-              message: 'Only 60 left. Hurry now and order yours before you see sold out.',
-            },
-          ],
+        : [],
   };
   draft.sections.featureMarquee = {
     visible: product.sections.features.visible,

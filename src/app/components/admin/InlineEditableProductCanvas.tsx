@@ -82,6 +82,7 @@ import {
   uploadAssetToSupabaseStorageDetailed,
 } from '../../lib/supabaseStorage';
 import {
+  getProductLibraryBatchUploadLimit,
   getProductLibraryLimitLabel,
   getProductLibraryCountLimit,
   validateProductLibraryUpload,
@@ -470,7 +471,10 @@ function InlineEditorDrawer({
   editor: EditorPanelState;
   deviceView: 'desktop' | 'mobile';
   libraryItems: AdminProductLibraryItem[];
-  onUploadToLibrary: (file: File, kind: 'image' | 'video') => Promise<AdminProductLibraryItem>;
+  onUploadToLibrary: (
+    files: File[],
+    kind: 'image' | 'video',
+  ) => Promise<AdminProductLibraryItem[]>;
   onDeleteLibraryItem: (item: AdminProductLibraryItem) => Promise<void>;
   isDark?: boolean;
   onClose: () => void;
@@ -525,9 +529,21 @@ function InlineEditorDrawer({
     editor.mode === 'media' ? getProductLibraryCountLimit(editor.kind) : 0;
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const selectedFiles = Array.from(event.target.files ?? []);
 
-    if (!file || editor.mode !== 'media') {
+    if (selectedFiles.length === 0 || editor.mode !== 'media') {
+      return;
+    }
+
+    if (editor.kind === 'image' && selectedFiles.some((file) => !file.type.startsWith('image/'))) {
+      setMediaFeedback('Only image files can be uploaded here.');
+      event.target.value = '';
+      return;
+    }
+
+    if (editor.kind === 'video' && selectedFiles.some((file) => !file.type.startsWith('video/'))) {
+      setMediaFeedback('Only video files can be uploaded here.');
+      event.target.value = '';
       return;
     }
 
@@ -535,10 +551,19 @@ function InlineEditorDrawer({
     setMediaFeedback('');
 
     try {
-      const libraryItem = await onUploadToLibrary(file, editor.kind);
-      setDraftValue(libraryItem.asset.src);
-      setDraftSource(libraryItem.asset.source);
-      setMediaFeedback(`${libraryItem.name} uploaded to the product library and selected.`);
+      const uploadedItems = await onUploadToLibrary(selectedFiles, editor.kind);
+      const primaryItem = uploadedItems[0];
+
+      if (primaryItem) {
+        setDraftValue(primaryItem.asset.src);
+        setDraftSource(primaryItem.asset.source);
+      }
+
+      setMediaFeedback(
+        uploadedItems.length <= 1
+          ? `${primaryItem?.name ?? 'Media'} uploaded to the product library and selected.`
+          : `${uploadedItems.length} images uploaded to the product library. ${primaryItem?.name ?? 'The first image'} was selected for this placeholder.`,
+      );
     } catch (error) {
       setMediaFeedback(error instanceof Error ? error.message : 'Upload failed.');
     } finally {
@@ -776,7 +801,9 @@ function InlineEditorDrawer({
                         Upload from Device
                       </p>
                       <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
-                        Uploading here stores the file in the product library first, then links it to this placeholder.
+                        {editor.kind === 'image'
+                          ? `Uploading here stores the file in the product library first, then links it to this placeholder. You can upload up to ${getProductLibraryBatchUploadLimit('image')} images at once.`
+                          : 'Uploading here stores the file in the product library first, then links it to this placeholder.'}
                       </p>
                     </div>
                     <button
@@ -792,6 +819,7 @@ function InlineEditorDrawer({
                       ref={uploadInputRef}
                       type="file"
                       accept={editor.accept}
+                      multiple={editor.kind === 'image'}
                       className="hidden"
                       onChange={handleUpload}
                     />
@@ -1535,7 +1563,7 @@ function EditableAlertsList({
         <div>
           <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Top popup alerts</p>
           <p className={cn('mt-1 text-xs', isDark ? 'text-slate-300' : 'text-gray-500')}>
-            Keep each alert short. These cards drop in like mobile notifications.
+            Keep each alert short. Leave this empty to keep the automatic mock popup alerts active.
           </p>
         </div>
         <button
@@ -1556,6 +1584,19 @@ function EditableAlertsList({
           Add alert
         </button>
       </div>
+
+      {items.length === 0 ? (
+        <div
+          className={cn(
+            'rounded-[1.35rem] border border-dashed px-4 py-4 text-sm leading-6',
+            isDark
+              ? 'border-[#0E7C7B]/30 bg-[#0E7C7B]/10 text-slate-200'
+              : 'border-[#0E7C7B]/20 bg-[#eef7f6] text-slate-700',
+          )}
+        >
+          Automatic popup alerts are already active for this page. Add custom alerts only if you want to override the built-in mock alert rotation.
+        </div>
+      ) : null}
 
       <div className="grid gap-4">
         {items.map((item, index) => (
@@ -2234,11 +2275,13 @@ function EditableReviewsList({
 function EditablePackagesList({
   items,
   currency,
+  basePrice,
   onChange,
   isDark = false,
 }: {
   items: AdminOfferPackage[];
   currency: AdminProductDraft['currency'];
+  basePrice: number;
   onChange: (items: AdminOfferPackage[]) => void;
   isDark?: boolean;
 }) {
@@ -2262,7 +2305,7 @@ function EditablePackagesList({
           onClick={() =>
             onChange([
               ...items,
-              createAutoPricedOfferPackage(items),
+              createAutoPricedOfferPackage(items, items.length + 1, basePrice),
             ])
           }
           className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0E7C7B] transition hover:bg-gray-100"
@@ -2531,34 +2574,83 @@ export function InlineEditableProductCanvas({
   };
 
   const handleUploadToLibrary = async (
-    file: File,
+    files: File[],
     kind: 'image' | 'video',
-  ): Promise<AdminProductLibraryItem> => {
-    const validationError = validateProductLibraryUpload({
-      file,
-      kind,
-      existingCount: countLibraryItemsByKind(pageData.mediaLibrary, kind),
-    });
-
-    if (validationError) {
-      throw new Error(validationError);
+  ): Promise<AdminProductLibraryItem[]> => {
+    if (files.length === 0) {
+      return [];
     }
 
-    const uploaded = await uploadAssetToSupabaseStorageDetailed(
-      file,
-      `product-library/${pageData.slug || pageData.id}`,
-    );
+    const batchLimit = getProductLibraryBatchUploadLimit(kind);
+    const existingCount = countLibraryItemsByKind(pageData.mediaLibrary, kind);
+    const remainingSlots = Math.max(0, getProductLibraryCountLimit(kind) - existingCount);
 
-    const libraryItem = createAdminProductLibraryItem(file.name, {
-      src: uploaded.publicUrl,
-      source: 'upload',
-      kind,
-      storagePath: uploaded.storagePath,
-    });
+    if (files.length > batchLimit) {
+      throw new Error(
+        kind === 'image'
+          ? `You can upload up to ${batchLimit} images at a time.`
+          : 'Videos can only be uploaded one at a time.',
+      );
+    }
 
-    updatePageData((current) => appendMediaLibraryItemToDraft(current, libraryItem));
+    if (files.length > remainingSlots) {
+      throw new Error(
+        remainingSlots > 0
+          ? `This product library can only take ${remainingSlots} more ${kind}${remainingSlots === 1 ? '' : 's'}.`
+          : `This product library already reached the ${getProductLibraryCountLimit(kind)} ${kind} limit.`,
+      );
+    }
 
-    return libraryItem;
+    for (const [index, file] of files.entries()) {
+      const validationError = validateProductLibraryUpload({
+        file,
+        kind,
+        existingCount: existingCount + index,
+      });
+
+      if (validationError) {
+        throw new Error(validationError);
+      }
+    }
+
+    const uploadedItems: AdminProductLibraryItem[] = [];
+
+    try {
+      for (const file of files) {
+        const uploaded = await uploadAssetToSupabaseStorageDetailed(
+          file,
+          `product-library/${pageData.slug || pageData.id}`,
+        );
+
+        uploadedItems.push(
+          createAdminProductLibraryItem(file.name, {
+            src: uploaded.publicUrl,
+            source: 'upload',
+            kind,
+            storagePath: uploaded.storagePath,
+          }),
+        );
+      }
+
+      updatePageData((current) =>
+        uploadedItems.reduce(
+          (nextDraft, item) => appendMediaLibraryItemToDraft(nextDraft, item),
+          current,
+        ),
+      );
+
+      return uploadedItems;
+    } catch (error) {
+      if (uploadedItems.length > 0) {
+        await Promise.allSettled(
+          uploadedItems.map((item) =>
+            deleteAssetFromSupabaseStorage(item.asset.storagePath || item.asset.src),
+          ),
+        );
+      }
+
+      throw error;
+    }
   };
 
   const handleDeleteLibraryItem = async (item: AdminProductLibraryItem) => {
@@ -2577,7 +2669,12 @@ export function InlineEditableProductCanvas({
     }
 
     try {
-      const libraryItem = await handleUploadToLibrary(file, 'image');
+      const [libraryItem] = await handleUploadToLibrary([file], 'image');
+
+      if (!libraryItem) {
+        return;
+      }
+
       updateHeroSlides([
         ...heroSlides,
         {
@@ -4042,6 +4139,7 @@ export function InlineEditableProductCanvas({
                       <EditablePackagesList
                         items={pageData.sections.offer.packages}
                         currency={pageData.currency}
+                        basePrice={pageData.basePrice}
                         onChange={(packages) => updateSection('offer', { packages })}
                         isDark={isDark}
                       />

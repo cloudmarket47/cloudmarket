@@ -11,6 +11,11 @@ export const PRODUCT_LIBRARY_LIMITS = {
   },
 } as const;
 
+export const PRODUCT_LIBRARY_BATCH_UPLOAD_LIMITS = {
+  image: 20,
+  video: 1,
+} as const;
+
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
     return `${Math.round((bytes / (1024 * 1024)) * 10) / 10}MB`;
@@ -25,6 +30,10 @@ export function getProductLibraryCountLimit(kind: ProductLibraryMediaKind) {
 
 export function getProductLibraryFileSizeLimit(kind: ProductLibraryMediaKind) {
   return PRODUCT_LIBRARY_LIMITS[kind].maxFileSizeBytes;
+}
+
+export function getProductLibraryBatchUploadLimit(kind: ProductLibraryMediaKind) {
+  return PRODUCT_LIBRARY_BATCH_UPLOAD_LIMITS[kind];
 }
 
 export function getProductLibraryLimitLabel(kind: ProductLibraryMediaKind) {

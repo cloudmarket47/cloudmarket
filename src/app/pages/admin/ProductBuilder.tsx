@@ -77,6 +77,7 @@ import {
   uploadAssetToSupabaseStorageDetailed,
 } from '../../lib/supabaseStorage';
 import {
+  getProductLibraryBatchUploadLimit,
   getProductLibraryCountLimit,
   getProductLibraryLimitLabel,
   inferProductLibraryKindFromUrl,
@@ -265,8 +266,11 @@ function getLivePreviewSections(draft: AdminProductDraft): LivePreviewSection[] 
       description: 'Top drop notifications and offer alerts',
       complete:
         draft.sections.alerts.visible &&
-        draft.sections.alerts.items.some(
-          (item) => isFilled(item.title) && isFilled(item.message),
+        (
+          draft.sections.alerts.items.length === 0 ||
+          draft.sections.alerts.items.some(
+            (item) => isFilled(item.title) && isFilled(item.message),
+          )
         ),
       active: draft.sections.alerts.visible,
     },
@@ -808,49 +812,115 @@ function ProductLibraryManager({
   };
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const selectedFiles = Array.from(event.target.files ?? []);
 
-    if (!file) {
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    const nextKind: ProductLibraryMediaKind = file.type.startsWith('video/') ? 'video' : 'image';
-    const existingCount = nextKind === 'image' ? imageCount : videoCount;
-    const validationError = validateProductLibraryUpload({
-      file,
-      kind: nextKind,
-      existingCount,
-    });
+    const imageFiles = selectedFiles.filter((file) => file.type.startsWith('image/'));
+    const videoFiles = selectedFiles.filter((file) => file.type.startsWith('video/'));
 
-    if (validationError) {
-      setFeedback(validationError);
+    if (imageFiles.length > 0 && videoFiles.length > 0) {
+      setFeedback('Upload images and videos separately in the product library.');
       event.target.value = '';
       return;
     }
 
+    const nextKind: ProductLibraryMediaKind = videoFiles.length > 0 ? 'video' : 'image';
+    const files = nextKind === 'video' ? videoFiles : imageFiles;
+
+    if (files.length === 0) {
+      setFeedback('Only image and video files can be uploaded to the product library.');
+      event.target.value = '';
+      return;
+    }
+
+    const existingCount = nextKind === 'image' ? imageCount : videoCount;
+    const batchLimit = getProductLibraryBatchUploadLimit(nextKind);
+    const remainingSlots = Math.max(0, getProductLibraryCountLimit(nextKind) - existingCount);
+
+    if (files.length > batchLimit) {
+      setFeedback(
+        nextKind === 'image'
+          ? `You can upload up to ${batchLimit} images at a time.`
+          : 'Videos can only be uploaded one at a time.',
+      );
+      event.target.value = '';
+      return;
+    }
+
+    if (files.length > remainingSlots) {
+      setFeedback(
+        remainingSlots > 0
+          ? `This product library can only take ${remainingSlots} more ${nextKind}${remainingSlots === 1 ? '' : 's'}.`
+          : `This product library already reached the ${getProductLibraryCountLimit(nextKind)} ${nextKind} limit.`,
+      );
+      event.target.value = '';
+      return;
+    }
+
+    for (const [index, file] of files.entries()) {
+      const validationError = validateProductLibraryUpload({
+        file,
+        kind: nextKind,
+        existingCount: existingCount + index,
+      });
+
+      if (validationError) {
+        setFeedback(validationError);
+        event.target.value = '';
+        return;
+      }
+    }
+
     setIsWorking(true);
     setFeedback('');
+    const uploadedItems: AdminProductLibraryItem[] = [];
 
     try {
-      const uploaded = await uploadAssetToSupabaseStorageDetailed(
-        file,
-        `product-library/${draft.slug || draft.id}`,
-      );
+      for (const [index, file] of files.entries()) {
+        const uploaded = await uploadAssetToSupabaseStorageDetailed(
+          file,
+          `product-library/${draft.slug || draft.id}`,
+        );
 
-      appendLibraryItem(
-        createAdminProductLibraryItem(
-          libraryName.trim() || file.name || `Library ${nextKind} ${existingCount + 1}`,
-          {
-            src: uploaded.publicUrl,
-            source: 'upload',
-            kind: nextKind,
-            storagePath: uploaded.storagePath,
-          },
-        ),
-      );
+        uploadedItems.push(
+          createAdminProductLibraryItem(
+            libraryName.trim()
+              ? files.length === 1
+                ? libraryName.trim()
+                : `${libraryName.trim()} ${index + 1}`
+              : file.name || `Library ${nextKind} ${existingCount + index + 1}`,
+            {
+              src: uploaded.publicUrl,
+              source: 'upload',
+              kind: nextKind,
+              storagePath: uploaded.storagePath,
+            },
+          ),
+        );
+      }
+
+      onChange({
+        ...draft,
+        mediaLibrary: [...draft.mediaLibrary, ...uploadedItems],
+      });
       setLibraryName('');
-      setFeedback('Media uploaded into the product library.');
+      setFeedback(
+        uploadedItems.length === 1
+          ? `${nextKind === 'image' ? 'Image' : 'Video'} uploaded into the product library.`
+          : `${uploadedItems.length} images uploaded into the product library.`,
+      );
     } catch (error) {
+      if (uploadedItems.length > 0) {
+        await Promise.allSettled(
+          uploadedItems.map((item) =>
+            deleteAssetFromSupabaseStorage(item.asset.storagePath || item.asset.src),
+          ),
+        );
+      }
+
       setFeedback(error instanceof Error ? error.message : 'Upload failed.');
     } finally {
       setIsWorking(false);
@@ -960,6 +1030,7 @@ function ProductLibraryManager({
               <input
                 type="file"
                 accept="image/*,video/*"
+                multiple
                 className="hidden"
                 onChange={handleUpload}
               />
@@ -972,7 +1043,7 @@ function ProductLibraryManager({
         <div className="rounded-[1.75rem] border border-gray-200 bg-white p-5">
           <p className="text-sm font-semibold text-gray-900">Library rules</p>
           <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
-            <p>Images: maximum 30 items, 5MB each.</p>
+            <p>Images: maximum 30 items, 5MB each, upload up to 20 at once.</p>
             <p>Videos: maximum 3 items, 15MB each.</p>
             <p>Deleting an uploaded file removes it from this draft and permanently deletes it from Supabase Storage.</p>
           </div>
@@ -1385,7 +1456,12 @@ function AlertItemsEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-900">Notification cards</p>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Notification cards</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Leave this empty to keep the automatic mock popup alerts active for this page.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() =>
@@ -1400,6 +1476,12 @@ function AlertItemsEditor({
           Add alert
         </button>
       </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-[1.35rem] border border-dashed border-[#0E7C7B]/20 bg-[#eef7f6] px-4 py-4 text-sm text-gray-700">
+          Automatic popup alerts are already active by default. Add custom alerts only if you want to replace the built-in mock rotation for this product page.
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         {items.map((item, index) => (
@@ -1464,10 +1546,12 @@ function AlertItemsEditor({
 
 function PackageEditor({
   currency,
+  basePrice,
   packages,
   onChange,
 }: {
   currency: AdminCurrency;
+  basePrice: number;
   packages: AdminOfferPackage[];
   onChange: (items: AdminOfferPackage[]) => void;
 }) {
@@ -1489,7 +1573,7 @@ function PackageEditor({
           onClick={() =>
             onChange([
               ...packages,
-              createAutoPricedOfferPackage(packages),
+              createAutoPricedOfferPackage(packages, packages.length + 1, basePrice),
             ])
           }
           className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#0E7C7B] ring-1 ring-inset ring-[#0E7C7B]/15 transition hover:bg-[#eef7f6]"
@@ -3526,6 +3610,7 @@ function CommerceSections({
         />
         <PackageEditor
           currency={draft.currency}
+          basePrice={draft.basePrice}
           packages={draft.sections.offer.packages}
           onChange={(packages) => patchSection('offer', { packages })}
         />
