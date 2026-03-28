@@ -323,10 +323,11 @@ export function TopDropOfferAlerts({
             exit={{ opacity: 0, y: -10, scale: 0.985 }}
             transition={{ duration: ALERT_TRANSITION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             aria-live="polite"
-            className="pointer-events-auto relative w-full max-w-[24rem] overflow-hidden rounded-[1.7rem] border border-white/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl"
+            className="pointer-events-auto relative w-full max-w-[24rem] overflow-hidden rounded-[1.7rem] border border-[#FF7A00]/65 bg-white/82 shadow-[0_20px_60px_rgba(255,122,0,0.18)] backdrop-blur-xl"
           >
-            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.1),rgba(255,255,255,0.9),rgba(255,255,255,0.1))]" />
+            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(255,122,0,0.08),rgba(255,255,255,0.94),rgba(255,122,0,0.08))]" />
             <div className="absolute -left-10 top-0 h-24 w-24 rounded-full bg-[#2B63D9]/10 blur-3xl" aria-hidden="true" />
+            <div className="absolute -right-10 bottom-0 h-24 w-24 rounded-full bg-[#FF7A00]/12 blur-3xl" aria-hidden="true" />
 
             <div className="flex items-start gap-3 p-4">
               <div className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full shadow-sm ${styles.iconWrapClass}`}>

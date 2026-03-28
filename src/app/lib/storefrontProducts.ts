@@ -18,6 +18,60 @@ function mapDraftThemeModeToProductTheme(
   return themeMode === 'dark' ? 'premium' : 'modern';
 }
 
+function isLegacyPlaceholderAlert(
+  item: AdminProductDraft['sections']['alerts']['items'][number],
+) {
+  const normalizedTitle = item.title.trim().toLowerCase();
+  const normalizedMessage = item.message.trim().toLowerCase();
+
+  if (normalizedMessage.includes('mock order activity')) {
+    return true;
+  }
+
+  if (normalizedMessage.includes('control popup notification copy for offers and social proof')) {
+    return true;
+  }
+
+  if (
+    normalizedTitle === 'limited stock alert' &&
+    normalizedMessage === 'only 60 left. hurry now and order yours before you see sold out.'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function sanitizeStorefrontAlerts(
+  items: AdminProductDraft['sections']['alerts']['items'],
+) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    if (isLegacyPlaceholderAlert(item)) {
+      return false;
+    }
+
+    const signature = [
+      item.kind.trim().toLowerCase(),
+      item.badge.trim().toLowerCase(),
+      item.title.trim().toLowerCase(),
+      item.message.trim().toLowerCase(),
+    ].join('|');
+
+    if (!signature.replace(/\|/g, '').trim()) {
+      return false;
+    }
+
+    if (seen.has(signature)) {
+      return false;
+    }
+
+    seen.add(signature);
+    return true;
+  });
+}
+
 function toProductImage(draft: AdminProductDraft) {
   return (
     draft.coverImage.src ||
@@ -90,7 +144,7 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
       },
       alerts: {
         visible: draft.sections.alerts.visible,
-        items: draft.sections.alerts.items.map((item) => ({ ...item })),
+        items: sanitizeStorefrontAlerts(draft.sections.alerts.items).map((item) => ({ ...item })),
       },
       featureMarquee: {
         visible: draft.sections.featureMarquee.visible,
