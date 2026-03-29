@@ -108,19 +108,45 @@ export async function loadRatesSnapshot(force = false) {
   }
 }
 
+function getEffectiveRate(
+  currency: SupportedRateCurrency,
+  snapshot: RatesSnapshot = activeRatesSnapshot,
+) {
+  if (currency === 'NGN') {
+    return 1;
+  }
+
+  return snapshot.rates[currency] * snapshot.safetyBufferMultiplier;
+}
+
 export function convertNairaAmount(
   nairaAmount: number,
   targetCurrency: SupportedRateCurrency,
   snapshot: RatesSnapshot = activeRatesSnapshot,
 ) {
-  if (targetCurrency === 'NGN') {
-    return Number(nairaAmount.toFixed(2));
+  return convertPriceAmount(nairaAmount, 'NGN', targetCurrency, snapshot);
+}
+
+export function convertPriceAmount(
+  amount: number,
+  sourceCurrency: SupportedRateCurrency,
+  targetCurrency: SupportedRateCurrency,
+  snapshot: RatesSnapshot = activeRatesSnapshot,
+) {
+  if (!Number.isFinite(amount)) {
+    return 0;
   }
 
-  const convertedAmount =
-    nairaAmount * snapshot.rates[targetCurrency] * snapshot.safetyBufferMultiplier;
+  if (sourceCurrency === targetCurrency) {
+    return Number(amount.toFixed(targetCurrency === 'NGN' ? 0 : 2));
+  }
 
-  return Number(convertedAmount.toFixed(2));
+  const sourceRate = getEffectiveRate(sourceCurrency, snapshot);
+  const targetRate = getEffectiveRate(targetCurrency, snapshot);
+  const nairaAmount = sourceCurrency === 'NGN' ? amount : amount / sourceRate;
+  const convertedAmount = targetCurrency === 'NGN' ? nairaAmount : nairaAmount * targetRate;
+
+  return Number(convertedAmount.toFixed(targetCurrency === 'NGN' ? 0 : 2));
 }
 
 export function formatConvertedAmount(
@@ -140,12 +166,18 @@ export function formatConvertedAmount(
 }
 
 export function formatPriceForCountry(
-  nairaAmount: number,
+  amount: number,
   countryCode?: SupportedCountryCode,
   snapshot: RatesSnapshot = activeRatesSnapshot,
+  sourceCurrency: SupportedRateCurrency = 'NGN',
 ) {
   const locale = getLocaleConfig(countryCode);
-  const convertedAmount = convertNairaAmount(nairaAmount, locale.currencyCode, snapshot);
+  const convertedAmount = convertPriceAmount(
+    amount,
+    sourceCurrency,
+    locale.currencyCode,
+    snapshot,
+  );
 
   return formatConvertedAmount(convertedAmount, locale.currencyCode, locale.countryCode);
 }

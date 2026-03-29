@@ -344,10 +344,10 @@ export function ThankYou() {
                             </p>
                             <div className="flex flex-wrap items-end gap-2">
                               <span className="text-lg font-black tracking-tight text-[#d73d32]">
-                                {formatPrice(pricing.currentPrice)}
+                                {formatPrice(pricing.currentPrice, product.currencyCode)}
                               </span>
                               <span className="text-sm text-slate-400 line-through">
-                                {formatPrice(pricing.oldPrice)}
+                                {formatPrice(pricing.oldPrice, product.currencyCode)}
                               </span>
                             </div>
                             <span className="inline-flex items-center gap-2 rounded-full bg-[#2B63D9] px-4 py-2 text-sm font-semibold text-white">

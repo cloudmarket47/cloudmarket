@@ -116,13 +116,13 @@ export function SpecialOffer({
 
                     <h3 className="mb-2 text-2xl font-bold text-gray-900">{pkg.title}</h3>
                     <p className="text-sm font-semibold text-gray-500 line-through">
-                      Old Price: {formatPrice(priceBreakdown.oldPrice)}
+                      Old Price: {formatPrice(priceBreakdown.oldPrice, product.currencyCode)}
                     </p>
                     <p className="mb-1 text-4xl font-bold text-[#0E7C7B]">
-                      Promo: {formatPrice(priceBreakdown.promoPrice)}
+                      Promo: {formatPrice(priceBreakdown.promoPrice, product.currencyCode)}
                     </p>
                     <p className="mb-2 text-sm font-semibold text-emerald-600">
-                      You save {formatPrice(priceBreakdown.savings)}
+                      You save {formatPrice(priceBreakdown.savings, product.currencyCode)}
                     </p>
                     <p className="text-gray-600">{pkg.description}</p>
 

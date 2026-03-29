@@ -1,4 +1,4 @@
-import { convertNairaAmount } from './currencyRates';
+import { convertPriceAmount } from './currencyRates';
 import { formatCurrency } from './utils';
 import type { CustomerTokenRecord, PlacedOrder, Product } from '../types';
 import { getLocaleConfig, type SupportedCountryCode } from './localeData';
@@ -126,7 +126,11 @@ export function buildPackageOptions(
 ): Record<string, PackageOption> {
   return product.sections.offer.packages.reduce<Record<string, PackageOption>>((collection, pkg, index) => {
     const quantity = pkg.title.match(/buy\s+(\d+)/i)?.[1] ?? String(index + 1);
-    const convertedTotal = convertNairaAmount(pkg.price, getLocaleConfig(localeCountryCode).currencyCode);
+    const convertedTotal = convertPriceAmount(
+      pkg.price,
+      product.currencyCode ?? 'NGN',
+      getLocaleConfig(localeCountryCode).currencyCode,
+    );
 
     collection[quantity] = {
       quantity,

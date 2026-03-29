@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { SiteTrackingManager } from './SiteTrackingManager';
+import { StorefrontContentProtectionManager } from './StorefrontContentProtectionManager';
 import { trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
 
@@ -43,6 +44,7 @@ export function ScrollToTopLayout() {
   return (
     <>
       <SiteTrackingManager />
+      <StorefrontContentProtectionManager />
       <Outlet />
     </>
   );

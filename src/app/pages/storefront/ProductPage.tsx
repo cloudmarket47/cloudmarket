@@ -56,7 +56,7 @@ export function ProductPage() {
       }
 
       try {
-        const products = await loadStorefrontProducts(force, { includeDrafts: true });
+        const products = await loadStorefrontProducts(force);
 
         if (isActive) {
           setStorefrontError(null);
@@ -340,7 +340,7 @@ export function ProductPage() {
                         </p>
                         <div className="flex items-center justify-between mb-4">
                           <p className="text-2xl font-bold text-[#0E7C7B]">
-                            {formatPrice(recProduct.price)}
+                            {formatPrice(recProduct.price, recProduct.currencyCode)}
                           </p>
                         </div>
                         <Link

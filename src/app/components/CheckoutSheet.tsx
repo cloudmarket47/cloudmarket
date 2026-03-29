@@ -4,7 +4,7 @@ import { Check, ChevronLeft, MapPin, MessageSquare, MoreVertical, Package, Phone
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
-import { convertNairaAmount, getCurrencyForCountry } from '../lib/currencyRates';
+import { convertPriceAmount, getCurrencyForCountry } from '../lib/currencyRates';
 import { recordSubmittedOrder } from '../lib/adminOrders';
 import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../lib/customerTokens';
 import type { SupportedCountryCode } from '../lib/localeData';
@@ -58,13 +58,14 @@ function buildCheckoutBundles(product: Product, countryCode: SupportedCountryCod
       oldPrice: bundle.oldPrice,
     });
     const currency = getCurrencyForCountry(countryCode);
+    const sourceCurrency = product.currencyCode ?? 'NGN';
 
     return {
       id: `${product.id}-bundle-${index}`,
       title: bundle.title,
-      price: convertNairaAmount(priceBreakdown.promoPrice, currency),
-      oldPrice: convertNairaAmount(priceBreakdown.oldPrice, currency),
-      savings: convertNairaAmount(priceBreakdown.savings, currency),
+      price: convertPriceAmount(priceBreakdown.promoPrice, sourceCurrency, currency),
+      oldPrice: convertPriceAmount(priceBreakdown.oldPrice, sourceCurrency, currency),
+      savings: convertPriceAmount(priceBreakdown.savings, sourceCurrency, currency),
       description: bundle.description,
       features: bundle.features,
       isBestValue: bundle.isBestValue,

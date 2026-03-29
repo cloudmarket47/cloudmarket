@@ -173,7 +173,7 @@ export function Marketplace() {
       }
 
       try {
-        const products = await loadStorefrontProducts(force, { includeDrafts: true });
+        const products = await loadStorefrontProducts(force);
 
         if (isActive) {
           setStorefrontError(null);
@@ -1135,10 +1135,10 @@ export function Marketplace() {
                           </p>
                           <div className="flex items-center gap-2">
                             <span className="text-base font-black text-[#d73d32]">
-                              {formatPrice(pricing.currentPrice)}
+                              {formatPrice(pricing.currentPrice, product.currencyCode)}
                             </span>
                             <span className="text-sm text-slate-400 line-through">
-                              {formatPrice(pricing.oldPrice)}
+                              {formatPrice(pricing.oldPrice, product.currencyCode)}
                             </span>
                           </div>
                         </div>

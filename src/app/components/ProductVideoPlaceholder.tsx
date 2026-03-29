@@ -47,6 +47,8 @@ export function ProductVideoPlaceholder({
                     src={videoSrc}
                     poster={poster || undefined}
                     controls
+                    controlsList="nodownload noplaybackrate"
+                    disablePictureInPicture
                     playsInline
                     preload="metadata"
                     className="h-full w-full bg-black object-cover"

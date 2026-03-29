@@ -14,3 +14,63 @@
     transform: translate3d(calc(-50% - 0.375rem), 0, 0);
   }
 }
+
+html[data-content-protected='true'],
+body[data-content-protected='true'] {
+  -webkit-touch-callout: none;
+}
+
+body[data-content-protected='true'] :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    span,
+    small,
+    strong,
+    em,
+    li,
+    dt,
+    dd,
+    blockquote,
+    figcaption,
+    a,
+    button,
+    label,
+    article,
+    section
+  ) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body[data-content-protected='true'] :where(input, textarea, select, option, [contenteditable='true'], [data-allow-copy='true']) {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default;
+}
+
+body[data-content-protected='true'] :where(img, video, canvas, svg) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: auto;
+}
+
+@media print {
+  html[data-content-protected='true'] body * {
+    display: none !important;
+  }
+
+  html[data-content-protected='true'] body::before {
+    content: 'Printing is disabled on this page.';
+    display: block !important;
+    padding: 2rem;
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+}

@@ -4,6 +4,7 @@ import {
   getActiveRatesSnapshot,
   loadRatesSnapshot,
   setActiveRatesSnapshot,
+  type SupportedRateCurrency,
 } from '../lib/currencyRates';
 import {
   DEFAULT_COUNTRY_CODE,
@@ -23,7 +24,7 @@ interface LocaleContextValue {
   regionLabel: string;
   regions: string[];
   setCountryCode: (countryCode: SupportedCountryCode) => void;
-  formatPrice: (amount: number) => string;
+  formatPrice: (amount: number, sourceCurrency?: SupportedRateCurrency) => string;
   ratesUpdatedAt: string;
   isRatesReady: boolean;
 }
@@ -73,7 +74,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     return {
       ...localeConfig,
       setCountryCode,
-      formatPrice: (amount: number) => formatPriceForCountry(amount, localeConfig.countryCode),
+      formatPrice: (amount: number, sourceCurrency?: SupportedRateCurrency) =>
+        formatPriceForCountry(amount, localeConfig.countryCode, undefined, sourceCurrency),
       ratesUpdatedAt,
       isRatesReady,
     };
@@ -94,7 +96,8 @@ export function useLocale() {
   return {
     ...fallback,
     setCountryCode: () => undefined,
-    formatPrice: (amount: number) => formatPriceForCountry(amount, fallback.countryCode),
+    formatPrice: (amount: number, sourceCurrency?: SupportedRateCurrency) =>
+      formatPriceForCountry(amount, fallback.countryCode, undefined, sourceCurrency),
     ratesUpdatedAt: getActiveRatesSnapshot().updatedAt,
     isRatesReady: false,
   };

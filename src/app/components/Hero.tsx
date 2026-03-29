@@ -396,7 +396,7 @@ export function Hero({ product, onBuyNow }: HeroProps) {
                       Price
                     </span>
                     <span className="text-lg font-bold leading-none md:text-xl">
-                      {formatPrice(product.price)}
+                      {formatPrice(product.price, product.currencyCode)}
                     </span>
                   </div>
 

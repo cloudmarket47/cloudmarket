@@ -10,7 +10,7 @@ import {
 
 interface MarketplaceProductCardProps {
   product: Product;
-  formatPrice: (amount: number) => string;
+  formatPrice: (amount: number, sourceCurrency?: Product['currencyCode']) => string;
   onOpenProduct: (product: Product, section: string) => void;
 }
 
@@ -58,10 +58,10 @@ export function MarketplaceProductCard({
 
         <div className="flex flex-wrap items-end gap-1.5 sm:gap-2">
           <span className="text-[1rem] font-black tracking-tight text-[#d73d32] sm:text-lg">
-            {formatPrice(pricing.currentPrice)}
+            {formatPrice(pricing.currentPrice, product.currencyCode)}
           </span>
           <span className="text-[0.78rem] font-medium text-slate-400 line-through dark:text-slate-500 sm:text-sm">
-            {formatPrice(pricing.oldPrice)}
+            {formatPrice(pricing.oldPrice, product.currencyCode)}
           </span>
         </div>
 
