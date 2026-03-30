@@ -14,7 +14,9 @@ import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Clock,
   DollarSign,
   Eye,
@@ -1196,7 +1198,7 @@ function EditableMediaList({
         <div>
           <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{title}</p>
           <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
-            {helperText ?? 'Double-click any image to replace it, or add more from URL or device upload.'}
+            {helperText ?? `${items.length} media item${items.length === 1 ? '' : 's'} connected to this section.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1291,22 +1293,13 @@ function EditableMediaList({
 }
 
 function HiddenInlineMessage({
-  message,
-  isDark = false,
+  message: _message,
+  isDark: _isDark = false,
 }: {
   message: string;
   isDark?: boolean;
 }) {
-  return (
-    <div
-      className={cn(
-        'rounded-[2rem] border border-dashed px-6 py-10 text-center',
-        isDark ? 'border-slate-700 bg-slate-950' : 'border-gray-300 bg-white',
-      )}
-    >
-      <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{message}</p>
-    </div>
-  );
+  return null;
 }
 
 function VideoRatioSelector({
@@ -1469,7 +1462,7 @@ function EditableContentCardGrid({
         <div>
           <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{title}</p>
           <p className={cn('mt-1 text-xs', isDark ? 'text-slate-300' : 'text-gray-500')}>
-            Double-click the card text or icon badge to replace content. Add or remove cards as needed.
+            {items.length} card{items.length === 1 ? '' : 's'} in this section.
           </p>
         </div>
         {editable ? (
@@ -1480,8 +1473,8 @@ function EditableContentCardGrid({
                 ...items,
                 {
                   icon: 'Sparkles',
-                  title: 'New card title',
-                  description: 'Add the real section copy here.',
+                  title: '',
+                  description: '',
                 },
               ])
             }
@@ -1693,7 +1686,7 @@ function EditableFaqList({
         <div>
           <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>FAQ items</p>
           <p className={cn('mt-1 text-xs', isDark ? 'text-slate-300' : 'text-gray-500')}>
-            Double-click each question or answer to edit it inline.
+            {items.length} question{items.length === 1 ? '' : 's'} configured.
           </p>
         </div>
         <button
@@ -1702,8 +1695,8 @@ function EditableFaqList({
             onChange([
               ...items,
               {
-                question: 'New question',
-                answer: 'Add the answer for this FAQ item.',
+                question: '',
+                answer: '',
               },
             ])
           }
@@ -1892,6 +1885,7 @@ function EditableRegionalCustomerPools({
       : genderTarget === 'men'
         ? 'male names only'
         : 'a mixed male and female name rotation';
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const updatePool = (
     countryCode: SupportedCountryCode,
@@ -1944,9 +1938,23 @@ function EditableRegionalCustomerPools({
             The current canvas preview is reading from {getCountryCustomerPoolLabel(previewCountryCode)}.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition',
+            isDark
+              ? 'border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-900'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+          )}
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {isExpanded ? 'Hide library' : 'Open library'}
+        </button>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      {isExpanded ? (
+      <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
         {SUPPORTED_COUNTRY_CODES.map((countryCode) => {
           const countryPool = normalizedPools[countryCode];
 
@@ -2063,6 +2071,7 @@ function EditableRegionalCustomerPools({
           );
         })}
       </div>
+      ) : null}
     </div>
   );
 }
@@ -2835,12 +2844,10 @@ export function InlineEditableProductCanvas({
               </span>
             </div>
             <h2 className={cn('mt-4 text-xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
-              Double-click the live Hero and Features template to update content directly on the canvas.
+              Live canvas preview
             </h2>
             <p className={cn('mt-2 max-w-3xl text-sm leading-6', isDark ? 'text-slate-300' : 'text-gray-600')}>
-              Text updates save straight into the page state on blur or Enter. Double-click hero
-              images to replace them, or use the slide rail below to upload, add URLs and reorder
-              the carousel.
+              Review how the current product page content will appear across hero, media, feature and conversion sections.
             </p>
             <div
               className={cn(
@@ -3198,7 +3205,7 @@ export function InlineEditableProductCanvas({
                               </button>
                               <div className="flex items-center justify-between gap-2 px-3 py-3">
                                 <span className={cn('text-xs font-medium', isDark ? 'text-slate-300' : 'text-gray-600')}>
-                                  {slide.src ? 'Double-click main image to replace' : 'Empty slide'}
+                                  {slide.src ? 'Main image linked' : 'No image linked'}
                                 </span>
                                 <button
                                   type="button"
@@ -3247,21 +3254,7 @@ export function InlineEditableProductCanvas({
                     )}
                   </div>
                 </section>
-              ) : (
-                <div
-                  className={cn(
-                    'rounded-[2rem] border border-dashed px-6 py-10 text-center',
-                    isDark ? 'border-slate-700 bg-slate-950' : 'border-gray-300 bg-white',
-                  )}
-                >
-                  <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                    Hero section is hidden
-                  </p>
-                  <p className={cn('mt-2 text-sm', isDark ? 'text-slate-400' : 'text-gray-500')}>
-                    Use the section toggle above to bring the hero back into the live canvas.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
               {pageData.sections.features.visible ? (
                 <section
@@ -3361,9 +3354,6 @@ export function InlineEditableProductCanvas({
 
                     {!readOnly ? (
                       <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                        <p className={cn('text-sm', mutedTextClassName)}>
-                          Double-click any feature title or description to replace the mock copy.
-                        </p>
                         <button
                           type="button"
                           onClick={handleAddFeatureCard}
@@ -3376,21 +3366,7 @@ export function InlineEditableProductCanvas({
                     ) : null}
                   </div>
                 </section>
-              ) : (
-                <div
-                  className={cn(
-                    'rounded-[2rem] border border-dashed px-6 py-10 text-center',
-                    isDark ? 'border-slate-700 bg-slate-950' : 'border-gray-300 bg-white',
-                  )}
-                >
-                  <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                    Features section is hidden
-                  </p>
-                  <p className={cn('mt-2 text-sm', isDark ? 'text-slate-400' : 'text-gray-500')}>
-                    Turn the section back on when you want the feature cards to appear on the template.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
               {pageData.sections.seeInAction.visible ? (
                 <section className={cn('rounded-[2rem] py-12 md:py-16', isDark ? 'bg-slate-950' : 'bg-white')}>

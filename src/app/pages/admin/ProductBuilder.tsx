@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   BadgePercent,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Eye,
   FileImage,
   FileVideo,
@@ -608,6 +610,40 @@ function SectionCard({
   );
 }
 
+function CompactEditorSection({
+  title,
+  summary,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="rounded-[1.6rem] border border-gray-200 bg-gray-50/80">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/40"
+      >
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-gray-500">{summary}</p>
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500">
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </button>
+
+      {isOpen ? <div className="border-t border-gray-200 px-4 py-4">{children}</div> : null}
+    </div>
+  );
+}
+
 function MediaAssetField({
   label,
   description,
@@ -769,6 +805,7 @@ function ProductLibraryManager({
   const [libraryKind, setLibraryKind] = useState<ProductLibraryMediaKind>('image');
   const [feedback, setFeedback] = useState('');
   const [isWorking, setIsWorking] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const imageCount = draft.mediaLibrary.filter((item) => item.asset.kind === 'image').length;
   const videoCount = draft.mediaLibrary.filter((item) => item.asset.kind === 'video').length;
@@ -984,6 +1021,33 @@ function ProductLibraryManager({
         </div>
       </div>
 
+      <div className="mt-5 flex flex-wrap gap-3">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50">
+          <Upload className="h-4 w-4" />
+          {isWorking ? 'Uploading...' : 'Upload from Device'}
+          <input
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-white"
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {isExpanded ? 'Hide Library' : 'Open Library'}
+        </button>
+      </div>
+
+      {feedback ? <p className="mt-4 text-sm font-medium text-[#0E7C7B]">{feedback}</p> : null}
+
+      {isExpanded ? (
+      <>
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-[1.75rem] border border-gray-200 bg-gray-50/80 p-5">
           <div className="grid gap-4 md:grid-cols-2">
@@ -1026,21 +1090,7 @@ function ProductLibraryManager({
               <Plus className="h-4 w-4" />
               Add URL to Library
             </button>
-
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50">
-              <Upload className="h-4 w-4" />
-              {isWorking ? 'Uploading...' : 'Upload from Device'}
-              <input
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                className="hidden"
-                onChange={handleUpload}
-              />
-            </label>
           </div>
-
-          {feedback ? <p className="mt-4 text-sm font-medium text-[#0E7C7B]">{feedback}</p> : null}
         </div>
 
         <div className="rounded-[1.75rem] border border-gray-200 bg-white p-5">
@@ -1053,39 +1103,43 @@ function ProductLibraryManager({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {draft.mediaLibrary.map((item) => (
-          <div key={item.id} className="overflow-hidden rounded-[1.6rem] border border-gray-200 bg-white shadow-sm">
-            <div className="aspect-[4/3] overflow-hidden bg-gray-100">
-              {item.asset.kind === 'image' ? (
-                <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
-              ) : (
-                <video src={item.asset.src} className="h-full w-full object-cover" controls />
-              )}
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-900">{item.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gray-500">
-                    {item.asset.kind} • {item.asset.source}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete(item)}
-                  disabled={isWorking}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  aria-label={`Delete ${item.name}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+      <div className="mt-6 max-h-[30rem] overflow-y-auto pr-1">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {draft.mediaLibrary.map((item) => (
+            <div key={item.id} className="overflow-hidden rounded-[1.6rem] border border-gray-200 bg-white shadow-sm">
+              <div className="aspect-[4/3] overflow-hidden bg-gray-100">
+                {item.asset.kind === 'image' ? (
+                  <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
+                ) : (
+                  <video src={item.asset.src} className="h-full w-full object-cover" controls />
+                )}
               </div>
-              <p className="truncate text-xs text-gray-500">{item.asset.src}</p>
+              <div className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">{item.name}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      {item.asset.kind} • {item.asset.source}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(item)}
+                    disabled={isWorking}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label={`Delete ${item.name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="truncate text-xs text-gray-500">{item.asset.src}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+      </>
+      ) : null}
     </Card>
   );
 }
@@ -2927,107 +2981,57 @@ function CoreSettingsSections({
           </div>
         </div>
 
-        <div className="mt-5 space-y-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TextField
-            label="Page name"
-            value={draft.pageName}
-            onChange={handlePageNameChange}
-            placeholder="Crevice Cleaning Brush Nigeria Page"
-          />
-          <TextField
-            label="Product name"
-            value={draft.productName}
-            onChange={handleProductNameChange}
-            placeholder="Crevice Cleaning Brush"
-          />
-          <TextField
-            label="Page slug"
-            value={draft.slug}
-            onChange={(value) => setTopLevel('slug', normalizeSlug(value))}
-            placeholder="crevice-cleaning-brush"
-            hint="Used as the storefront URL path."
-          />
-          <SelectField
-            label="Currency"
-            value={draft.currency}
-            options={currencyOptions.map((currency) => ({
-              value: currency,
-              label: `${currency} - ${getCurrencyLabel(currency)}`,
-            }))}
-            onChange={(value) => setTopLevel('currency', value)}
-          />
-          <TextField
-            label="Target audience"
-            value={draft.targetAudience}
-            onChange={(value) => setTopLevel('targetAudience', value)}
-            placeholder="Nigeria"
-            hint="Examples: Nigeria, Ghana, Kenya, Women in Lagos, Parents in Abuja."
-          />
-          <SelectField
-            label="Top-level category"
-            value={draft.categoryId}
-            options={PRODUCT_CATEGORIES.map((category) => ({
-              value: category.id,
-              label: category.name,
-            }))}
-            onChange={handleCategoryChange}
-          />
-          <SelectField
-            label="Subcategory"
-            value={draft.subcategorySlug}
-            options={subcategoryOptions.map((subcategory) => ({
-              value: subcategory.slug,
-              label: subcategory.name,
-            }))}
-            onChange={handleSubcategoryChange}
-            hint={`Category page route: /category/${draft.subcategorySlug}`}
-          />
-          <SelectField
-            label="Gender target"
-            value={draft.genderTarget}
-            options={genderOptions}
-            onChange={(value) => setTopLevel('genderTarget', value)}
-          />
-          <Label hint="Use Save Draft to keep this page private, or Publish to make it appear on the homepage.">
-            Current status
-            <div className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-sm font-semibold capitalize text-gray-900">{draft.status}</p>
+        <div className="mt-5 space-y-4">
+          <CompactEditorSection
+            title="Identity and market"
+            summary="Page name, product name, URL slug, currency and target market."
+            defaultOpen
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <TextField label="Page name" value={draft.pageName} onChange={handlePageNameChange} placeholder="Crevice Cleaning Brush Nigeria Page" />
+              <TextField label="Product name" value={draft.productName} onChange={handleProductNameChange} placeholder="Crevice Cleaning Brush" />
+              <TextField label="Page slug" value={draft.slug} onChange={(value) => setTopLevel('slug', normalizeSlug(value))} placeholder="crevice-cleaning-brush" hint="Used as the storefront URL path." />
+              <SelectField label="Currency" value={draft.currency} options={currencyOptions.map((currency) => ({ value: currency, label: `${currency} - ${getCurrencyLabel(currency)}` }))} onChange={(value) => setTopLevel('currency', value)} />
+              <TextField label="Target audience" value={draft.targetAudience} onChange={(value) => setTopLevel('targetAudience', value)} placeholder="Nigeria" hint="Examples: Nigeria, Ghana, Kenya, Women in Lagos, Parents in Abuja." />
+              <Label hint="Use Save Draft to keep this page private, or Publish to make it appear on the homepage.">
+                Current status
+                <div className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-sm font-semibold capitalize text-gray-900">{draft.status}</p>
+                </div>
+              </Label>
             </div>
-          </Label>
-          <TextField
-            label="Base price"
-            type="number"
-            value={draft.basePrice}
-            onChange={(value) => setTopLevel('basePrice', Number(value) || 0)}
-            placeholder="15000"
-            hint={`Quick summary price shown in admin cards as ${formatDraftCurrency(draft.basePrice, draft.currency)}`}
-          />
-          <TextField
-            label="Purchase cost price"
-            type="number"
-            value={draft.purchaseCost}
-            onChange={(value) => setTopLevel('purchaseCost', Number(value) || 0)}
-            placeholder="6500"
-            hint="Required before publish. Finance uses this to estimate margin and product performance."
-          />
-        </div>
+          </CompactEditorSection>
 
-        <TextAreaField
-          label="Short description"
-          value={draft.shortDescription}
-          onChange={(value) => setTopLevel('shortDescription', value)}
-          placeholder="Short product summary used for previews, cards and quick admin review."
-          rows={4}
-        />
+          <CompactEditorSection
+            title="Category and audience setup"
+            summary="Choose the top-level category, subcategory and gender target."
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <SelectField label="Top-level category" value={draft.categoryId} options={PRODUCT_CATEGORIES.map((category) => ({ value: category.id, label: category.name }))} onChange={handleCategoryChange} />
+              <SelectField label="Subcategory" value={draft.subcategorySlug} options={subcategoryOptions.map((subcategory) => ({ value: subcategory.slug, label: subcategory.name }))} onChange={handleSubcategoryChange} hint={`Category page route: /category/${draft.subcategorySlug}`} />
+              <SelectField label="Gender target" value={draft.genderTarget} options={genderOptions} onChange={(value) => setTopLevel('genderTarget', value)} />
+            </div>
+          </CompactEditorSection>
 
-        <MediaAssetField
-          label="Primary cover image"
-          description="Used in draft previews, admin product cards and as a fallback hero visual."
-          asset={draft.coverImage}
-          kind="image"
-          onChange={(value) => setTopLevel('coverImage', value)}
-        />
+          <CompactEditorSection
+            title="Pricing"
+            summary="Base price and purchase cost drive package pricing, finance and inventory profit."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField label="Base price" type="number" value={draft.basePrice} onChange={(value) => setTopLevel('basePrice', Number(value) || 0)} placeholder="15000" hint={`Quick summary price shown in admin cards as ${formatDraftCurrency(draft.basePrice, draft.currency)}`} />
+              <TextField label="Purchase cost price" type="number" value={draft.purchaseCost} onChange={(value) => setTopLevel('purchaseCost', Number(value) || 0)} placeholder="6500" hint="Required before publish. Finance uses this to estimate margin and product performance." />
+            </div>
+          </CompactEditorSection>
+
+          <CompactEditorSection
+            title="Description and cover media"
+            summary="Keep this closed until you need to update the short summary or fallback cover image."
+          >
+            <div className="space-y-5">
+              <TextAreaField label="Short description" value={draft.shortDescription} onChange={(value) => setTopLevel('shortDescription', value)} placeholder="Short product summary used for previews, cards and quick admin review." rows={4} />
+              <MediaAssetField label="Primary cover image" description="Used in draft previews, admin product cards and as a fallback hero visual." asset={draft.coverImage} kind="image" onChange={(value) => setTopLevel('coverImage', value)} />
+            </div>
+          </CompactEditorSection>
         </div>
       </Card>
 

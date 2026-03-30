@@ -314,32 +314,38 @@ export function ProductPage() {
           <ScrollReveal>
             <section className="bg-gray-50 py-16 md:py-24 border-t border-gray-200">
               <div className="container mx-auto px-4">
-                <div className="text-center mb-12">
+                <div className="mb-8 text-center md:mb-10">
                   <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                     Explore More Products
                   </h2>
-                  <p className="text-xl text-gray-600">
+                  <p className="mx-auto max-w-2xl text-base text-gray-600 md:text-xl">
                     You might also like these quality items
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div className="-mx-4 mb-8 overflow-x-auto px-4 pb-3">
+                  <div className="flex gap-4 md:gap-5">
                   {recommendedProducts.map((recProduct) => (
-                    <Card key={recProduct.id} padding="none" hover>
+                    <Card
+                      key={recProduct.id}
+                      padding="none"
+                      hover
+                      className="w-[15rem] flex-none overflow-hidden rounded-[1.5rem] border-gray-200 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:w-[17rem]"
+                    >
                       <ImageWithFallback
                         src={recProduct.image}
                         alt={recProduct.name}
-                        className="w-full h-48 object-cover rounded-t-xl"
+                        className="h-36 w-full object-cover md:h-40"
                       />
-                      <div className="p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">
+                      <div className="p-4 md:p-5">
+                        <h3 className="mb-2 line-clamp-2 text-base font-bold text-gray-900 md:text-lg">
                           {recProduct.name}
                         </h3>
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        <p className="mb-3 line-clamp-2 text-sm text-gray-600">
                           {recProduct.shortDescription}
                         </p>
-                        <div className="flex items-center justify-between mb-4">
-                          <p className="text-2xl font-bold text-[#0E7C7B]">
+                        <div className="mb-4 flex items-center justify-between">
+                          <p className="text-lg font-bold text-[#0E7C7B] md:text-xl">
                             {formatPrice(recProduct.price, recProduct.currencyCode)}
                           </p>
                         </div>
@@ -360,13 +366,14 @@ export function ProductPage() {
                             })
                           }
                         >
-                          <Button variant="primary" size="md" fullWidth>
+                          <Button variant="primary" size="sm" fullWidth className="rounded-2xl">
                             View Product
                           </Button>
                         </Link>
                       </div>
                     </Card>
                   ))}
+                  </div>
                 </div>
 
                 <div className="text-center">

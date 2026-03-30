@@ -434,6 +434,64 @@ function clearMatchingMediaAsset(
   return mediaAssetMatches(mediaAsset, targetAsset) ? asset('', kind) : normalizeMediaAsset(mediaAsset, kind);
 }
 
+const LEGACY_INSTRUCTIONAL_COPY = new Set([
+  'Short product summary for cards, previews and quick admin review.',
+  'Add the main conversion message that introduces the product clearly.',
+  'Upload a short demo video or poster frame for this section.',
+  'Use this section to reinforce the core message below the first video block.',
+  'Image-only marquee row for product visuals and supporting angles.',
+  'Describe the pain points the product solves.',
+  'Explain the first problem clearly.',
+  'Explain the second problem clearly.',
+  'Explain the third problem clearly.',
+  'Explain how the product solves the user problem.',
+  'Highlight the strongest reasons to buy.',
+  'Explain what makes this useful.',
+  'Explain another important benefit.',
+  'Add a trust or durability detail.',
+  'Tell shoppers what the product is, how it is built and why it stands out.',
+  'Describe materials or construction.',
+  'Explain how long it lasts or performs.',
+  'Explain where and how it is used.',
+  'Upload product angles and close-up visuals.',
+  'Add social proof with customer photos and quotes.',
+  'Add a strong review that feels credible and product-specific.',
+  'Add a second video slot closer to the footer.',
+  'Collect subscriber details and generate reusable customer tokens.',
+  'We respect customer privacy and only collect what is required for token recovery.',
+  'Set up your main package cards and promo pricing.',
+  'Configure the main order form copy, CTA and token prompt.',
+  'The product preview lives in the parent sheet above. This lower sheet handles package selection and checkout.',
+  'Add concise answers that remove purchase friction.',
+  'Explain your delivery timeline clearly.',
+  'State available payment methods.',
+]);
+
+function sanitizeInstructionalString(value: string) {
+  return LEGACY_INSTRUCTIONAL_COPY.has(value.trim()) ? '' : value;
+}
+
+function sanitizeInstructionalDraftValue<T>(value: T): T {
+  if (typeof value === 'string') {
+    return sanitizeInstructionalString(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeInstructionalDraftValue(entry)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        sanitizeInstructionalDraftValue(entry),
+      ]),
+    ) as T;
+  }
+
+  return value;
+}
+
 function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
   const categorySelection = resolveProductCategorySelection({
     categoryId: draft.categoryId,
@@ -533,7 +591,7 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
     collectDraftMediaLibraryItems(normalizedDraft),
   );
 
-  return normalizedDraft;
+  return sanitizeInstructionalDraftValue(normalizedDraft);
 }
 
 function mapProductPageRowToDraft(row: ProductPageRow): AdminProductDraft {
@@ -641,15 +699,15 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
     mediaLibrary: [],
     createdAt: now,
     updatedAt: now,
-    shortDescription: 'Short product summary for cards, previews and quick admin review.',
+    shortDescription: '',
     basePrice: 15000,
     purchaseCost: 6500,
     coverImage: asset(),
     sections: {
       hero: {
         visible: true,
-        title: 'Lead with a strong product promise',
-        subtitle: 'Add the main conversion message that introduces the product clearly.',
+        title: '',
+        subtitle: '',
         badge: 'Limited Time Offer',
         ctaText: 'Order now - pay on delivery',
         image: asset(),
@@ -663,7 +721,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       seeInAction: {
         visible: true,
         title: 'See It in Action',
-        subtitle: 'Upload a short demo video or poster frame for this section.',
+        subtitle: '',
         badge: 'See It in Action',
         ratio: '16:9',
         poster: asset(),
@@ -673,7 +731,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         visible: true,
         eyebrow: 'Product Headline',
         title: 'Headline text section',
-        description: 'Use this section to reinforce the core message below the first video block.',
+        description: '',
       },
       alerts: {
         visible: true,
@@ -682,64 +740,64 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       featureMarquee: {
         visible: true,
         title: 'Feature Marquee',
-        subtitle: 'Image-only marquee row for product visuals and supporting angles.',
+        subtitle: '',
         images: [asset(), asset(), asset(), asset()],
       },
       problem: {
         visible: true,
         title: 'Problem Section',
-        subtitle: 'Describe the pain points the product solves.',
+        subtitle: '',
         items: [
-          { icon: 'AlertTriangle', title: 'Pain point one', description: 'Explain the first problem clearly.' },
-          { icon: 'Droplets', title: 'Pain point two', description: 'Explain the second problem clearly.' },
-          { icon: 'Flame', title: 'Pain point three', description: 'Explain the third problem clearly.' },
+          { icon: 'AlertTriangle', title: '', description: '' },
+          { icon: 'Droplets', title: '', description: '' },
+          { icon: 'Flame', title: '', description: '' },
         ],
       },
       solution: {
         visible: true,
         badge: 'The Solution',
         title: 'Present the product as the answer',
-        description: 'Explain how the product solves the user problem.',
+        description: '',
         image: asset(),
-        features: ['Key benefit one', 'Key benefit two', 'Key benefit three'],
+        features: ['', '', ''],
         ctaText: 'Buy Now',
       },
       features: {
         visible: true,
         title: 'Features Section',
-        subtitle: 'Highlight the strongest reasons to buy.',
+        subtitle: '',
         items: [
-          { icon: 'Zap', title: 'Feature one', description: 'Explain what makes this useful.' },
-          { icon: 'Sparkles', title: 'Feature two', description: 'Explain another important benefit.' },
-          { icon: 'ShieldCheck', title: 'Feature three', description: 'Add a trust or durability detail.' },
+          { icon: 'Zap', title: '', description: '' },
+          { icon: 'Sparkles', title: '', description: '' },
+          { icon: 'ShieldCheck', title: '', description: '' },
         ],
       },
       aboutProduct: {
         visible: true,
         title: 'About This Product',
-        subtitle: 'Tell shoppers what the product is, how it is built and why it stands out.',
+        subtitle: '',
         items: [
-          { icon: 'Layers', title: 'Build quality', description: 'Describe materials or construction.' },
-          { icon: 'ShieldCheck', title: 'Durability', description: 'Explain how long it lasts or performs.' },
-          { icon: 'Sparkles', title: 'Everyday use', description: 'Explain where and how it is used.' },
+          { icon: 'Layers', title: '', description: '' },
+          { icon: 'ShieldCheck', title: '', description: '' },
+          { icon: 'Sparkles', title: '', description: '' },
         ],
       },
       showcase: {
         visible: true,
         title: 'See the Quality for Yourself',
-        subtitle: 'Upload product angles and close-up visuals.',
+        subtitle: '',
         images: [asset(), asset(), asset(), asset(), asset(), asset()],
       },
       testimonials: {
         visible: true,
         title: 'What Customers Are Saying',
-        subtitle: 'Add social proof with customer photos and quotes.',
+        subtitle: '',
         reviews: [
           {
             name: 'Customer Name',
             location: 'Lagos',
             rating: 5,
-            text: 'Add a strong review that feels credible and product-specific.',
+            text: '',
             image: asset(),
             avatar: asset(),
           },
@@ -748,7 +806,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       footerVideo: {
         visible: true,
         title: 'Watch the Full Walkthrough',
-        subtitle: 'Add a second video slot closer to the footer.',
+        subtitle: '',
         badge: 'Footer Video Slot',
         ratio: '16:9',
         poster: asset(),
@@ -757,14 +815,14 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       subscription: {
         visible: true,
         title: 'Subscribe for Exclusive Discounts',
-        subtitle: 'Collect subscriber details and generate reusable customer tokens.',
+        subtitle: '',
         buttonLabel: 'Subscribe Now',
-        privacyNote: 'We respect customer privacy and only collect what is required for token recovery.',
+        privacyNote: '',
       },
       offer: {
         visible: true,
         title: 'Choose Your Package Before the Offer Ends',
-        subtitle: 'Set up your main package cards and promo pricing.',
+        subtitle: '',
         badge: 'Limited Time Deal',
         countdownHours: 24,
         packages: [
@@ -791,7 +849,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       orderForm: {
         visible: true,
         title: 'Place Your Order Now',
-        subtitle: 'Configure the main order form copy, CTA and token prompt.',
+        subtitle: '',
         submitButtonLabel: 'Place My Order',
         tokenPrompt: 'Are you subscribed and want to insert your unique token for extra discount?',
         enableTokenField: true,
@@ -800,8 +858,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         packagePreviewLabel: 'Package Preview',
         childSheetLabel: 'Child Sheet',
         childSheetTitle: 'Select your package',
-        childSheetDescription:
-          'The product preview lives in the parent sheet above. This lower sheet handles package selection and checkout.',
+        childSheetDescription: '',
         changeSelectionLabel: 'Change',
         summaryLabel: 'Order summary',
         totalLabel: 'Final Total',
@@ -811,10 +868,10 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
       faq: {
         visible: true,
         title: 'Frequently Asked Questions',
-        subtitle: 'Add concise answers that remove purchase friction.',
+        subtitle: '',
         items: [
-          { question: 'How does delivery work?', answer: 'Explain your delivery timeline clearly.' },
-          { question: 'Can customers pay on delivery?', answer: 'State available payment methods.' },
+          { question: '', answer: '' },
+          { question: '', answer: '' },
         ],
       },
     },
