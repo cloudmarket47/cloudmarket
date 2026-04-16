@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getLocaleConfig, readCountryCookie, type SupportedCountryCode } from './localeData';
+import type { SupportedRateCurrency } from './currencyRates';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -16,6 +17,27 @@ export function formatCurrency(amount: number, countryCode?: SupportedCountryCod
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(amount);
+}
+
+export function getCountryCodeForCurrency(
+  currency: SupportedRateCurrency,
+): SupportedCountryCode {
+  switch (currency) {
+    case 'USD':
+      return 'US';
+    case 'GHS':
+      return 'GH';
+    case 'KES':
+      return 'KE';
+    case 'ZAR':
+      return 'ZA';
+    default:
+      return 'NG';
+  }
+}
+
+export function formatCurrencyByCode(amount: number, currency: SupportedRateCurrency): string {
+  return formatCurrency(amount, getCountryCodeForCurrency(currency));
 }
 
 export function formatDate(date: string): string {

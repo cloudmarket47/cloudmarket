@@ -1,8 +1,9 @@
-import { convertPriceAmount } from './currencyRates';
+import { convertPriceAmount, type SupportedRateCurrency } from './currencyRates';
 import { formatCurrency } from './utils';
 import type { CustomerTokenRecord, PlacedOrder, Product } from '../types';
 import { getLocaleConfig, type SupportedCountryCode } from './localeData';
 import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './supabase';
+import { readFinanceSettings } from './adminFinance';
 
 const ORDERS_DATA_CHANGE_EVENT = 'cloudmarket-orders-cache-change';
 
@@ -19,6 +20,8 @@ interface OrderRow {
   order_number: string;
   created_at: string;
   locale_country_code: SupportedCountryCode;
+  transaction_currency?: SupportedRateCurrency;
+  store_currency?: SupportedRateCurrency;
   product_id: string;
   product_slug: string;
   product_name: string;
@@ -35,9 +38,12 @@ interface OrderRow {
   short_delivery_message: string;
   customer_token: string;
   base_amount: number;
+  base_amount_in_store_currency?: number;
   discount_percentage: number;
   discount_amount: number;
+  discount_amount_in_store_currency?: number;
   final_amount: number;
+  final_amount_in_store_currency?: number;
 }
 
 interface BuildPlacedOrderParams {
@@ -63,6 +69,8 @@ function mapOrderRowToPlacedOrder(row: OrderRow): PlacedOrder {
     orderNumber: row.order_number,
     createdAt: row.created_at,
     localeCountryCode: row.locale_country_code,
+    transactionCurrency: row.transaction_currency ?? getLocaleConfig(row.locale_country_code).currencyCode,
+    storeCurrency: row.store_currency ?? 'NGN',
     productId: row.product_id,
     productSlug: row.product_slug,
     productName: row.product_name,
@@ -79,9 +87,21 @@ function mapOrderRowToPlacedOrder(row: OrderRow): PlacedOrder {
     shortDeliveryMessage: row.short_delivery_message,
     customerToken: row.customer_token,
     baseAmount: row.base_amount,
+    baseAmountInStoreCurrency:
+      typeof row.base_amount_in_store_currency === 'number'
+        ? row.base_amount_in_store_currency
+        : row.base_amount,
     discountPercentage: row.discount_percentage,
     discountAmount: row.discount_amount,
+    discountAmountInStoreCurrency:
+      typeof row.discount_amount_in_store_currency === 'number'
+        ? row.discount_amount_in_store_currency
+        : row.discount_amount,
     finalAmount: row.final_amount,
+    finalAmountInStoreCurrency:
+      typeof row.final_amount_in_store_currency === 'number'
+        ? row.final_amount_in_store_currency
+        : row.final_amount,
   };
 }
 
@@ -90,6 +110,8 @@ function toOrderRow(order: PlacedOrder): OrderRow {
     order_number: order.orderNumber,
     created_at: order.createdAt,
     locale_country_code: order.localeCountryCode,
+    transaction_currency: order.transactionCurrency,
+    store_currency: order.storeCurrency,
     product_id: order.productId,
     product_slug: order.productSlug,
     product_name: order.productName,
@@ -106,9 +128,12 @@ function toOrderRow(order: PlacedOrder): OrderRow {
     short_delivery_message: order.shortDeliveryMessage,
     customer_token: order.customerToken,
     base_amount: order.baseAmount,
+    base_amount_in_store_currency: order.baseAmountInStoreCurrency,
     discount_percentage: order.discountPercentage,
     discount_amount: order.discountAmount,
+    discount_amount_in_store_currency: order.discountAmountInStoreCurrency,
     final_amount: order.finalAmount,
+    final_amount_in_store_currency: order.finalAmountInStoreCurrency,
   };
 }
 
@@ -180,11 +205,15 @@ export function createPlacedOrder({
     selectedPackage.total,
     tokenRecord?.discountPercentage ?? 0,
   );
+  const transactionCurrency = getLocaleConfig(localeCountryCode).currencyCode;
+  const storeCurrency = readFinanceSettings().currency;
 
   return {
     orderNumber: generateOrderNumber(),
     createdAt: new Date().toISOString(),
     localeCountryCode,
+    transactionCurrency,
+    storeCurrency,
     productId: product.id,
     productSlug: product.slug,
     productName: product.name,
@@ -201,9 +230,24 @@ export function createPlacedOrder({
     shortDeliveryMessage: shortDeliveryMessage.trim(),
     customerToken: customerToken.trim().toUpperCase(),
     baseAmount: pricing.baseAmount,
+    baseAmountInStoreCurrency: convertPriceAmount(
+      pricing.baseAmount,
+      transactionCurrency,
+      storeCurrency,
+    ),
     discountPercentage: pricing.discountPercentage,
     discountAmount: pricing.discountAmount,
+    discountAmountInStoreCurrency: convertPriceAmount(
+      pricing.discountAmount,
+      transactionCurrency,
+      storeCurrency,
+    ),
     finalAmount: pricing.finalAmount,
+    finalAmountInStoreCurrency: convertPriceAmount(
+      pricing.finalAmount,
+      transactionCurrency,
+      storeCurrency,
+    ),
   };
 }
 
@@ -233,6 +277,8 @@ export async function ensurePlacedOrdersLoaded(force = false) {
         order_number,
         created_at,
         locale_country_code,
+        transaction_currency,
+        store_currency,
         product_id,
         product_slug,
         product_name,
@@ -249,9 +295,12 @@ export async function ensurePlacedOrdersLoaded(force = false) {
         short_delivery_message,
         customer_token,
         base_amount,
+        base_amount_in_store_currency,
         discount_percentage,
         discount_amount,
-        final_amount
+        discount_amount_in_store_currency,
+        final_amount,
+        final_amount_in_store_currency
       `,
       )
       .order('created_at', { ascending: false });

@@ -3,7 +3,8 @@ import { Copy, Download, FileDown, Phone, Receipt, X } from 'lucide-react';
 import { useBrandingSettings } from '../../lib/branding';
 import { downloadElementAsImage, saveElementAsPdf } from '../../lib/domExport';
 import type { AdminManagedOrder, AdminOrderStatus } from '../../lib/adminOrders';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatCurrencyByCode, formatDate } from '../../lib/utils';
+import type { SupportedRateCurrency } from '../../lib/currencyRates';
 import { OrderSlipPreview } from '../order/OrderSlipPreview';
 
 interface OrderDetailModalProps {
@@ -15,6 +16,7 @@ interface OrderDetailModalProps {
     update: {
       status: AdminOrderStatus;
       expenseAmount?: number | null;
+      expenseCurrency?: SupportedRateCurrency;
       expenseNote?: string;
     },
   ) => void;
@@ -31,11 +33,12 @@ function copyOrderDetails(order: AdminManagedOrder) {
     `Product: ${order.productName}`,
     `Package: ${order.packageTitle}`,
     `Quantity: ${order.quantity}`,
-    `Final Amount: ${formatCurrency(order.finalAmount, order.localeCountryCode)}`,
+    `Final Amount: ${formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}`,
+    `Original Customer Amount: ${formatCurrencyByCode(order.finalAmount, order.transactionCurrency)}`,
     `Status: ${order.status}`,
     `Order Expense: ${
-      typeof order.expenseAmount === 'number'
-        ? formatCurrency(order.expenseAmount, order.localeCountryCode)
+      typeof order.expenseAmountInStoreCurrency === 'number'
+        ? formatCurrencyByCode(order.expenseAmountInStoreCurrency, order.storeCurrency)
         : 'Not recorded'
     }`,
   ];
@@ -53,6 +56,7 @@ export function OrderDetailModal({
   const slipRef = useRef<HTMLDivElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<AdminOrderStatus>('new');
   const [deliveryExpenseInput, setDeliveryExpenseInput] = useState('');
+  const [deliveryExpenseCurrency, setDeliveryExpenseCurrency] = useState<SupportedRateCurrency>('NGN');
   const [deliveryExpenseNote, setDeliveryExpenseNote] = useState('');
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
@@ -67,6 +71,7 @@ export function OrderDetailModal({
     setDeliveryExpenseInput(
       typeof order.expenseAmount === 'number' ? String(order.expenseAmount) : '',
     );
+    setDeliveryExpenseCurrency(order.expenseCurrency);
     setDeliveryExpenseNote(order.expenseNote);
     setCopyFeedback('');
   }, [order]);
@@ -113,6 +118,11 @@ export function OrderDetailModal({
       discountPercentage: order.discountPercentage,
       discountAmount: order.discountAmount,
       finalAmount: order.finalAmount,
+      transactionCurrency: order.transactionCurrency,
+      storeCurrency: order.storeCurrency,
+      baseAmountInStoreCurrency: order.baseAmountInStoreCurrency,
+      discountAmountInStoreCurrency: order.discountAmountInStoreCurrency,
+      finalAmountInStoreCurrency: order.finalAmountInStoreCurrency,
     };
   }, [order]);
 
@@ -162,6 +172,7 @@ export function OrderDetailModal({
           : selectedStatus === 'new'
             ? null
             : undefined,
+      expenseCurrency: deliveryExpenseCurrency,
       expenseNote: deliveryExpenseNote,
     });
   };
@@ -243,7 +254,10 @@ export function OrderDetailModal({
                   <div className="rounded-[1.2rem] bg-white p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Final Amount</p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
-                      {formatCurrency(order.finalAmount, order.localeCountryCode)}
+                      {formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Customer paid {formatCurrencyByCode(order.finalAmount, order.transactionCurrency)}
                     </p>
                   </div>
                   <div className="rounded-[1.2rem] bg-white p-4 sm:col-span-2">
@@ -283,18 +297,31 @@ export function OrderDetailModal({
                         <label className="text-sm font-semibold text-slate-700">
                           Order expense amount
                         </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={deliveryExpenseInput}
-                          onChange={(event) => setDeliveryExpenseInput(event.target.value)}
-                          placeholder="Enter total operational expense on this order"
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
-                        />
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={deliveryExpenseInput}
+                            onChange={(event) => setDeliveryExpenseInput(event.target.value)}
+                            placeholder="Enter total operational expense on this order"
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+                          />
+                          <select
+                            value={deliveryExpenseCurrency}
+                            onChange={(event) => setDeliveryExpenseCurrency(event.target.value as SupportedRateCurrency)}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+                          >
+                            {(['NGN', 'USD', 'GHS', 'KES', 'ZAR'] as SupportedRateCurrency[]).map((currency) => (
+                              <option key={currency} value={currency}>
+                                {currency}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         {requiresExpense ? (
                           <p className="text-xs font-medium text-[#2B63D9]">
-                            Expense is required before saving this order status update.
+                            Expense is required before saving this order status update. It will be converted into {order.storeCurrency} for reporting.
                           </p>
                         ) : null}
                       </div>

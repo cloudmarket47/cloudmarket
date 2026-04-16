@@ -213,6 +213,8 @@ export interface PlacedOrder {
   orderNumber: string;
   createdAt: string;
   localeCountryCode: 'NG' | 'US' | 'GH' | 'KE' | 'ZA';
+  transactionCurrency: 'NGN' | 'USD' | 'GHS' | 'KES' | 'ZAR';
+  storeCurrency: 'NGN' | 'USD' | 'GHS' | 'KES' | 'ZAR';
   productId: string;
   productSlug: string;
   productName: string;
@@ -229,9 +231,12 @@ export interface PlacedOrder {
   shortDeliveryMessage: string;
   customerToken: string;
   baseAmount: number;
+  baseAmountInStoreCurrency: number;
   discountPercentage: number;
   discountAmount: number;
+  discountAmountInStoreCurrency: number;
   finalAmount: number;
+  finalAmountInStoreCurrency: number;
 }
 
 // Subscriber data structure

@@ -22,7 +22,8 @@ import {
 import { deleteFinanceEntriesForOrder } from '../../lib/adminFinance';
 import { deleteAnalyticsEventsByOrderNumber } from '../../lib/analyticsTelemetry';
 import { deleteSubscriberActivitiesByOrderNumber } from '../../lib/subscriberTelemetry';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import type { SupportedRateCurrency } from '../../lib/currencyRates';
+import { formatCurrency, formatCurrencyByCode, formatDate } from '../../lib/utils';
 
 const HISTORY_PAGE_SIZE = 10;
 
@@ -159,7 +160,10 @@ function TodayOrderCard({
         <div className="rounded-[1.2rem] bg-slate-50 p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Final Total</p>
           <p className="mt-2 text-sm font-semibold text-slate-900">
-            {formatCurrency(order.finalAmount, order.localeCountryCode)}
+            {formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Customer paid {formatCurrencyByCode(order.finalAmount, order.transactionCurrency)}
           </p>
         </div>
       </div>
@@ -208,9 +212,9 @@ function HistoryOrderCard({
 
       <div className="mt-4 flex items-center justify-between">
         <p className="text-lg font-bold text-slate-950">
-          {formatCurrency(order.finalAmount, order.localeCountryCode)}
+          {formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}
         </p>
-        <p className="text-sm font-medium text-slate-500">Tap to manage</p>
+        <p className="text-sm font-medium text-slate-500">{order.transactionCurrency} original available</p>
       </div>
     </button>
   );
@@ -291,7 +295,10 @@ export function Orders() {
   );
 
   const metrics = useMemo(() => {
-    const todayRevenue = todayOrders.reduce((sum, order) => sum + order.finalAmount, 0);
+    const todayRevenue = todayOrders.reduce(
+      (sum, order) => sum + order.finalAmountInStoreCurrency,
+      0,
+    );
 
     return {
       totalOrders: orders.length,
@@ -308,6 +315,7 @@ export function Orders() {
     update: {
       status: AdminOrderStatus;
       expenseAmount?: number | null;
+      expenseCurrency?: SupportedRateCurrency;
       expenseNote?: string;
     },
   ) => {
@@ -371,7 +379,12 @@ export function Orders() {
           <MetricCard label="Today" value={String(metrics.todayOrders)} icon={CalendarDays} tone="orange" />
           <MetricCard label="Confirmed / Processing" value={String(metrics.processingOrders)} icon={Truck} tone="blue" />
           <MetricCard label="Delivered" value={String(metrics.deliveredOrders)} icon={PackageCheck} tone="emerald" />
-          <MetricCard label="Today revenue" value={formatCurrency(metrics.todayRevenue)} icon={CircleDollarSign} tone="emerald" />
+          <MetricCard
+            label="Today revenue"
+            value={formatCurrencyByCode(metrics.todayRevenue, orders[0]?.storeCurrency ?? 'NGN')}
+            icon={CircleDollarSign}
+            tone="emerald"
+          />
         </div>
       </div>
 
@@ -506,7 +519,10 @@ export function Orders() {
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-bold text-slate-950">
-                          {formatCurrency(order.finalAmount, order.localeCountryCode)}
+                          {formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Customer paid {formatCurrencyByCode(order.finalAmount, order.transactionCurrency)}
                         </p>
                       </td>
                       <td className="px-5 py-4">
@@ -517,7 +533,10 @@ export function Orders() {
                       <td className="px-5 py-4">
                         <p className="text-sm font-semibold text-slate-900">
                           {typeof order.expenseAmount === 'number'
-                            ? formatCurrency(order.expenseAmount, order.localeCountryCode)
+                            ? formatCurrencyByCode(
+                                order.expenseAmountInStoreCurrency ?? order.expenseAmount,
+                                order.storeCurrency,
+                              )
                             : 'Not recorded'}
                         </p>
                       </td>

@@ -547,6 +547,7 @@ async function ensureFinanceSalesLoaded(force = false) {
 function buildOrderExpenseRecords(
   orders: AdminManagedOrder[],
   inventoryItems: FinanceInventoryItem[],
+  reportingCountryCode: SupportedCountryCode,
 ) {
   const inventoryMap = new Map(inventoryItems.map((item) => [item.productId, item]));
 
@@ -555,7 +556,7 @@ function buildOrderExpenseRecords(
     .map((order) => ({
       id: `order-expense-${order.orderNumber}`,
       title: `Order cost for ${order.orderNumber}`,
-      amount: order.expenseAmount ?? 0,
+      amount: order.expenseAmountInStoreCurrency ?? order.expenseAmount ?? 0,
       category: 'delivery' as FinanceExpenseCategory,
       note: order.expenseNote,
       createdAt: order.expenseRecordedAt || order.updatedAt || order.createdAt,
@@ -565,8 +566,10 @@ function buildOrderExpenseRecords(
       quantity: order.quantity,
       unitPurchaseCost: inventoryMap.get(order.productId)?.purchaseCost ?? 0,
       unitSalePrice:
-        order.quantity > 0 ? Math.round(order.finalAmount / Math.max(1, order.quantity)) : order.finalAmount,
-      localeCountryCode: order.localeCountryCode,
+        order.quantity > 0
+          ? Math.round(order.finalAmountInStoreCurrency / Math.max(1, order.quantity))
+          : order.finalAmountInStoreCurrency,
+      localeCountryCode: reportingCountryCode,
       source: 'order' as const,
     }))
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
@@ -601,7 +604,7 @@ function buildOrderGeographyInsights(orders: AdminManagedOrder[]) {
       countryCode: order.localeCountryCode,
       countryName,
       orders: (existingCountry?.orders ?? 0) + 1,
-      revenue: (existingCountry?.revenue ?? 0) + order.finalAmount,
+      revenue: (existingCountry?.revenue ?? 0) + order.finalAmountInStoreCurrency,
     });
 
     const regionLabel = order.city?.trim() || 'Unknown Region';
@@ -612,7 +615,7 @@ function buildOrderGeographyInsights(orders: AdminManagedOrder[]) {
       countryCode: order.localeCountryCode,
       countryName,
       orders: (existingRegion?.orders ?? 0) + 1,
-      revenue: (existingRegion?.revenue ?? 0) + order.finalAmount,
+      revenue: (existingRegion?.revenue ?? 0) + order.finalAmountInStoreCurrency,
     });
   });
 
@@ -652,7 +655,9 @@ function buildMonthlyReports(
       const monthlyExpenses = expenses.filter((expense) => formatMonthKey(expense.createdAt) === monthKey);
       const monthlyManualSales = manualSales.filter((sale) => formatMonthKey(sale.createdAt) === monthKey && sale.countsTowardRevenue);
       const sales =
-        monthlyOrders.filter((order) => order.status === 'delivered').reduce((sum, order) => sum + order.finalAmount, 0) +
+        monthlyOrders
+          .filter((order) => order.status === 'delivered')
+          .reduce((sum, order) => sum + order.finalAmountInStoreCurrency, 0) +
         monthlyManualSales.reduce((sum, sale) => sum + sale.amount, 0);
       const expensesTotal = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       const pendingIncome = monthlyOrders
@@ -660,7 +665,7 @@ function buildMonthlyReports(
           (order) =>
             order.status === 'new' || order.status === 'confirmed' || order.status === 'processing',
         )
-        .reduce((sum, order) => sum + order.finalAmount, 0);
+        .reduce((sum, order) => sum + order.finalAmountInStoreCurrency, 0);
 
       return {
         monthKey,
@@ -1015,19 +1020,26 @@ export async function readFinanceSnapshot() {
     (order) => order.status === 'failed' || order.status === 'cancelled',
   );
   const manualExpenses = readStoredManualExpenses().filter((expense) => expense.source === 'manual');
-  const orderExpenses = buildOrderExpenseRecords(orders, inventory);
+  const orderExpenses = buildOrderExpenseRecords(orders, inventory, settings.reportingCountryCode);
   const allExpenses = [...manualExpenses, ...orderExpenses].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
   );
   const manualSales = readStoredManualSales();
   const countedManualSales = manualSales.filter((sale) => sale.countsTowardRevenue);
-  const totalDeliveredSales = deliveredOrders.reduce((sum, order) => sum + order.finalAmount, 0);
+  const totalDeliveredSales = deliveredOrders.reduce(
+    (sum, order) => sum + order.finalAmountInStoreCurrency,
+    0,
+  );
   const totalManualSales = countedManualSales.reduce((sum, sale) => sum + sale.amount, 0);
   const totalSales = totalDeliveredSales + totalManualSales;
   const totalExpenses = allExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const pendingIncome = pendingOrders.reduce((sum, order) => sum + order.finalAmount, 0);
+  const pendingIncome = pendingOrders.reduce(
+    (sum, order) => sum + order.finalAmountInStoreCurrency,
+    0,
+  );
   const pendingProfitEstimate = calculatePendingProfitEstimate(pendingIncome, orderExpenses, deliveredOrders);
-  const totalGeneratedValue = orders.reduce((sum, order) => sum + order.finalAmount, 0) + totalManualSales;
+  const totalGeneratedValue =
+    orders.reduce((sum, order) => sum + order.finalAmountInStoreCurrency, 0) + totalManualSales;
   const inventoryCostOfSales =
     deliveredOrders.reduce(
       (sum, order) =>
@@ -1056,7 +1068,7 @@ export async function readFinanceSnapshot() {
       receiptNumber: `RCPT-${order.orderNumber}`,
       orderNumber: order.orderNumber,
       createdAt: order.updatedAt || order.createdAt,
-      localeCountryCode: order.localeCountryCode,
+      localeCountryCode: settings.reportingCountryCode,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       customerEmail: '',
@@ -1065,7 +1077,7 @@ export async function readFinanceSnapshot() {
       productName: order.productName,
       packageTitle: order.packageTitle,
       quantity: order.quantity,
-      amount: order.finalAmount,
+      amount: order.finalAmountInStoreCurrency,
       note: order.shortDeliveryMessage || order.packageDescription,
       sourceLabel: 'Delivered order',
     })),
@@ -1096,9 +1108,9 @@ export async function readFinanceSnapshot() {
       type: 'sale' as const,
       title: `${order.productName} sale`,
       subtitle: `${order.customerName} - ${order.packageTitle}`,
-      amount: order.finalAmount,
+      amount: order.finalAmountInStoreCurrency,
       createdAt: order.updatedAt || order.createdAt,
-      localeCountryCode: order.localeCountryCode,
+      localeCountryCode: settings.reportingCountryCode,
       orderNumber: order.orderNumber,
       customerName: order.customerName,
       statusLabel: 'Delivered',
@@ -1132,9 +1144,9 @@ export async function readFinanceSnapshot() {
       type: 'pending-order' as const,
       title: `${order.productName} pending value`,
       subtitle: `${order.customerName} - ${order.packageTitle}`,
-      amount: order.finalAmount,
+      amount: order.finalAmountInStoreCurrency,
       createdAt: order.createdAt,
-      localeCountryCode: order.localeCountryCode,
+      localeCountryCode: settings.reportingCountryCode,
       orderNumber: order.orderNumber,
       customerName: order.customerName,
       statusLabel:
@@ -1149,9 +1161,9 @@ export async function readFinanceSnapshot() {
       type: 'failed-order' as const,
       title: `${order.productName} unsuccessful order`,
       subtitle: `${order.customerName} - ${order.packageTitle}`,
-      amount: order.finalAmount,
+      amount: order.finalAmountInStoreCurrency,
       createdAt: order.updatedAt || order.createdAt,
-      localeCountryCode: order.localeCountryCode,
+      localeCountryCode: settings.reportingCountryCode,
       orderNumber: order.orderNumber,
       customerName: order.customerName,
       statusLabel: order.status === 'cancelled' ? 'Cancelled' : 'Failed',
@@ -1162,7 +1174,7 @@ export async function readFinanceSnapshot() {
   const todayExpenses = allExpenses.filter((expense) => isSameLocalDay(expense.createdAt, today));
   const todaySales = deliveredOrders
     .filter((order) => isSameLocalDay(order.updatedAt || order.createdAt, today))
-    .reduce((sum, order) => sum + order.finalAmount, 0) +
+    .reduce((sum, order) => sum + order.finalAmountInStoreCurrency, 0) +
     countedManualSales.filter((sale) => isSameLocalDay(sale.createdAt, today)).reduce((sum, sale) => sum + sale.amount, 0);
 
   const partialSnapshot = {
@@ -1210,7 +1222,7 @@ export async function readFinanceSnapshot() {
           (order) =>
             order.status === 'new' || order.status === 'confirmed' || order.status === 'processing',
         )
-        .reduce((sum, order) => sum + order.finalAmount, 0),
+        .reduce((sum, order) => sum + order.finalAmountInStoreCurrency, 0),
       processingOrders: todayOrders.filter((order) => order.status === 'confirmed' || order.status === 'processing').length,
       newOrders: todayOrders.filter((order) => order.status === 'new').length,
       failedOrders: todayOrders.filter((order) => order.status === 'failed' || order.status === 'cancelled').length,

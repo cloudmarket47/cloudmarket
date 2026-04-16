@@ -214,6 +214,50 @@ function groupVisitorCount<T>(items: T[], keyResolver: (item: T) => string, visi
   return collection;
 }
 
+function buildAnalyticsDeduplicationKey(event: AnalyticsEvent) {
+  switch (event.type) {
+    case 'session_start':
+      return `${event.type}:${event.sessionId}`;
+    case 'page_view':
+      return `${event.type}:${event.sessionId}:${event.pagePath}`;
+    case 'product_view':
+      return `${event.type}:${event.sessionId}:${event.productSlug || event.pagePath}`;
+    case 'search_query':
+      return `${event.type}:${event.sessionId}:${event.pagePath}:${event.searchQuery.trim().toLowerCase()}`;
+    case 'button_click':
+      return `${event.type}:${event.sessionId}:${event.pagePath}:${event.buttonId}`;
+    case 'checkout_open':
+    case 'package_select':
+      return `${event.type}:${event.sessionId}:${event.productSlug}:${event.buttonId}:${String(event.metadata.quantity ?? '')}`;
+    case 'form_submit':
+      return `${event.type}:${event.orderNumber || `${event.sessionId}:${event.productSlug}`}`;
+    default:
+      return `${event.type}:${event.id}`;
+  }
+}
+
+function sanitizeAnalyticsEvents(events: AnalyticsEvent[]) {
+  const sortedEvents = [...events].sort(
+    (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+  );
+  const lastSeenByKey = new Map<string, number>();
+
+  return sortedEvents.filter((event) => {
+    const key = buildAnalyticsDeduplicationKey(event);
+    const eventTime = new Date(event.createdAt).getTime();
+    const duplicateWindowMs =
+      event.type === 'page_view' || event.type === 'product_view' ? 5000 : 1500;
+    const previousTime = lastSeenByKey.get(key);
+
+    if (typeof previousTime === 'number' && eventTime - previousTime <= duplicateWindowMs) {
+      return false;
+    }
+
+    lastSeenByKey.set(key, eventTime);
+    return true;
+  });
+}
+
 function linearRegressionSlope(values: number[]) {
   if (values.length < 2) {
     return 0;
@@ -271,7 +315,7 @@ function getDateWindowTotals(dailySeries: AnalyticsDailyPoint[], key: keyof Anal
   };
 }
 
-function buildDailySeries(events: AnalyticsEvent[], periodDays: number) {
+function buildDailySeries(events: AnalyticsEvent[], periodDays: number, orders = readAdminOrders()) {
   const days = Array.from({ length: periodDays }, (_, index) => {
     const date = startOfLocalDay(new Date(Date.now() - (periodDays - index - 1) * 24 * 60 * 60 * 1000));
     return {
@@ -294,6 +338,7 @@ function buildDailySeries(events: AnalyticsEvent[], periodDays: number) {
   const buttonClicksByDate = groupCountMap(buttonEvents, (event) => formatDateKey(event.createdAt));
   const checkoutsByDate = groupCountMap(checkoutEvents, (event) => formatDateKey(event.createdAt));
   const formsByDate = groupCountMap(formEvents, (event) => formatDateKey(event.createdAt));
+  const ordersByDate = groupCountMap(orders, (order) => formatDateKey(order.createdAt));
   const visitorMapByDate = groupVisitorCount(pageViewEvents, (event) => formatDateKey(event.createdAt), (event) => event.visitorId);
   const sessionMapByDate = groupVisitorCount(sessionEvents, (event) => formatDateKey(event.createdAt), (event) => event.sessionId);
 
@@ -308,7 +353,7 @@ function buildDailySeries(events: AnalyticsEvent[], periodDays: number) {
     buttonClicks: buttonClicksByDate.get(day.date) ?? 0,
     checkouts: checkoutsByDate.get(day.date) ?? 0,
     formSubmissions: formsByDate.get(day.date) ?? 0,
-    orders: formsByDate.get(day.date) ?? 0,
+    orders: ordersByDate.get(day.date) ?? 0,
   }));
 }
 
@@ -394,7 +439,7 @@ function buildSourceInsights(events: AnalyticsEvent[]) {
     .sort((left, right) => right.sessions - left.sessions);
 }
 
-function buildCountryInsights(events: AnalyticsEvent[]) {
+function buildCountryInsights(events: AnalyticsEvent[], orders = readAdminOrders()) {
   const pageViewEvents = events.filter((event) => event.type === 'page_view');
   const formSubmitEvents = events.filter((event) => event.type === 'form_submit');
   const countryCodes = Array.from(
@@ -404,26 +449,27 @@ function buildCountryInsights(events: AnalyticsEvent[]) {
   return countryCodes
     .map((countryCode) => {
       const countryPageViews = pageViewEvents.filter((event) => event.countryCode === countryCode);
-      const countryFormSubmissions = formSubmitEvents.filter(
-        (event) => event.countryCode === countryCode,
-      );
+      const countryFormSubmissions = formSubmitEvents.filter((event) => event.countryCode === countryCode);
+      const countryOrders = orders.filter((order) => order.localeCountryCode === countryCode);
 
       return {
         countryCode,
         countryName: getLocaleConfig(countryCode).countryName,
         visitors: new Set(countryPageViews.map((event) => event.visitorId)).size,
         pageViews: countryPageViews.length,
-        formSubmissions: countryFormSubmissions.length,
+        formSubmissions: Math.max(countryFormSubmissions.length, countryOrders.length),
       } satisfies CountryInsight;
     })
     .sort((left, right) => right.pageViews - left.pageViews);
 }
 
-function buildOrderGeographyInsights(orders = readAdminOrders()) {
+function buildOrderGeographyInsights(orders = readAdminOrders(), periodDays?: number) {
   const countryMap = new Map<string, OrderGeographyInsight>();
   const regionMap = new Map<string, OrderGeographyInsight>();
 
-  orders.forEach((order) => {
+  orders
+    .filter((order) => (typeof periodDays === 'number' ? isWithinPeriod(order.createdAt, periodDays) : true))
+    .forEach((order) => {
     const countryName = getLocaleConfig(order.localeCountryCode).countryName;
     const existingCountry = countryMap.get(order.localeCountryCode);
 
@@ -432,7 +478,7 @@ function buildOrderGeographyInsights(orders = readAdminOrders()) {
       countryCode: order.localeCountryCode,
       countryName,
       orders: (existingCountry?.orders ?? 0) + 1,
-      revenue: (existingCountry?.revenue ?? 0) + order.finalAmount,
+      revenue: (existingCountry?.revenue ?? 0) + order.finalAmountInStoreCurrency,
     });
 
     const regionLabel = order.city?.trim() || 'Unknown Region';
@@ -444,9 +490,9 @@ function buildOrderGeographyInsights(orders = readAdminOrders()) {
       countryCode: order.localeCountryCode,
       countryName,
       orders: (existingRegion?.orders ?? 0) + 1,
-      revenue: (existingRegion?.revenue ?? 0) + order.finalAmount,
+      revenue: (existingRegion?.revenue ?? 0) + order.finalAmountInStoreCurrency,
     });
-  });
+    });
 
   const orderCountryInsights = Array.from(countryMap.values()).sort((left, right) => right.orders - left.orders);
   const orderRegionInsights = Array.from(regionMap.values()).sort((left, right) => right.orders - left.orders);
@@ -459,7 +505,11 @@ function buildOrderGeographyInsights(orders = readAdminOrders()) {
   };
 }
 
-function buildProductPerformance(events: AnalyticsEvent[], storefrontProducts: Product[]) {
+function buildProductPerformance(
+  events: AnalyticsEvent[],
+  storefrontProducts: Product[],
+  orders = readAdminOrders(),
+) {
   const publishedProducts = storefrontProducts.filter((product) => product.status === 'published');
   const productViewEvents = events.filter((event) => event.type === 'product_view');
   const buttonEvents = events.filter((event) => event.type === 'button_click' && event.pageType === 'product');
@@ -481,6 +531,7 @@ function buildProductPerformance(events: AnalyticsEvent[], storefrontProducts: P
       const matchingPackages = packageEvents.filter((event) => event.productSlug === product.slug);
       const matchingCheckouts = checkoutEvents.filter((event) => event.productSlug === product.slug);
       const matchingForms = formSubmitEvents.filter((event) => event.productSlug === product.slug);
+      const matchingOrders = orders.filter((order) => order.productSlug === product.slug);
       const matchingSearches = searchEvents.filter((event) => {
         const query = event.searchQuery.trim().toLowerCase();
         if (!query) {
@@ -517,9 +568,9 @@ function buildProductPerformance(events: AnalyticsEvent[], storefrontProducts: P
         packageSelections: matchingPackages.length,
         checkoutOpens: matchingCheckouts.length,
         formSubmissions: matchingForms.length,
-        orders: matchingForms.length,
+        orders: matchingOrders.length,
         interactionRate: percentage(interactions, Math.max(1, matchingPageViews.length)),
-        conversionRate: percentage(matchingForms.length, Math.max(1, matchingPageViews.length)),
+        conversionRate: percentage(matchingOrders.length, Math.max(1, matchingPageViews.length)),
         topButtonId: buttonCounts[0]?.buttonId ?? '',
         topButtonLabel: buttonCounts[0]?.buttonLabel ?? '',
       } satisfies ProductAnalyticsPerformance;
@@ -653,15 +704,18 @@ export async function readAdminAnalyticsSnapshot(periodDays = 30): Promise<Admin
     readAdminSubscribersSnapshot(),
     loadStorefrontProducts(),
   ]);
-  const filteredEvents = events.filter((event) => isWithinPeriod(event.createdAt, periodDays));
-  const dailySeries = buildDailySeries(filteredEvents, periodDays);
-  const productPerformance = buildProductPerformance(filteredEvents, storefrontProducts);
+  const filteredEvents = sanitizeAnalyticsEvents(
+    events.filter((event) => isWithinPeriod(event.createdAt, periodDays)),
+  );
+  const filteredOrders = readAdminOrders().filter((order) => isWithinPeriod(order.createdAt, periodDays));
+  const dailySeries = buildDailySeries(filteredEvents, periodDays, filteredOrders);
+  const productPerformance = buildProductPerformance(filteredEvents, storefrontProducts, filteredOrders);
   const searchInsights = buildSearchInsights(filteredEvents);
   const buttonInsights = buildButtonInsights(filteredEvents);
   const sourceInsights = buildSourceInsights(filteredEvents);
-  const countryInsights = buildCountryInsights(filteredEvents);
+  const countryInsights = buildCountryInsights(filteredEvents, filteredOrders);
   const { orderCountryInsights, orderRegionInsights, topOrderCountry, topOrderRegion } =
-    buildOrderGeographyInsights(readAdminOrders());
+    buildOrderGeographyInsights(filteredOrders, periodDays);
   const uniqueVisitors = new Set(
     filteredEvents
       .filter((event) => event.type === 'page_view')
@@ -674,7 +728,7 @@ export async function readAdminAnalyticsSnapshot(periodDays = 30): Promise<Admin
   );
   const pageViewCount = filteredEvents.filter((event) => event.type === 'page_view').length;
   const formSubmissionCount = filteredEvents.filter((event) => event.type === 'form_submit').length;
-  const totalOrders = formSubmissionCount;
+  const totalOrders = filteredOrders.length;
   const totalPublishedPages = storefrontProducts.filter((product) => product.status === 'published').length;
   const averageConversionRate = percentage(totalOrders, Math.max(1, uniqueVisitors.size));
   const averageInteractionRate =

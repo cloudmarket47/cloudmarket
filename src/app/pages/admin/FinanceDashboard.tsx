@@ -1019,7 +1019,7 @@ export function FinanceDashboard() {
                     {selectedSaleProduct
                       ? `${formatDraftCurrency(selectedSaleProduct.purchaseCost, selectedSaleProduct.currency)} cost / ${formatDraftCurrency(selectedSaleProduct.salePrice, selectedSaleProduct.currency)} sell`
                       : linkedSaleOrder
-                        ? `${formatCurrency(linkedSaleOrder.finalAmount, linkedSaleOrder.localeCountryCode)} linked order`
+                        ? `${formatCurrency(linkedSaleOrder.finalAmountInStoreCurrency, reportingCountryCode)} linked order`
                         : 'No product selected'}
                   </p>
                 </div>
@@ -1054,7 +1054,7 @@ export function FinanceDashboard() {
             <h3 className="mt-3 text-2xl font-black text-slate-950">{snapshot.geography.topCountry?.label ?? 'No country data yet'}</h3>
             <p className="mt-2 text-sm text-slate-600">
               {snapshot.geography.topCountry
-                ? `${snapshot.geography.topCountry.orders} orders • ${formatCurrency(snapshot.geography.topCountry.revenue, snapshot.geography.topCountry.countryCode)}`
+                ? `${snapshot.geography.topCountry.orders} orders • ${formatCurrency(snapshot.geography.topCountry.revenue, reportingCountryCode)}`
                 : 'Country order signals will appear here automatically.'}
             </p>
           </div>
@@ -1079,7 +1079,7 @@ export function FinanceDashboard() {
                     <p className="text-sm font-semibold text-slate-900">{item.label}</p>
                     <p className="text-xs text-slate-500">{item.orders} orders</p>
                   </div>
-                  <p className="text-sm font-semibold text-slate-900">{formatCurrency(item.revenue, item.countryCode)}</p>
+                  <p className="text-sm font-semibold text-slate-900">{formatCurrency(item.revenue, reportingCountryCode)}</p>
                 </div>
               ))}
             </div>

@@ -34,6 +34,8 @@ create table if not exists public.product_pages (
 create table if not exists public.orders (
   order_number text primary key,
   locale_country_code text not null default 'NG' check (locale_country_code in ('NG', 'US', 'GH', 'KE', 'ZA')),
+  transaction_currency text not null default 'NGN' check (transaction_currency in ('NGN', 'USD', 'GHS', 'KES', 'ZAR')),
+  store_currency text not null default 'NGN' check (store_currency in ('NGN', 'USD', 'GHS', 'KES', 'ZAR')),
   product_id text not null default '',
   product_slug text not null default '',
   product_name text not null default '',
@@ -50,17 +52,30 @@ create table if not exists public.orders (
   short_delivery_message text not null default '',
   customer_token text not null default '',
   base_amount integer not null default 0,
+  base_amount_in_store_currency integer not null default 0,
   discount_percentage integer not null default 0,
   discount_amount integer not null default 0,
+  discount_amount_in_store_currency integer not null default 0,
   final_amount integer not null default 0,
+  final_amount_in_store_currency integer not null default 0,
   status text not null default 'new' check (status in ('new', 'confirmed', 'processing', 'cancelled', 'failed', 'delivered')),
   source text not null default 'submission' check (source in ('submission', 'seed')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   expense_amount integer,
+  expense_currency text not null default 'NGN' check (expense_currency in ('NGN', 'USD', 'GHS', 'KES', 'ZAR')),
+  expense_amount_in_store_currency integer,
   expense_note text not null default '',
   expense_recorded_at timestamptz
 );
+
+alter table public.orders add column if not exists transaction_currency text not null default 'NGN';
+alter table public.orders add column if not exists store_currency text not null default 'NGN';
+alter table public.orders add column if not exists base_amount_in_store_currency integer not null default 0;
+alter table public.orders add column if not exists discount_amount_in_store_currency integer not null default 0;
+alter table public.orders add column if not exists final_amount_in_store_currency integer not null default 0;
+alter table public.orders add column if not exists expense_currency text not null default 'NGN';
+alter table public.orders add column if not exists expense_amount_in_store_currency integer;
 
 create table if not exists public.customer_tokens (
   email text primary key,

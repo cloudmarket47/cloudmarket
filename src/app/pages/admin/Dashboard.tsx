@@ -63,7 +63,7 @@ import {
   SUBSCRIBER_DATA_CHANGE_EVENT,
   formatSubscriberActivityLabel,
 } from '../../lib/subscriberTelemetry';
-import { cn, formatCurrency, formatDate } from '../../lib/utils';
+import { cn, formatCurrency, formatCurrencyByCode, formatDate } from '../../lib/utils';
 
 type DashboardPeriod = 7 | 30;
 
@@ -524,8 +524,12 @@ export function Dashboard() {
                   <p className="mt-1 text-xs text-slate-400">{order.orderNumber} • {order.city} • {formatDate(order.createdAt)}</p>
                 </div>
                 <div className="text-left md:text-right">
-                  <p className="text-lg font-black text-slate-950">{formatCurrency(order.finalAmount, order.localeCountryCode)}</p>
-                  <p className="mt-1 text-sm text-slate-500">Qty {order.quantity}</p>
+                  <p className="text-lg font-black text-slate-950">
+                    {formatCurrencyByCode(order.finalAmountInStoreCurrency, order.storeCurrency)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Qty {order.quantity} • {formatCurrencyByCode(order.finalAmount, order.transactionCurrency)} original
+                  </p>
                 </div>
               </Link>
             ))}
