@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
+import { AppThemeProvider } from './context/AppThemeContext';
 import { LocaleProvider } from './context/LocaleContext';
 import { loadRatesSnapshot } from './lib/currencyRates';
 import { startSupabaseRealtimeSync } from './lib/supabaseRealtime';
@@ -15,8 +16,10 @@ export default function App() {
   }, []);
 
   return (
-    <LocaleProvider>
-      <RouterProvider router={router} />
-    </LocaleProvider>
+    <AppThemeProvider>
+      <LocaleProvider>
+        <RouterProvider router={router} />
+      </LocaleProvider>
+    </AppThemeProvider>
   );
 }

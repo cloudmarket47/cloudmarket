@@ -23,6 +23,7 @@ import { readAppSetting, writeAppSetting } from './supabaseSettings';
 
 const FINANCE_SETTINGS_SETTING_KEY = 'finance_settings';
 export const FINANCE_DATA_CHANGE_EVENT = 'cloudmarket-finance-data-change';
+export type AppThemeMode = 'light' | 'dark';
 
 export type FinanceExpenseCategory =
   | 'inventory'
@@ -51,6 +52,24 @@ export interface FinanceSettings {
   formspreeEndpointUrl: string;
   customHeadMarkup: string;
   customFooterMarkup: string;
+  appThemeMode: AppThemeMode;
+  mobileStickyCtaTexts: string[];
+}
+
+function normalizeAppThemeMode(value: unknown): AppThemeMode {
+  return value === 'light' ? 'light' : 'dark';
+}
+
+function normalizeMobileStickyCtaTexts(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const normalized = input
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean);
+
+  return normalized.slice(0, 20);
 }
 
 export interface FinanceExpenseRecord {
@@ -337,6 +356,14 @@ function defaultFinanceSettings(): FinanceSettings {
     formspreeEndpointUrl: '',
     customHeadMarkup: '',
     customFooterMarkup: '',
+    appThemeMode: 'dark',
+    mobileStickyCtaTexts: [
+      'Order Now - Pay on Delivery',
+      'Claim Today\'s Free Delivery Offer',
+      'Get the Bundle Before It Sells Out',
+      'Unlock the Best Promo Package Now',
+      'Tap to Reserve Your Discounted Order',
+    ],
   };
 }
 
@@ -457,6 +484,10 @@ export async function ensureFinanceSettingsLoaded(force = false) {
         typeof parsedSettings.customFooterMarkup === 'string'
           ? parsedSettings.customFooterMarkup
           : defaults.customFooterMarkup,
+      appThemeMode: normalizeAppThemeMode(parsedSettings.appThemeMode),
+      mobileStickyCtaTexts: normalizeMobileStickyCtaTexts(
+        parsedSettings.mobileStickyCtaTexts ?? defaults.mobileStickyCtaTexts,
+      ),
     } satisfies FinanceSettings;
     financeSettingsCache = {
       ...financeSettingsCache,
@@ -809,6 +840,10 @@ export async function updateFinanceSettings(update: Partial<FinanceSettings>) {
       (update.formspreeEndpointUrl ?? currentSettings.formspreeEndpointUrl).trim(),
     customHeadMarkup: update.customHeadMarkup ?? currentSettings.customHeadMarkup,
     customFooterMarkup: update.customFooterMarkup ?? currentSettings.customFooterMarkup,
+    appThemeMode: normalizeAppThemeMode(update.appThemeMode ?? currentSettings.appThemeMode),
+    mobileStickyCtaTexts: normalizeMobileStickyCtaTexts(
+      update.mobileStickyCtaTexts ?? currentSettings.mobileStickyCtaTexts,
+    ),
   };
 
   financeSettingsCache = nextSettings;

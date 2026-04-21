@@ -14,6 +14,7 @@ interface TopDropOfferAlertsProps {
   enabled?: boolean;
   items?: Product['sections']['alerts']['items'];
   currentProductName: string;
+  isDark?: boolean;
   genderTarget?: CustomerGenderTarget;
   customerIdentityPools?: CustomerIdentityPools;
 }
@@ -285,12 +286,14 @@ function writeAlertHistory(history: Set<string>) {
   }
 }
 
-function getAlertStyles(kind: AlertKind) {
+function getAlertStyles(kind: AlertKind, isDark: boolean) {
   if (kind === 'stock') {
     return {
       icon: <AlertTriangle className="h-4 w-4 text-white" />,
       iconWrapClass: 'bg-[#ef4444]',
-      badgeClass: 'bg-red-50 text-red-700 border border-red-200',
+      badgeClass: isDark
+        ? 'bg-red-500/15 text-red-100 border border-red-400/30'
+        : 'bg-red-50 text-red-700 border border-red-200',
     };
   }
 
@@ -298,14 +301,18 @@ function getAlertStyles(kind: AlertKind) {
     return {
       icon: <ShoppingBag className="h-4 w-4 text-white" />,
       iconWrapClass: 'bg-[#0E7C7B]',
-      badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      badgeClass: isDark
+        ? 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30'
+        : 'bg-emerald-50 text-emerald-700 border border-emerald-200',
     };
   }
 
   return {
     icon: <Tag className="h-4 w-4 text-white" />,
     iconWrapClass: 'bg-[#2B63D9]',
-    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    badgeClass: isDark
+      ? 'bg-blue-500/15 text-blue-100 border border-blue-400/30'
+      : 'bg-blue-50 text-blue-700 border border-blue-200',
   };
 }
 
@@ -313,6 +320,7 @@ export function TopDropOfferAlerts({
   enabled = true,
   items = [],
   currentProductName,
+  isDark = false,
   genderTarget = 'all',
   customerIdentityPools,
 }: TopDropOfferAlertsProps) {
@@ -517,7 +525,7 @@ export function TopDropOfferAlerts({
     return null;
   }
 
-  const styles = getAlertStyles(activeAlert.kind);
+  const styles = getAlertStyles(activeAlert.kind, isDark);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-4 z-[95] flex justify-center px-3 sm:top-6 sm:px-6">
@@ -530,11 +538,15 @@ export function TopDropOfferAlerts({
             exit={{ opacity: 0, y: -10, scale: 0.985 }}
             transition={{ duration: ALERT_TRANSITION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             aria-live="polite"
-            className="pointer-events-auto relative w-full max-w-[24rem] overflow-hidden rounded-[1.7rem] border border-[#FF7A00]/65 bg-white/82 shadow-[0_20px_60px_rgba(255,122,0,0.18)] backdrop-blur-xl"
+            className={`pointer-events-auto relative w-full max-w-[24rem] overflow-hidden rounded-[1.7rem] border shadow-[0_20px_60px_rgba(255,122,0,0.18)] backdrop-blur-xl ${
+              isDark
+                ? 'border-[#FF7A00]/30 bg-slate-950/88'
+                : 'border-[#FF7A00]/65 bg-white/82'
+            }`}
           >
-            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(255,122,0,0.08),rgba(255,255,255,0.94),rgba(255,122,0,0.08))]" />
-            <div className="absolute -left-10 top-0 h-24 w-24 rounded-full bg-[#2B63D9]/10 blur-3xl" aria-hidden="true" />
-            <div className="absolute -right-10 bottom-0 h-24 w-24 rounded-full bg-[#FF7A00]/12 blur-3xl" aria-hidden="true" />
+            <div className={`absolute inset-x-0 top-0 h-px ${isDark ? 'bg-[linear-gradient(90deg,rgba(255,122,0,0.02),rgba(255,255,255,0.34),rgba(255,122,0,0.02))]' : 'bg-[linear-gradient(90deg,rgba(255,122,0,0.08),rgba(255,255,255,0.94),rgba(255,122,0,0.08))]'}`} />
+            <div className={`absolute -left-10 top-0 h-24 w-24 rounded-full blur-3xl ${isDark ? 'bg-[#2B63D9]/18' : 'bg-[#2B63D9]/10'}`} aria-hidden="true" />
+            <div className={`absolute -right-10 bottom-0 h-24 w-24 rounded-full blur-3xl ${isDark ? 'bg-[#FF7A00]/20' : 'bg-[#FF7A00]/12'}`} aria-hidden="true" />
 
             <div className="flex items-start gap-3 p-4">
               <div className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full shadow-sm ${styles.iconWrapClass}`}>
@@ -543,14 +555,14 @@ export function TopDropOfferAlerts({
 
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <p className="text-sm font-bold leading-5 text-slate-900">{activeAlert.title}</p>
+                  <p className={`text-sm font-bold leading-5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{activeAlert.title}</p>
                   {activeAlert.timestampLabel ? (
                     <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
                       {activeAlert.timestampLabel}
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-sm leading-5 text-slate-600">{activeAlert.message}</p>
+                <p className={`mt-1 text-sm leading-5 ${isDark ? 'text-slate-200' : 'text-slate-600'}`}>{activeAlert.message}</p>
               </div>
 
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] shadow-sm ${styles.badgeClass}`}>

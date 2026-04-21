@@ -6,6 +6,7 @@ import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './sup
 import { readFinanceSettings } from './adminFinance';
 
 const ORDERS_DATA_CHANGE_EVENT = 'cloudmarket-orders-cache-change';
+const TRANSIENT_ORDER_STORAGE_PREFIX = 'cloudmarket-transient-order:';
 
 export interface PackageOption {
   quantity: string;
@@ -71,6 +72,39 @@ interface BuildPlacedOrderParams {
 let persistedOrdersCache: Record<string, PlacedOrder> = {};
 let persistedOrdersLoaded = false;
 let persistedOrdersRequest: Promise<Record<string, PlacedOrder>> | null = null;
+
+function isBrowser() {
+  return typeof window !== 'undefined';
+}
+
+function getTransientOrderStorageKey(orderNumber: string) {
+  return `${TRANSIENT_ORDER_STORAGE_PREFIX}${orderNumber}`;
+}
+
+function writeTransientPlacedOrder(order: PlacedOrder) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(getTransientOrderStorageKey(order.orderNumber), JSON.stringify(order));
+  } catch {
+    // Ignore session storage failures.
+  }
+}
+
+function readTransientPlacedOrder(orderNumber: string) {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  try {
+    const rawOrder = window.sessionStorage.getItem(getTransientOrderStorageKey(orderNumber));
+    return rawOrder ? (JSON.parse(rawOrder) as PlacedOrder) : null;
+  } catch {
+    return null;
+  }
+}
 
 function mapOrderRowToPlacedOrder(row: OrderRow): PlacedOrder {
   return {
@@ -351,6 +385,7 @@ export async function persistPlacedOrder(order: PlacedOrder) {
     [order.orderNumber]: order,
   };
   persistedOrdersLoaded = true;
+  writeTransientPlacedOrder(order);
   emitOrdersChange();
 
   if (supabase) {
@@ -385,8 +420,30 @@ export async function getPlacedOrder(orderNumber: string | null) {
     return null;
   }
 
+  const transientOrder = readTransientPlacedOrder(orderNumber);
+
+  if (transientOrder) {
+    persistedOrdersCache = {
+      ...persistedOrdersCache,
+      [transientOrder.orderNumber]: transientOrder,
+    };
+    persistedOrdersLoaded = true;
+    return transientOrder;
+  }
+
   await ensurePlacedOrdersLoaded();
   return persistedOrdersCache[orderNumber] ?? null;
+}
+
+export function rememberPlacedOrder(order: PlacedOrder) {
+  persistedOrdersCache = {
+    ...persistedOrdersCache,
+    [order.orderNumber]: order,
+  };
+  persistedOrdersLoaded = true;
+  writeTransientPlacedOrder(order);
+  emitOrdersChange();
+  return order;
 }
 
 export function getOrdersDataChangeEventName() {

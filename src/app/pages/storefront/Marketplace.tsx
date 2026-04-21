@@ -24,6 +24,7 @@ import { Footer } from '../../components/Footer';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { MarketplaceBottomNav, type MarketplaceMobileNavTab } from '../../components/storefront/MarketplaceBottomNav';
 import { MarketplaceCategorySheet } from '../../components/storefront/MarketplaceCategorySheet';
+import { FloatingStorefrontActions } from '../../components/storefront/FloatingStorefrontActions';
 import { MarketplaceProductCard } from '../../components/storefront/MarketplaceProductCard';
 import { MarketplacePromoHero } from '../../components/storefront/MarketplacePromoHero';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
@@ -37,6 +38,7 @@ import {
   marketplaceCategorySurfaceMap,
 } from '../../components/storefront/marketplaceShared';
 import { Switch } from '../../components/ui/switch';
+import { useAppTheme } from '../../context/AppThemeContext';
 import { useLocale } from '../../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
@@ -55,36 +57,6 @@ import type { Product } from '../../types';
 
 const PRODUCTS_PER_PAGE = 6;
 const FLASH_SALE_DURATION_MS = ((2 * 60) + 14) * 60 * 1000 + 33 * 1000;
-const MARKETPLACE_THEME_COOKIE = 'nf_marketplace_theme';
-
-type MarketplaceThemeMode = 'light' | 'dark';
-
-const readMarketplaceTheme = (): MarketplaceThemeMode => {
-  if (typeof document === 'undefined') {
-    return 'light';
-  }
-
-  const cookieValue = document.cookie
-    .split('; ')
-    .find((entry) => entry.startsWith(`${MARKETPLACE_THEME_COOKIE}=`))
-    ?.split('=')
-    .at(1);
-
-  if (cookieValue === 'dark' || cookieValue === 'light') {
-    return cookieValue;
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-const writeMarketplaceTheme = (themeMode: MarketplaceThemeMode) => {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  document.cookie = `${MARKETPLACE_THEME_COOKIE}=${themeMode}; path=/; max-age=31536000; samesite=lax`;
-};
-
 const scrollToSection = (sectionId: string) => {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -151,18 +123,17 @@ export function Marketplace() {
     countryName,
     formatPrice,
   } = useLocale();
+  const { isDarkMode, setThemeMode } = useAppTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeMobileTab, setActiveMobileTab] = useState<MarketplaceMobileNavTab>('home');
-  const [themeMode, setThemeMode] = useState<MarketplaceThemeMode>(() => readMarketplaceTheme());
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [storefrontError, setStorefrontError] = useState<string | null>(null);
   const [flashSaleEndsAt] = useState(() => Date.now() + FLASH_SALE_DURATION_MS);
   const [flashSaleRemaining, setFlashSaleRemaining] = useState(() => flashSaleEndsAt - Date.now());
-  const isDarkMode = themeMode === 'dark';
 
   useEffect(() => {
     let isActive = true;
@@ -232,10 +203,6 @@ export function Marketplace() {
       window.clearInterval(intervalId);
     };
   }, [flashSaleEndsAt]);
-
-  useEffect(() => {
-    writeMarketplaceTheme(themeMode);
-  }, [themeMode]);
 
   const publishedProducts = useMemo(() => storefrontProducts, [storefrontProducts]);
   const activeFilter = useMemo(() => resolveCategoryFilter(categorySlug), [categorySlug]);
@@ -564,11 +531,11 @@ export function Marketplace() {
       <div
         className={cn(
           'min-h-screen bg-[#f5f7fb] pb-36 text-slate-950 md:pb-10',
-          isDarkMode && 'dark bg-[#081225] text-slate-100',
+          isDarkMode && 'dark bg-[#0d1117] text-[#c9d1d9]',
         )}
       >
         <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pb-20 pt-4 sm:px-5 lg:px-6">
-          <section className="overflow-hidden rounded-[2rem] border border-[#d8e6ff] bg-[linear-gradient(140deg,#fefeff_0%,#f3f8ff_38%,#eef4ff_100%)] shadow-[0_24px_60px_rgba(43,99,217,0.1)] dark:border-[#254478] dark:bg-[linear-gradient(140deg,#081a35_0%,#0d2348_45%,#12305f_100%)]">
+          <section className="overflow-hidden rounded-[2rem] border border-[#d8e6ff] bg-[linear-gradient(140deg,#fefeff_0%,#f3f8ff_38%,#eef4ff_100%)] shadow-[0_24px_60px_rgba(43,99,217,0.1)] dark:border-white/10 dark:bg-[linear-gradient(140deg,#0d1117_0%,#11161d_45%,#161b22_100%)]">
             <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.15fr] lg:items-center">
               <div className="space-y-5">
                 <div className="h-8 w-32 animate-pulse rounded-full bg-white/80 dark:bg-white/10" />
@@ -592,20 +559,21 @@ export function Marketplace() {
               {Array.from({ length: 8 }, (_, index) => (
                 <div
                   key={`marketplace-skeleton-card-${index}`}
-                  className="rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-[0_12px_26px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950"
+                  className="rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-[0_12px_26px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.03]"
                 >
-                  <div className="aspect-[5/3] animate-pulse rounded-[1.05rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[4/3]" />
+                  <div className="aspect-[5/3] animate-pulse rounded-[1.05rem] bg-slate-200 dark:bg-white/10 sm:aspect-[4/3]" />
                   <div className="space-y-3 px-1 pb-1 pt-3">
-                    <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-5 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-10 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+                    <div className="h-5 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+                    <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+                    <div className="h-10 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
                   </div>
                 </div>
               ))}
             </div>
           </section>
           <Footer />
+          <FloatingStorefrontActions />
         </main>
       </div>
     );
@@ -616,7 +584,7 @@ export function Marketplace() {
       id="top"
       className={cn(
         'min-h-screen bg-[#f5f7fb] pb-36 text-slate-950 md:pb-10',
-        isDarkMode && 'dark bg-[#081225] text-slate-100',
+        isDarkMode && 'dark bg-[#0d1117] text-[#c9d1d9]',
       )}
     >
       {isSidebarOpen ? (
@@ -1189,6 +1157,7 @@ export function Marketplace() {
 
         <Footer />
       </main>
+      <FloatingStorefrontActions />
 
       <MarketplaceBottomNav
         activeTab={activeMobileTab}

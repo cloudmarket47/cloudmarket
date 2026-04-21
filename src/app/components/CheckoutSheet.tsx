@@ -1,7 +1,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ChevronLeft, MapPin, MessageSquare, MoreVertical, Package, Phone, Tag, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useAppTheme } from '../context/AppThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { convertPriceAmount, getCurrencyForCountry } from '../lib/currencyRates';
@@ -11,7 +11,7 @@ import { useFormspreeEndpoint } from '../lib/formspree';
 import type { SupportedCountryCode } from '../lib/localeData';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { getPackagePriceBreakdown } from '../lib/packagePricing';
-import { calculateOrderPricing, createPlacedOrder, persistPlacedOrder } from '../lib/orders';
+import { calculateOrderPricing, createPlacedOrder, persistPlacedOrder, rememberPlacedOrder } from '../lib/orders';
 import { trackMetaPurchase } from '../lib/siteTracking';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
 import { formatCurrency } from '../lib/utils';
@@ -94,13 +94,13 @@ function ensurePhonePrefix(value: string, phonePrefix: string) {
 }
 
 export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) {
-  const navigate = useNavigate();
   const formspreeEndpoint = useFormspreeEndpoint();
   const childScrollRef = useRef<HTMLDivElement>(null);
+  const { isDarkMode } = useAppTheme();
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const bundles = useMemo(() => buildCheckoutBundles(product, countryCode), [countryCode, product, ratesUpdatedAt]);
   const orderFormCopy = product.sections.orderForm;
-  const isDark = product.displayMode === 'dark';
+  const isDark = isDarkMode;
   const [selectedBundleIndex, setSelectedBundleIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -119,6 +119,8 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   const [isApplyingToken, setIsApplyingToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [hasInteractedWithScroll, setHasInteractedWithScroll] = useState(false);
+  const [showScrollHint, setShowScrollHint] = useState(false);
 
   const activeBundle = bundles[selectedBundleIndex ?? 0] ?? null;
   const selectedBundle = selectedBundleIndex === null ? null : bundles[selectedBundleIndex] ?? null;
@@ -144,6 +146,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       setTokenError('');
       setIsTokenSectionOpen(false);
       setSubmitError('');
+      setShowScrollHint(false);
     }
   }, [isOpen, phonePrefix]);
 
@@ -190,6 +193,49 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     }
 
     childScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [isOpen, selectedBundleIndex]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowScrollHint(false);
+      return;
+    }
+
+    const scrollContainer = childScrollRef.current;
+
+    if (!scrollContainer) {
+      return;
+    }
+
+    let frameId = 0;
+    let timeoutId = 0;
+
+    const updateScrollHint = () => {
+      const hasOverflow = scrollContainer.scrollHeight - scrollContainer.clientHeight > 24;
+      const isNearTop = scrollContainer.scrollTop < 12;
+      setShowScrollHint(hasOverflow && isNearTop);
+    };
+
+    const handleScroll = () => {
+      if (scrollContainer.scrollTop > 8) {
+        setShowScrollHint(false);
+      } else {
+        updateScrollHint();
+      }
+    };
+
+    frameId = window.requestAnimationFrame(updateScrollHint);
+    timeoutId = window.setTimeout(updateScrollHint, 320);
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', updateScrollHint);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+      scrollContainer.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updateScrollHint);
+    };
   }, [isOpen, selectedBundleIndex]);
 
   if (bundles.length === 0 || !activeBundle) {
@@ -379,6 +425,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         tokenRecord: resolvedTokenRecord,
         localeCountryCode: countryCode,
       });
+      rememberPlacedOrder(placedOrder);
 
       await syncOrderSubmission(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
@@ -420,27 +467,28 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         },
       });
 
-      if (resolvedTokenRecord) {
-        await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
-          productId: placedOrder.productId,
-          productSlug: placedOrder.productSlug,
-          productName: placedOrder.productName,
-          packageTitle: placedOrder.packageTitle,
-          amount: placedOrder.finalAmount,
-          pagePath: `/product/${product.slug}`,
-        });
-      }
+      void (async () => {
+        if (resolvedTokenRecord) {
+          await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
+            productId: placedOrder.productId,
+            productSlug: placedOrder.productSlug,
+            productName: placedOrder.productName,
+            packageTitle: placedOrder.packageTitle,
+            amount: placedOrder.finalAmount,
+            pagePath: `/product/${product.slug}`,
+          });
+        }
 
-      await persistPlacedOrder(placedOrder);
+        await persistPlacedOrder(placedOrder);
+      })().catch(() => undefined);
       void recordSubmittedOrder(placedOrder).catch(() => undefined);
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
 
       onClose();
-      navigate(`/thank-you?order=${placedOrder.orderNumber}`, {
-        state: { order: placedOrder },
-      });
+      window.location.href = `/thank-you?order=${encodeURIComponent(placedOrder.orderNumber)}`;
+      return;
     } catch (error) {
       setSubmitError(
         error instanceof Error && error.message.trim()
@@ -454,16 +502,16 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
 
   const labelClassName = isDark ? 'text-slate-200' : 'text-stone-700';
   const fieldClassName = isDark
-    ? 'h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-400'
+    ? 'h-12 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-[#c9d1d9] placeholder:text-[#8b949e]'
     : 'h-12 rounded-2xl border-stone-200 bg-white px-4';
   const selectClassName = isDark
-    ? 'h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20'
+    ? 'h-12 w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm text-[#c9d1d9] outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20'
     : 'h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm text-stone-900 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20';
   const textareaClassName = isDark
-    ? 'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20'
+    ? 'w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-[#c9d1d9] placeholder:text-[#8b949e] outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20'
     : 'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20';
   const warmCardClassName = isDark
-    ? 'rounded-[1.7rem] border border-white/10 bg-slate-950/60 p-4 text-white shadow-[0_18px_36px_rgba(2,6,23,0.5)]'
+    ? 'rounded-[1.7rem] border border-white/10 bg-white/[0.03] p-4 text-[#c9d1d9] shadow-[0_18px_36px_rgba(0,0,0,0.4)] backdrop-blur-[20px]'
     : 'rounded-[1.7rem] bg-[#f8f1e8] p-4 text-stone-950 shadow-[0_12px_24px_rgba(15,23,42,0.12)]';
   const warmPillClassName = isDark
     ? 'rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200'
@@ -473,7 +521,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     <div
       className={`rounded-[1.5rem] border border-dashed p-4 ${
         isDark
-          ? 'border-[#2B7FFF]/30 bg-[#08182f]'
+          ? 'border-white/15 bg-white/[0.02] backdrop-blur-[20px]'
           : 'border-[#2B7FFF]/35 bg-[#f5f9ff]'
       }`}
     >
@@ -715,7 +763,13 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
 
           {orderFormCopy.enableTokenField ? renderTokenField() : null}
 
-          <div className="rounded-[1.6rem] bg-[#FF7A00] p-5 text-white">
+          <div
+            className={
+              isDark
+                ? 'rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 text-[#c9d1d9] backdrop-blur-[20px]'
+                : 'rounded-[1.6rem] bg-[#FF7A00] p-5 text-white'
+            }
+          >
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/45">
@@ -783,13 +837,13 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   };
 
   const parentSurfaceClassName = isDark
-    ? 'border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,1))] text-white shadow-[0_-28px_90px_rgba(2,6,23,0.68)]'
+    ? 'border border-white/10 bg-[#0d1117]/95 text-[#c9d1d9] shadow-[0_-28px_90px_rgba(0,0,0,0.6)] backdrop-blur-[20px]'
     : 'bg-white shadow-[0_-28px_90px_rgba(15,23,42,0.36)]';
   const childSurfaceClassName = isDark
-    ? 'bg-gradient-to-br from-[#07111f] via-[#0b2448] to-[#11336d]'
+    ? 'bg-gradient-to-br from-[#0d1117] via-[#11161d] to-[#161b22]'
     : 'bg-gradient-to-br from-[#0E7C7B] via-[#1f6ebf] to-[#2B7FFF]';
   const headerButtonClassName = isDark
-    ? 'inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-white shadow-sm transition hover:bg-white/14'
+    ? 'inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white shadow-sm transition hover:bg-white/[0.08]'
     : 'inline-flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-stone-700 shadow-sm transition hover:bg-stone-200';
 
   return (
@@ -979,6 +1033,14 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+                  <div
+                    className={`checkout-scroll-hint pointer-events-none absolute bottom-2 left-1/2 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-white/20 text-white/90 backdrop-blur-md transition-opacity duration-300 ${
+                      showScrollHint ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <span className="text-lg leading-none">{'\u2193'}</span>
                   </div>
                 </motion.section>
               </div>

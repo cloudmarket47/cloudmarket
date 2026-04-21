@@ -77,6 +77,33 @@ function isBrowser() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
+function isLocalDevelopmentHost() {
+  if (!isBrowser()) {
+    return false;
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+}
+
+function markupIncludesMetaPixel(markup: string) {
+  if (!markup.trim()) {
+    return false;
+  }
+
+  return (
+    /fbq\s*\(\s*['"]init['"]/i.test(markup) ||
+    /connect\.facebook\.net\/.*fbevents\.js/i.test(markup)
+  );
+}
+
+function isMetaPixelManagedViaCustomMarkup(settings: SiteTrackingSettings) {
+  return (
+    markupIncludesMetaPixel(settings.customHeadMarkup) ||
+    markupIncludesMetaPixel(settings.customFooterMarkup)
+  );
+}
+
 function buildMetaClickIdCookieValue(fbclid: string) {
   return `fb.1.${Date.now()}.${fbclid}`;
 }
@@ -238,6 +265,10 @@ function ensureMetaPixelReady(pixelId: string) {
     return false;
   }
 
+  if (isLocalDevelopmentHost()) {
+    return false;
+  }
+
   const fbq = createMetaPixelStub();
 
   if (!fbq) {
@@ -261,7 +292,15 @@ export function applySiteTracking(settings: SiteTrackingSettings) {
     return () => undefined;
   }
 
-  if (settings.metaPixelId) {
+  if (isLocalDevelopmentHost()) {
+    return () => undefined;
+  }
+
+  if (
+    settings.metaPixelId &&
+    !isMetaPixelManagedViaCustomMarkup(settings) &&
+    !isLocalDevelopmentHost()
+  ) {
     syncMetaBrowserIdentifiers();
     ensureMetaPixelReady(settings.metaPixelId);
   }
@@ -278,9 +317,22 @@ export function applySiteTracking(settings: SiteTrackingSettings) {
 export async function trackMetaPageView() {
   const settings = await ensureSiteTrackingSettingsLoaded().catch(() => readSiteTrackingSettings());
 
+  if (isLocalDevelopmentHost()) {
+    return;
+  }
+
   syncMetaBrowserIdentifiers();
 
-  if (!settings.metaPixelId || !ensureMetaPixelReady(settings.metaPixelId)) {
+  const managedByCustomMarkup = isMetaPixelManagedViaCustomMarkup(settings);
+
+  if (
+    !settings.metaPixelId ||
+    (!managedByCustomMarkup && !ensureMetaPixelReady(settings.metaPixelId))
+  ) {
+    return;
+  }
+
+  if (managedByCustomMarkup && typeof window.fbq !== 'function') {
     return;
   }
 
@@ -357,13 +409,20 @@ async function postMetaPurchaseConversion(payload: MetaConversionsPayload) {
 export async function trackMetaPurchase(order: PlacedOrder, context?: MetaPurchaseTrackingContext) {
   const settings = await ensureSiteTrackingSettingsLoaded().catch(() => readSiteTrackingSettings());
 
+  if (isLocalDevelopmentHost()) {
+    return;
+  }
+
   if (!settings.metaPurchaseTrackingEnabled || !settings.metaPixelId) {
     return;
   }
 
   const payload = buildMetaPurchasePayload(order, settings.metaPixelId, context);
+  const managedByCustomMarkup = isMetaPixelManagedViaCustomMarkup(settings);
 
-  ensureMetaPixelReady(settings.metaPixelId);
+  if (!managedByCustomMarkup) {
+    ensureMetaPixelReady(settings.metaPixelId);
+  }
 
   if (typeof window.fbq === 'function') {
     window.fbq(

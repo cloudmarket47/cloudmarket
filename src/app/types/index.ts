@@ -147,6 +147,7 @@ export interface Product {
       title: string;
       subtitle: string;
       submitButtonLabel: string;
+      mobileStickyCtaTexts: string[];
       tokenPrompt: string;
       enableTokenField: boolean;
       quickCheckoutLabel: string;

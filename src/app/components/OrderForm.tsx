@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapPin, MessageSquare, Package, Phone, Tag, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useAppTheme } from '../context/AppThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../lib/customerTokens';
@@ -9,6 +9,7 @@ import {
   buildPackageOptions,
   calculateOrderPricing,
   createPlacedOrder,
+  rememberPlacedOrder,
   persistPlacedOrder,
 } from '../lib/orders';
 import { useFormspreeEndpoint } from '../lib/formspree';
@@ -47,10 +48,10 @@ export function OrderForm({
   selectedPackage = '1',
   onPackageChange,
 }: OrderFormProps) {
-  const navigate = useNavigate();
   const formspreeEndpoint = useFormspreeEndpoint();
+  const { isDarkMode } = useAppTheme();
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
-  const isDark = product.displayMode === 'dark';
+  const isDark = isDarkMode;
   const orderFormCopy = product.sections.orderForm;
   const packageOptions = useMemo(
     () => buildPackageOptions(product, countryCode),
@@ -228,6 +229,7 @@ export function OrderForm({
         tokenRecord: resolvedTokenRecord,
         localeCountryCode: countryCode,
       });
+      rememberPlacedOrder(placedOrder);
 
       await syncOrderSubmission(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
@@ -269,26 +271,26 @@ export function OrderForm({
         },
       });
 
-      if (resolvedTokenRecord) {
-        await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
-          productId: placedOrder.productId,
-          productSlug: placedOrder.productSlug,
-          productName: placedOrder.productName,
-          packageTitle: placedOrder.packageTitle,
-          amount: placedOrder.finalAmount,
-          pagePath: `/product/${product.slug}`,
-        });
-      }
+      void (async () => {
+        if (resolvedTokenRecord) {
+          await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
+            productId: placedOrder.productId,
+            productSlug: placedOrder.productSlug,
+            productName: placedOrder.productName,
+            packageTitle: placedOrder.packageTitle,
+            amount: placedOrder.finalAmount,
+            pagePath: `/product/${product.slug}`,
+          });
+        }
 
-      await persistPlacedOrder(placedOrder);
+        await persistPlacedOrder(placedOrder);
+      })().catch(() => undefined);
       void recordSubmittedOrder(placedOrder).catch(() => undefined);
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
-
-      navigate(`/thank-you?order=${placedOrder.orderNumber}`, {
-        state: { order: placedOrder },
-      });
+      window.location.href = `/thank-you?order=${encodeURIComponent(placedOrder.orderNumber)}`;
+      return;
     } catch (error) {
       setSubmitError(
         error instanceof Error && error.message.trim()
@@ -304,7 +306,11 @@ export function OrderForm({
     <ScrollReveal>
       <section
         id="order-section"
-        className={isDark ? 'bg-gradient-to-b from-[#07101f] to-[#040916] py-16 md:py-24' : 'bg-gradient-to-b from-gray-50 to-white py-16 md:py-24'}
+        className={
+          isDark
+            ? 'bg-gradient-to-b from-[#0d1117] via-[#11161d] to-[#0d1117] py-16 md:py-24'
+            : 'bg-gradient-to-b from-gray-50 to-white py-16 md:py-24'
+        }
       >
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl">
@@ -320,7 +326,7 @@ export function OrderForm({
             <div
               className={`rounded-3xl p-8 shadow-2xl md:p-12 ${
                 isDark
-                  ? 'border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] text-white shadow-[0_30px_80px_rgba(2,6,23,0.55)]'
+                  ? 'border border-white/10 bg-white/[0.03] text-[#c9d1d9] shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-[20px]'
                   : 'card-3d bg-white'
               }`}
             >
@@ -340,7 +346,7 @@ export function OrderForm({
                     placeholder="Enter your full name"
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                         : 'border-gray-300 text-gray-900'
                     }`}
                   />
@@ -361,7 +367,7 @@ export function OrderForm({
                     placeholder={phoneExample}
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                         : 'border-gray-300 text-gray-900'
                     }`}
                   />
@@ -381,7 +387,7 @@ export function OrderForm({
                     placeholder={`Optional: ${phoneExample}`}
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                         : 'border-gray-300 text-gray-900'
                     }`}
                   />
@@ -402,7 +408,7 @@ export function OrderForm({
                     placeholder="Enter your full address"
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                         : 'border-gray-300 text-gray-900'
                     }`}
                   />
@@ -422,7 +428,7 @@ export function OrderForm({
                     onChange={handleChange}
                     className={`h-12 w-full rounded-xl border px-4 text-lg focus:border-[#0E7C7B] focus:outline-none focus:ring-2 focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9]'
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   >
@@ -449,7 +455,7 @@ export function OrderForm({
                     onChange={handleChange}
                     className={`h-12 w-full rounded-xl border px-4 text-lg focus:border-[#0E7C7B] focus:outline-none focus:ring-2 focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9]'
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   >
@@ -475,7 +481,7 @@ export function OrderForm({
                     placeholder="Optional note for delivery, landmark or preferred call instruction"
                     className={`w-full rounded-xl border px-4 py-3 text-base focus:border-[#0E7C7B] focus:outline-none focus:ring-2 focus:ring-[#0E7C7B] ${
                       isDark
-                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                        ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                         : 'border-gray-300 text-gray-900'
                     }`}
                   />
@@ -485,7 +491,7 @@ export function OrderForm({
                   <div
                     className={`rounded-2xl border border-dashed p-5 ${
                       isDark
-                        ? 'border-[#2B7FFF]/30 bg-[#08182f]'
+                        ? 'border-white/15 bg-white/[0.02] backdrop-blur-[20px]'
                         : 'border-[#2B7FFF]/35 bg-[#f5f9ff]'
                     }`}
                   >
@@ -514,7 +520,7 @@ export function OrderForm({
                             placeholder="Optional token for 10% off your order"
                             className={`h-12 rounded-xl text-lg uppercase focus:border-[#2B7FFF] focus:ring-[#2B7FFF] ${
                               isDark
-                                ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-400'
+                                ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'
                                 : 'border-gray-300 text-gray-900'
                             }`}
                           />
@@ -559,7 +565,7 @@ export function OrderForm({
                 <div
                   className={`rounded-xl p-6 ${
                     isDark
-                      ? 'border border-white/10 bg-gradient-to-br from-[#0E7C7B]/18 to-[#2B7FFF]/18 text-slate-200'
+                      ? 'border border-white/10 bg-white/[0.04] text-[#c9d1d9] backdrop-blur-[20px]'
                       : 'card-3d bg-gradient-to-br from-[#0E7C7B]/10 to-[#2B7FFF]/10'
                   }`}
                 >

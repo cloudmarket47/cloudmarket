@@ -15,6 +15,88 @@
   }
 }
 
+@keyframes floating-action-heartbeat {
+  0%,
+  37.5%,
+  100% {
+    transform: scale(1);
+  }
+
+  4%,
+  12%,
+  20%,
+  28% {
+    transform: scale(1.08);
+  }
+
+  8%,
+  16%,
+  24%,
+  32% {
+    transform: scale(0.96);
+  }
+}
+
+@keyframes sticky-cta-copy-fade {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  26%,
+  74% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes sticky-cta-finger-nudge {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(10px, 0, 0) scale(0.96);
+  }
+
+  20%,
+  80% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-8px, 0, 0) scale(1.06);
+  }
+}
+
+@keyframes checkout-scroll-hint-bounce {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  20% {
+    transform: translate3d(-50%, -8px, 0);
+  }
+
+  40% {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  60% {
+    transform: translate3d(-50%, -6px, 0);
+  }
+
+  80% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 html[data-content-protected='true'],
 body[data-content-protected='true'] {
   -webkit-touch-callout: none;
@@ -58,6 +140,43 @@ body[data-content-protected='true'] :where(img, video, canvas, svg) {
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: auto;
+}
+
+body {
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+.floating-action-beat {
+  animation: floating-action-heartbeat 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.sticky-cta-copy {
+  animation: sticky-cta-copy-fade 7s ease-in-out both;
+  will-change: opacity, transform;
+}
+
+.sticky-cta-finger {
+  animation: sticky-cta-finger-nudge 1.15s ease-in-out;
+  will-change: opacity, transform;
+}
+
+.checkout-scroll-hint {
+  animation: checkout-scroll-hint-bounce 1.5s ease-in-out 2;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-action-beat {
+    animation: none;
+  }
+
+  .sticky-cta-copy,
+  .sticky-cta-finger,
+  .checkout-scroll-hint {
+    animation: none;
+  }
 }
 
 @media print {

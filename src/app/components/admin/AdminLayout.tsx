@@ -1,6 +1,7 @@
 import { useState, ReactNode } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -9,9 +10,10 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { isDarkMode } = useAppTheme();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={isDarkMode ? 'app-theme-dark min-h-screen bg-[#0d1117] text-[#c9d1d9]' : 'min-h-screen bg-gray-50'}>
       <AdminSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 

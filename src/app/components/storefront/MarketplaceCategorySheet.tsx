@@ -23,7 +23,7 @@ export function MarketplaceCategorySheet({
         className="fixed inset-0 z-[58] bg-slate-950/45 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-[2rem] border border-slate-200 bg-white px-4 pb-8 pt-5 shadow-[0_-18px_54px_rgba(15,23,42,0.18)] dark:border-slate-800 dark:bg-slate-950">
+      <aside className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-[2rem] border border-slate-200 bg-white px-4 pb-8 pt-5 shadow-[0_-18px_54px_rgba(15,23,42,0.18)] dark:border-[#30363d] dark:bg-[#0d1117]">
         <div className="mx-auto max-w-3xl">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -54,7 +54,7 @@ export function MarketplaceCategorySheet({
               'mt-5 flex w-full items-center justify-between rounded-[1.35rem] border px-4 py-3 text-left transition',
               activeFilterSlug === 'all'
                 ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white',
+                : 'border-slate-200 bg-slate-50 text-slate-900 dark:border-[#30363d] dark:bg-white/5 dark:text-white',
             )}
           >
             <span className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export function MarketplaceCategorySheet({
               const isActive = activeFilterSlug === category.slug;
 
               return (
-                <div key={category.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                <div key={category.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3 dark:border-[#30363d] dark:bg-white/5">
                   <button
                     type="button"
                     onClick={() => {
@@ -86,11 +86,11 @@ export function MarketplaceCategorySheet({
                     }}
                     className={cn(
                       'flex w-full items-center justify-between gap-3 rounded-[1.2rem] px-2 py-2 text-left transition',
-                      isActive ? 'bg-white dark:bg-slate-950' : 'hover:bg-white dark:hover:bg-slate-950',
+                      isActive ? 'bg-white dark:bg-white/5' : 'hover:bg-white dark:hover:bg-white/5',
                     )}
                   >
                     <span className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#2B63D9] dark:bg-[#12305f] dark:text-[#9fc0ff]">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#2B63D9] dark:bg-white/5 dark:text-white">
                         <Icon className="h-5 w-5" />
                       </span>
                       <span>
@@ -121,14 +121,14 @@ export function MarketplaceCategorySheet({
                             'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition',
                             isSubActive
                               ? 'border-slate-900 bg-slate-900 text-white'
-                              : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200',
+                              : 'border-slate-200 bg-white text-slate-700 dark:border-[#30363d] dark:bg-white/5 dark:text-[#c9d1d9]',
                           )}
                         >
                           <span>{subcategory.name}</span>
                           <span
                             className={cn(
                               'rounded-full px-1.5 py-0.5 text-[10px]',
-                              isSubActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+                              isSubActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400',
                             )}
                           >
                             {subcategory.productCount}

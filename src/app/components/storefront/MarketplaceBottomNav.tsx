@@ -25,7 +25,7 @@ export function MarketplaceBottomNav({
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-18px_42px_rgba(15,23,42,0.12)] md:hidden dark:border-slate-800 dark:bg-slate-950">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-18px_42px_rgba(15,23,42,0.12)] md:hidden dark:border-[#30363d] dark:bg-[#0d1117]">
       <div className="mx-auto grid max-w-7xl grid-cols-3 gap-1 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
         {items.map((item) => {
           const Icon = item.icon;
@@ -42,7 +42,7 @@ export function MarketplaceBottomNav({
               className={cn(
                 'relative flex flex-col items-center gap-1 rounded-[1.2rem] px-1 py-2 text-[11px] font-semibold transition active:scale-[0.98]',
                 isActive
-                  ? 'bg-[#eaf3ff] text-[#2B63D9] dark:bg-[#12305f] dark:text-[#9fc0ff]'
+                  ? 'bg-[#eaf3ff] text-[#2B63D9] dark:bg-white/5 dark:text-white'
                   : 'text-slate-500 dark:text-slate-400',
               )}
             >
@@ -51,7 +51,7 @@ export function MarketplaceBottomNav({
                   className={cn(
                     'h-5 w-5',
                     isActive
-                      ? 'text-[#2B63D9] dark:text-[#9fc0ff]'
+                      ? 'text-[#2B63D9] dark:text-white'
                       : 'text-slate-500 dark:text-slate-400',
                   )}
                 />

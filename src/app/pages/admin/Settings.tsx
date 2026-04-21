@@ -40,6 +40,7 @@ import {
 } from '../../lib/adminProductDrafts';
 import { readAdminSubscribersSnapshot } from '../../lib/adminSubscribers';
 import {
+  type AppThemeMode,
   ensureFinanceSettingsLoaded,
   readFinanceSnapshot,
   updateFinanceSettings,
@@ -137,11 +138,20 @@ export function Settings() {
   const [brandingForm, setBrandingForm] = useState(() => ({
     companyName: 'CloudMarket',
     currency: 'NGN' as AdminCurrency,
+    appThemeMode: 'dark' as AppThemeMode,
     logoUrl: DEFAULT_LOGO_URL,
     logoUrlInput: DEFAULT_LOGO_URL,
     homepageHighlightImages: [...DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES],
     homepageCategoryImages: {} as Record<string, string>,
     highlightImageUrlInput: '',
+    mobileStickyCtaTexts: [
+      'Order Now - Pay on Delivery',
+      'Claim Today\'s Free Delivery Offer',
+      'Get the Bundle Before It Sells Out',
+      'Unlock the Best Promo Package Now',
+      'Tap to Reserve Your Discounted Order',
+    ],
+    mobileCtaTextInput: '',
   }));
   const [categoryImageUrlInputs, setCategoryImageUrlInputs] = useState<Record<string, string>>({});
   const [activeCategoryImageSlug, setActiveCategoryImageSlug] = useState<string | null>(null);
@@ -180,11 +190,14 @@ export function Settings() {
       setBrandingForm({
         companyName: nextFinanceSettings.companyName,
         currency: nextFinanceSettings.currency,
+        appThemeMode: nextFinanceSettings.appThemeMode,
         logoUrl: nextFinanceSettings.logoUrl || DEFAULT_LOGO_URL,
         logoUrlInput: nextFinanceSettings.logoUrl || DEFAULT_LOGO_URL,
         homepageHighlightImages: nextFinanceSettings.homepageHighlightImages,
         homepageCategoryImages: nextFinanceSettings.homepageCategoryImages,
         highlightImageUrlInput: '',
+        mobileStickyCtaTexts: nextFinanceSettings.mobileStickyCtaTexts,
+        mobileCtaTextInput: '',
       });
       setCategoryImageUrlInputs({});
       setActiveCategoryImageSlug(null);
@@ -277,9 +290,11 @@ export function Settings() {
           brandingForm.companyName.trim() || 'CloudMarket',
         ),
         currency: brandingForm.currency,
+        appThemeMode: brandingForm.appThemeMode,
         logoUrl: brandingForm.logoUrl.trim() || DEFAULT_LOGO_URL,
+        mobileStickyCtaTexts: brandingForm.mobileStickyCtaTexts,
       });
-      setFeedbackMessage('Branding saved. The logo and company name now update across the app.');
+      setFeedbackMessage('Branding saved. The logo, currency, default app theme, and mobile CTA rotation are now updated.');
     } finally {
       setIsSavingBranding(false);
     }
@@ -550,6 +565,9 @@ export function Settings() {
                   <p className="mt-1 text-sm text-slate-600">
                     Currency: {brandingForm.currency} - {getCurrencyLabel(brandingForm.currency)}
                   </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Default theme: {brandingForm.appThemeMode === 'dark' ? 'Dark' : 'Light'}
+                  </p>
                   <p className="mt-2 inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                     Admin avatar + storefront mark
                   </p>
@@ -586,6 +604,98 @@ export function Settings() {
                   </option>
                 ))}
               </select>
+
+              <select
+                value={brandingForm.appThemeMode}
+                onChange={(event) =>
+                  setBrandingForm((current) => ({
+                    ...current,
+                    appThemeMode: event.target.value as AppThemeMode,
+                  }))
+                }
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+              >
+                <option value="dark">Default theme: Dark</option>
+                <option value="light">Default theme: Light</option>
+              </select>
+
+              <p className="text-sm leading-6 text-slate-600">
+                This controls the default theme for the homepage, product pages, and admin dashboard.
+                Visitors can still switch their own view manually.
+              </p>
+
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Mobile sticky CTA captions</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  These captions rotate on the fixed mobile order button when a product page has no custom CTA list.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {brandingForm.mobileStickyCtaTexts.map((caption, index) => (
+                    <div key={`${caption}-${index}`} className="flex items-center gap-2">
+                      <input
+                        value={caption}
+                        onChange={(event) =>
+                          setBrandingForm((current) => {
+                            const nextCaptions = [...current.mobileStickyCtaTexts];
+                            nextCaptions[index] = event.target.value;
+                            return {
+                              ...current,
+                              mobileStickyCtaTexts: nextCaptions,
+                            };
+                          })
+                        }
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setBrandingForm((current) => ({
+                            ...current,
+                            mobileStickyCtaTexts: current.mobileStickyCtaTexts.filter((_, itemIndex) => itemIndex !== index),
+                          }))
+                        }
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-100"
+                        aria-label="Remove CTA caption"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={brandingForm.mobileCtaTextInput}
+                    onChange={(event) =>
+                      setBrandingForm((current) => ({
+                        ...current,
+                        mobileCtaTextInput: event.target.value,
+                      }))
+                    }
+                    placeholder="Add a new mobile CTA caption"
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBrandingForm((current) => {
+                        const nextValue = current.mobileCtaTextInput.trim();
+                        if (!nextValue) {
+                          return current;
+                        }
+
+                        return {
+                          ...current,
+                          mobileStickyCtaTexts: [...current.mobileStickyCtaTexts, nextValue].slice(0, 20),
+                          mobileCtaTextInput: '',
+                        };
+                      })
+                    }
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2B63D9] px-4 text-sm font-semibold text-white transition hover:bg-[#1f56c6]"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
 
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap gap-3">

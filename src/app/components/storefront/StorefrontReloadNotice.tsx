@@ -10,7 +10,7 @@ interface StorefrontReloadNoticeProps {
 export function StorefrontReloadNotice({
   title = 'Unable to load this page',
   message = 'We could not fetch the latest page data from Supabase. Please reload the page and try again.',
-  className = 'min-h-screen bg-[#f5f7fb] px-4 py-12 dark:bg-[#081225]',
+  className = 'min-h-screen bg-[#f5f7fb] px-4 py-12 dark:bg-[#0d1117]',
 }: StorefrontReloadNoticeProps) {
   return (
     <div className={className}>

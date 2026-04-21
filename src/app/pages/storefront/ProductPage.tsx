@@ -28,21 +28,63 @@ import { StickyMobileCTA } from '../../components/StickyMobileCTA';
 import { TopDropOfferAlerts } from '../../components/TopDropOfferAlerts';
 import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { EmailSubscription } from '../../components/storefront/EmailSubscription';
+import { FloatingStorefrontActions } from '../../components/storefront/FloatingStorefrontActions';
 import { CheckoutSheet } from '../../components/CheckoutSheet';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
+import { useAppTheme } from '../../context/AppThemeContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
+import { useBrandingSettings } from '../../lib/branding';
 import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
 import type { Product } from '../../types';
 
 export function ProductPage() {
   const { slug } = useParams();
   const { formatPrice } = useLocale();
+  const { isDarkMode } = useAppTheme();
+  const branding = useBrandingSettings();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPackageQuantity, setSelectedPackageQuantity] = useState('1');
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [storefrontError, setStorefrontError] = useState<string | null>(null);
   const product = storefrontProducts.find((p) => p.slug === slug);
+  const isDark = isDarkMode;
+  const mobileStickyCtaCaptions = useMemo(() => {
+    const fallbackCaptions = [
+      'Order Now - Pay on Delivery',
+      'Claim Today\'s Free Delivery Offer',
+      'Get the Bundle Before It Sells Out',
+      'Unlock the Best Promo Package Now',
+      'Tap to Reserve Your Discounted Order',
+    ];
+
+    const productCaptions = (product?.sections.orderForm.mobileStickyCtaTexts ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (productCaptions.length > 0) {
+      return productCaptions;
+    }
+
+    const globalCaptions = (branding.mobileStickyCtaTexts ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (globalCaptions.length > 0) {
+      return globalCaptions;
+    }
+
+    const packageCaptions = (product?.sections.offer.packages ?? [])
+      .slice(0, 5)
+      .map((pkg, index) => {
+        const savings = (pkg.oldPrice ?? 0) > pkg.price ? ` and save ${(pkg.oldPrice ?? 0) - pkg.price}` : '';
+        return index === 0
+          ? `Order ${pkg.title} now`
+          : `Get ${pkg.title}${savings}`;
+      });
+
+    return packageCaptions.length > 0 ? packageCaptions : fallbackCaptions;
+  }, [branding.mobileStickyCtaTexts, product]);
 
   useEffect(() => {
     let isActive = true;
@@ -138,24 +180,40 @@ export function ProductPage() {
 
   if (isLoadingProducts) {
     return (
-      <div className="min-h-screen bg-white pb-20">
-        <section className="relative overflow-hidden bg-[#f6f4ef] px-3 py-3 md:px-6 md:py-6">
+      <div className={`min-h-screen pb-20 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-white'}`}>
+        <section
+          className={`relative overflow-hidden px-3 py-3 md:px-6 md:py-6 ${
+            isDark ? 'bg-[#0d1117]' : 'bg-[#f6f4ef]'
+          }`}
+        >
           <div className="mx-auto h-[80vh] max-w-7xl md:h-[700px]">
-            <div className="relative h-full overflow-hidden rounded-[2.5rem] bg-[linear-gradient(135deg,#dfe9f7_0%,#f4f6f2_50%,#d9e6f7_100%)] md:rounded-[3rem]">
-              <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_55%)]" />
+            <div
+              className={`relative h-full overflow-hidden rounded-[2.5rem] md:rounded-[3rem] ${
+                isDark
+                  ? 'bg-[linear-gradient(135deg,#08111f_0%,#0c1728_45%,#101b2f_100%)]'
+                  : 'bg-[linear-gradient(135deg,#dfe9f7_0%,#f4f6f2_50%,#d9e6f7_100%)]'
+              }`}
+            >
+              <div
+                className={`absolute inset-0 animate-pulse ${
+                  isDark
+                    ? 'bg-[radial-gradient(circle_at_top,rgba(122,174,255,0.12),transparent_55%)]'
+                    : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_55%)]'
+                }`}
+              />
               <div className="relative z-10 flex h-full items-end">
                 <div className="mx-auto flex h-full w-full max-w-6xl items-end p-5 md:p-10">
                   <div className="w-full max-w-[36rem] space-y-4 md:space-y-6">
-                    <div className="h-5 w-28 animate-pulse rounded-full bg-white/80" />
+                    <div className={`h-5 w-28 animate-pulse rounded-full ${isDark ? 'bg-white/10' : 'bg-white/80'}`} />
                     <div className="space-y-3">
-                      <div className="h-14 w-full max-w-[22rem] animate-pulse rounded-[1.8rem] bg-white/85 md:h-16" />
-                      <div className="h-5 w-40 animate-pulse rounded-full bg-white/75" />
-                      <div className="h-4 w-full max-w-[28rem] animate-pulse rounded-full bg-white/70" />
-                      <div className="h-4 w-full max-w-[24rem] animate-pulse rounded-full bg-white/60" />
+                      <div className={`h-14 w-full max-w-[22rem] animate-pulse rounded-[1.8rem] md:h-16 ${isDark ? 'bg-white/12' : 'bg-white/85'}`} />
+                      <div className={`h-5 w-40 animate-pulse rounded-full ${isDark ? 'bg-white/10' : 'bg-white/75'}`} />
+                      <div className={`h-4 w-full max-w-[28rem] animate-pulse rounded-full ${isDark ? 'bg-white/10' : 'bg-white/70'}`} />
+                      <div className={`h-4 w-full max-w-[24rem] animate-pulse rounded-full ${isDark ? 'bg-white/8' : 'bg-white/60'}`} />
                     </div>
                     <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                      <div className="h-16 w-40 animate-pulse rounded-full bg-white/85" />
-                      <div className="h-14 w-full animate-pulse rounded-full bg-white/90 sm:w-44" />
+                      <div className={`h-16 w-40 animate-pulse rounded-full ${isDark ? 'bg-white/12' : 'bg-white/85'}`} />
+                      <div className={`h-14 w-full animate-pulse rounded-full sm:w-44 ${isDark ? 'bg-white/12' : 'bg-white/90'}`} />
                     </div>
                   </div>
                 </div>
@@ -167,11 +225,16 @@ export function ProductPage() {
         <div className="container mx-auto space-y-8 px-4 py-12">
           <div className="grid gap-4 md:grid-cols-3">
             {Array.from({ length: 3 }, (_, index) => (
-              <div key={`product-page-skeleton-card-${index}`} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6">
-                <div className="h-5 w-24 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-4 h-6 w-full animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-3 h-4 w-5/6 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-8 h-48 animate-pulse rounded-[1.5rem] bg-slate-200" />
+              <div
+                key={`product-page-skeleton-card-${index}`}
+                className={`rounded-[2rem] border p-6 ${
+                  isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'
+                }`}
+              >
+                <div className={`h-5 w-24 animate-pulse rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                <div className={`mt-4 h-6 w-full animate-pulse rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                <div className={`mt-3 h-4 w-5/6 animate-pulse rounded-full ${isDark ? 'bg-white/8' : 'bg-slate-200'}`} />
+                <div className={`mt-8 h-48 animate-pulse rounded-[1.5rem] ${isDark ? 'bg-white/8' : 'bg-slate-200'}`} />
               </div>
             ))}
           </div>
@@ -204,8 +267,6 @@ export function ProductPage() {
   const recommendedProducts = storefrontProducts
     .filter((p) => p.id !== product.id && p.status === 'published')
     .slice(0, 3);
-  const isDark = product.displayMode === 'dark';
-
   const openCheckout = (source = 'product_checkout_open') => {
     const sourceLabelMap: Record<string, string> = {
       hero_buy_now: 'Buy Now',
@@ -286,11 +347,12 @@ export function ProductPage() {
   };
 
   return (
-    <div className={`min-h-screen pb-28 md:pb-0 ${isDark ? 'storefront-dark bg-[#050816]' : 'bg-white'}`}>
+    <div className={`min-h-screen pb-28 md:pb-0 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-white'}`}>
       <TopDropOfferAlerts
         enabled={!isCheckoutOpen && product.sections.alerts.visible}
         items={product.sections.alerts.items}
         currentProductName={product.name}
+        isDark={isDark}
         genderTarget={product.genderTarget}
         customerIdentityPools={product.customerIdentityPools}
       />
@@ -443,7 +505,8 @@ export function ProductPage() {
       </main>
 
       <Footer />
-      <StickyMobileCTA onBuyNow={openCheckout} />
+      <FloatingStorefrontActions className="bottom-24 sm:bottom-6" />
+      <StickyMobileCTA onBuyNow={openCheckout} captions={mobileStickyCtaCaptions} />
       <CheckoutSheet
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}

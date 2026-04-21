@@ -70,7 +70,7 @@ export function MarketplacePromoHero({
 
   return (
     <section id="hero" className="space-y-4">
-      <div className="overflow-hidden rounded-[2rem] border border-[#d8e6ff] bg-[linear-gradient(140deg,#fefeff_0%,#f3f8ff_38%,#eef4ff_100%)] shadow-[0_24px_60px_rgba(43,99,217,0.1)] dark:border-[#254478] dark:bg-[linear-gradient(140deg,#081a35_0%,#0d2348_45%,#12305f_100%)]">
+      <div className="overflow-hidden rounded-[2rem] border border-[#d8e6ff] bg-[linear-gradient(140deg,#fefeff_0%,#f3f8ff_38%,#eef4ff_100%)] shadow-[0_24px_60px_rgba(43,99,217,0.1)] dark:border-[#30363d] dark:bg-[linear-gradient(140deg,#0d1117_0%,#11161d_45%,#0d1117_100%)]">
         <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.15fr] lg:items-center">
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/86 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2B63D9] shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-[#9fc0ff]">
@@ -125,7 +125,7 @@ export function MarketplacePromoHero({
             </div>
           </div>
 
-          <div className="relative min-h-[300px] overflow-hidden rounded-[1.8rem] bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.14),transparent_44%),linear-gradient(160deg,#ffffff_0%,#f7f9fe_55%,#edf3ff_100%)] sm:min-h-[340px] dark:bg-[radial-gradient(circle_at_top_left,rgba(122,174,255,0.16),transparent_40%),linear-gradient(160deg,#0c1e3a_0%,#10284d_52%,#12305f_100%)]">
+          <div className="relative min-h-[300px] overflow-hidden rounded-[1.8rem] bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.14),transparent_44%),linear-gradient(160deg,#ffffff_0%,#f7f9fe_55%,#edf3ff_100%)] sm:min-h-[340px] dark:bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.05),transparent_42%),linear-gradient(160deg,#0d1117_0%,#11161d_52%,#0d1117_100%)]">
             <div className="absolute -right-10 top-0 h-44 w-44 rounded-full bg-[#c9dcff] blur-3xl" aria-hidden="true" />
             <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-[#ffe5b8] blur-3xl" aria-hidden="true" />
 

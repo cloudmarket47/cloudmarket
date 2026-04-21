@@ -3676,6 +3676,17 @@ function CommerceSections({
             </div>
           </div>
         </div>
+        <div className="rounded-[1.5rem] border border-gray-200 bg-gray-50 px-4 py-4">
+          <StringListEditor
+            label="Sticky mobile CTA captions"
+            items={draft.sections.orderForm.mobileStickyCtaTexts}
+            onChange={(mobileStickyCtaTexts) => patchSection('orderForm', { mobileStickyCtaTexts })}
+            placeholder="Claim today's free delivery offer"
+          />
+          <p className="mt-3 text-xs leading-5 text-gray-500">
+            These captions rotate on the fixed mobile order button. Add, remove, or reorder by editing this list.
+          </p>
+        </div>
         <TextAreaField
           label="Token prompt text"
           value={draft.sections.orderForm.tokenPrompt}

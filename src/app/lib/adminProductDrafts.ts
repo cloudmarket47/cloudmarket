@@ -205,6 +205,7 @@ export interface AdminProductDraft {
       title: string;
       subtitle: string;
       submitButtonLabel: string;
+      mobileStickyCtaTexts: string[];
       tokenPrompt: string;
       enableTokenField: boolean;
       quickCheckoutLabel: string;
@@ -568,6 +569,8 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
       },
       orderForm: {
         ...draft.sections.orderForm,
+        mobileStickyCtaTexts:
+          draft.sections.orderForm.mobileStickyCtaTexts?.filter((item) => item.trim().length > 0) ?? [],
         quickCheckoutLabel: draft.sections.orderForm.quickCheckoutLabel ?? 'Quick Checkout',
         orderDetailsLabel: draft.sections.orderForm.orderDetailsLabel ?? 'Order Details',
         packagePreviewLabel: draft.sections.orderForm.packagePreviewLabel ?? 'Package Preview',
@@ -851,6 +854,13 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         title: 'Place Your Order Now',
         subtitle: '',
         submitButtonLabel: 'Place My Order',
+        mobileStickyCtaTexts: [
+          'Order Now - Pay on Delivery',
+          'Claim Today\'s Free Delivery Offer',
+          'Get the Bundle Before It Sells Out',
+          'Unlock the Best Promo Package Now',
+          'Tap to Reserve Your Discounted Order',
+        ],
         tokenPrompt: 'Are you subscribed and want to insert your unique token for extra discount?',
         enableTokenField: true,
         quickCheckoutLabel: 'Quick Checkout',
@@ -1150,6 +1160,7 @@ export function createAdminProductDraftFromProduct(
     title: product.sections.orderForm.title,
     subtitle: product.sections.orderForm.subtitle,
     submitButtonLabel: product.sections.orderForm.submitButtonLabel,
+    mobileStickyCtaTexts: [...(product.sections.orderForm.mobileStickyCtaTexts ?? [])],
     tokenPrompt: product.sections.orderForm.tokenPrompt,
     enableTokenField: product.sections.orderForm.enableTokenField,
     quickCheckoutLabel: product.sections.orderForm.quickCheckoutLabel,

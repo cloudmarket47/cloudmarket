@@ -1,92 +1,193 @@
-.storefront-dark {
-  background: #050816;
-  color: #f8fafc;
+.storefront-dark,
+.app-theme-dark,
+.dark {
+  background: #0d1117;
+  color: #c9d1d9;
 }
 
-.storefront-dark .bg-white,
-.storefront-dark .bg-gray-50,
-.storefront-dark .bg-gray-100,
-.storefront-dark .bg-slate-50,
-.storefront-dark .bg-stone-50,
-.storefront-dark .bg-stone-100,
-.storefront-dark .bg-\[\#f8f5ef\],
-.storefront-dark .bg-\[\#f6f4ef\],
-.storefront-dark .bg-\[\#f7f6f2\],
-.storefront-dark .bg-\[\#f8f5ee\] {
-  background-color: #07111f !important;
+.storefront-dark main,
+.app-theme-dark main,
+.dark main {
+  position: relative;
+  z-index: 1;
 }
 
-.storefront-dark .bg-\[\#f8f1e8\],
-.storefront-dark .bg-\[\#f4ede3\] {
-  background-color: #0b1628 !important;
-}
-
-.storefront-dark .card-3d {
-  background: linear-gradient(180deg, rgba(11, 22, 40, 0.96), rgba(7, 17, 31, 0.98)) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.36) !important;
-}
-
-.storefront-dark .hero-share-panel {
-  background: rgba(7, 17, 31, 0.94) !important;
+.storefront-dark :is([class*='backdrop-blur']),
+.app-theme-dark :is([class*='backdrop-blur']),
+.dark :is([class*='backdrop-blur']) {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #f8fafc !important;
+}
+
+.storefront-dark :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-stone-50, .bg-stone-100),
+.app-theme-dark :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-stone-50, .bg-stone-100),
+.dark :is(.dark\:bg-slate-950, .dark\:bg-slate-900, .dark\:bg-slate-800, .dark\:bg-\[\#081225\], .dark\:bg-\[\#050816\], .dark\:bg-\[\#07111f\]) {
+  background-color: #0d1117 !important;
+}
+
+.storefront-dark .bg-\[\#f8f5ef\],
+.app-theme-dark .bg-\[\#f8f5ef\],
+.storefront-dark .bg-\[\#f6f4ef\],
+.app-theme-dark .bg-\[\#f6f4ef\],
+.storefront-dark .bg-\[\#f7f6f2\],
+.app-theme-dark .bg-\[\#f7f6f2\],
+.storefront-dark .bg-\[\#f8f5ee\],
+.app-theme-dark .bg-\[\#f8f5ee\],
+.storefront-dark .bg-\[\#f8f1e8\],
+.app-theme-dark .bg-\[\#f8f1e8\],
+.storefront-dark .bg-\[\#f4ede3\],
+.app-theme-dark .bg-\[\#f4ede3\],
+.dark .dark\:bg-\[\#12305f\],
+.dark .dark\:bg-\[\#0d203f\],
+.dark .dark\:bg-\[\#10284d\] {
+  background-color: #0d1117 !important;
+}
+
+.storefront-dark .card-3d,
+.app-theme-dark .card-3d,
+.storefront-dark .hero-share-panel,
+.app-theme-dark .hero-share-panel,
+.dark .dark\:bg-slate-900\/92,
+.dark .dark\:bg-slate-950\/88,
+.dark .dark\:bg-slate-950\/95 {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32) !important;
+  color: #c9d1d9 !important;
 }
 
 .storefront-dark .text-gray-900,
+.app-theme-dark .text-gray-900,
 .storefront-dark .text-gray-800,
+.app-theme-dark .text-gray-800,
 .storefront-dark .text-slate-950,
-.storefront-dark .text-stone-950 {
-  color: #f8fafc !important;
+.app-theme-dark .text-slate-950,
+.storefront-dark .text-stone-950,
+.app-theme-dark .text-stone-950,
+.storefront-dark .text-white,
+.app-theme-dark .text-white,
+.dark :is(.dark\:text-white) {
+  color: #ffffff !important;
 }
 
 .storefront-dark .text-gray-700,
+.app-theme-dark .text-gray-700,
 .storefront-dark .text-gray-600,
+.app-theme-dark .text-gray-600,
 .storefront-dark .text-slate-700,
+.app-theme-dark .text-slate-700,
 .storefront-dark .text-slate-600,
+.app-theme-dark .text-slate-600,
 .storefront-dark .text-stone-700,
-.storefront-dark .text-stone-600 {
-  color: #cbd5e1 !important;
+.app-theme-dark .text-stone-700,
+.storefront-dark .text-stone-600,
+.app-theme-dark .text-stone-600,
+.storefront-dark .text-slate-300,
+.app-theme-dark .text-slate-300,
+.storefront-dark .text-slate-200,
+.app-theme-dark .text-slate-200,
+.dark :is(.dark\:text-slate-100, .dark\:text-slate-200, .dark\:text-slate-300) {
+  color: #c9d1d9 !important;
 }
 
 .storefront-dark .text-gray-500,
+.app-theme-dark .text-gray-500,
 .storefront-dark .text-slate-500,
+.app-theme-dark .text-slate-500,
 .storefront-dark .text-slate-400,
+.app-theme-dark .text-slate-400,
 .storefront-dark .text-stone-500,
-.storefront-dark .text-stone-400 {
-  color: #94a3b8 !important;
+.app-theme-dark .text-stone-500,
+.storefront-dark .text-stone-400,
+.app-theme-dark .text-stone-400,
+.dark :is(.dark\:text-slate-400, .dark\:text-slate-500) {
+  color: #8b949e !important;
 }
 
 .storefront-dark .border-gray-200,
+.app-theme-dark .border-gray-200,
 .storefront-dark .border-gray-300,
+.app-theme-dark .border-gray-300,
 .storefront-dark .border-slate-200,
+.app-theme-dark .border-slate-200,
 .storefront-dark .border-slate-300,
-.storefront-dark .border-stone-200 {
-  border-color: rgba(148, 163, 184, 0.2) !important;
+.app-theme-dark .border-slate-300,
+.storefront-dark .border-stone-200,
+.app-theme-dark .border-stone-200,
+.storefront-dark .border-white\/10,
+.app-theme-dark .border-white\/10,
+.storefront-dark .border-white\/15,
+.app-theme-dark .border-white\/15,
+.storefront-dark .border-white\/50,
+.app-theme-dark .border-white\/50,
+.dark :is(.dark\:border-slate-800, .dark\:border-slate-700, .dark\:border-input) {
+  border-color: #30363d !important;
 }
 
 .storefront-dark .from-white,
+.app-theme-dark .from-white,
 .storefront-dark .from-gray-50,
-.storefront-dark .from-slate-50 {
-  --tw-gradient-from: #050816 var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(5 8 22 / 0) var(--tw-gradient-to-position) !important;
+.app-theme-dark .from-gray-50,
+.storefront-dark .from-slate-50,
+.app-theme-dark .from-slate-50,
+.dark .dark\:from-\[\#081a35\],
+.dark .dark\:from-\[\#0c1e3a\] {
+  --tw-gradient-from: #0d1117 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(13, 17, 23, 0) var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
 .storefront-dark .via-white,
-.storefront-dark .via-slate-50 {
-  --tw-gradient-via: #081120 var(--tw-gradient-via-position) !important;
+.app-theme-dark .via-white,
+.storefront-dark .via-slate-50,
+.app-theme-dark .via-slate-50,
+.dark .dark\:via-\[\#0d2348\],
+.dark .dark\:via-\[\#10284d\] {
+  --tw-gradient-via: #11161d var(--tw-gradient-via-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
 }
 
 .storefront-dark .to-white,
+.app-theme-dark .to-white,
 .storefront-dark .to-gray-50,
-.storefront-dark .to-slate-50 {
-  --tw-gradient-to: #081120 var(--tw-gradient-to-position) !important;
+.app-theme-dark .to-gray-50,
+.storefront-dark .to-slate-50,
+.app-theme-dark .to-slate-50,
+.dark .dark\:to-\[\#12305f\],
+.dark .dark\:to-\[\#10284d\] {
+  --tw-gradient-to: #0d1117 var(--tw-gradient-to-position) !important;
 }
 
 .storefront-dark input,
 .storefront-dark select,
-.storefront-dark textarea {
+.storefront-dark textarea,
+.app-theme-dark input,
+.app-theme-dark select,
+.app-theme-dark textarea,
+.dark input,
+.dark select,
+.dark textarea {
   color-scheme: dark;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #c9d1d9 !important;
+}
+
+.storefront-dark input::placeholder,
+.storefront-dark textarea::placeholder,
+.app-theme-dark input::placeholder,
+.app-theme-dark textarea::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #8b949e !important;
+}
+
+.storefront-dark :is(.shadow-sm, .shadow-lg),
+.app-theme-dark :is(.shadow-sm, .shadow-lg),
+.dark :is(.shadow-sm, .shadow-lg) {
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22) !important;
 }

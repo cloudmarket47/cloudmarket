@@ -8,6 +8,7 @@ import { OrderSlipPreview } from '../../components/order/OrderSlipPreview';
 import { SuccessSticker } from '../../components/order/SuccessSticker';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import { getMarketplaceProductImage, getMarketplaceProductPricing } from '../../components/storefront/marketplaceShared';
+import { useAppTheme } from '../../context/AppThemeContext';
 import { useLocale } from '../../context/LocaleContext';
 import { useBrandingSettings } from '../../lib/branding';
 import { downloadElementAsImage, saveElementAsPdf } from '../../lib/domExport';
@@ -21,6 +22,7 @@ export function ThankYou() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { formatPrice } = useLocale();
+  const { isDarkMode } = useAppTheme();
   const branding = useBrandingSettings();
   const orderNumber = searchParams.get('order');
   const routedOrder = (location.state as { order?: PlacedOrder } | null)?.order ?? null;
@@ -35,6 +37,7 @@ export function ThankYou() {
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isSlipPreviewOpen, setIsSlipPreviewOpen] = useState(false);
   const pageError = orderError ?? storefrontError;
+  const isDark = isDarkMode;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -197,21 +200,25 @@ export function ThankYou() {
       <StorefrontReloadNotice
         title="Unable to load this page"
         message={pageError}
-        className="min-h-screen bg-[#f7f6f2] px-4 py-12"
+        className={`min-h-screen px-4 py-12 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-[#f7f6f2]'}`}
       />
     );
   }
 
   if (isLoadingOrder || isLoadingStorefrontProducts) {
     return (
-      <div className="min-h-screen bg-[#f7f6f2] px-4 py-16">
+      <div className={`min-h-screen px-4 py-16 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-[#f7f6f2]'}`}>
         <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[2.4rem] border border-slate-200 bg-white/92 p-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <div className="mx-auto h-14 w-14 animate-spin rounded-full border-[3px] border-[#2B63D9]/15 border-t-[#2B63D9] border-r-[#0E7C7B]" />
-            <h1 className="mt-6 text-3xl font-black tracking-tight text-slate-950">
+          <div
+            className={`w-full rounded-[2.4rem] border p-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl ${
+              isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white/92'
+            }`}
+          >
+            <div className={`mx-auto h-14 w-14 animate-spin rounded-full border-[3px] border-r-[#0E7C7B] border-t-[#2B63D9] ${isDark ? 'border-white/10' : 'border-[#2B63D9]/15'}`} />
+            <h1 className={`mt-6 text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
               Loading your order
             </h1>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className={`mt-3 text-base leading-7 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               Please wait while we prepare your order details.
             </p>
           </div>
@@ -250,15 +257,19 @@ export function ThankYou() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-[#f7f6f2] px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-[2.5rem] border border-slate-200 bg-white p-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)]">
+      <div className={`min-h-screen px-4 py-16 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-[#f7f6f2]'}`}>
+        <div
+          className={`mx-auto max-w-3xl rounded-[2.5rem] border p-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)] ${
+            isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'
+          }`}
+        >
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#2B63D9]">
             Order Complete
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+          <h1 className={`mt-4 text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
             Thank You for Your Order
           </h1>
-          <p className="mt-4 text-lg leading-7 text-slate-600">
+          <p className={`mt-4 text-lg leading-7 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             Your order was received, but the full order preview is not available in this session.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
@@ -279,10 +290,14 @@ export function ThankYou() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] text-slate-950">
+    <div className={`min-h-screen ${isDark ? 'storefront-dark bg-[#0d1117] text-white' : 'bg-[#f7f6f2] text-slate-950'}`}>
       <ScrollReveal>
         <section className="px-4 pb-12 pt-8 text-center md:pb-16 md:pt-12">
-          <div className="mx-auto max-w-6xl rounded-[2.75rem] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.08)] md:p-10">
+          <div
+            className={`mx-auto max-w-6xl rounded-[2.75rem] border p-6 shadow-[0_30px_90px_rgba(15,23,42,0.08)] md:p-10 ${
+              isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'
+            }`}
+          >
             <div className="mx-auto flex max-w-5xl flex-col items-center">
               <SuccessSticker />
 
@@ -291,11 +306,11 @@ export function ThankYou() {
                 Order Successful
               </span>
 
-              <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-950 md:text-5xl lg:text-6xl">
+              <h1 className={`mt-6 text-4xl font-black tracking-tight md:text-5xl lg:text-6xl ${isDark ? 'text-white' : 'text-slate-950'}`}>
                 Thank You, {order.customerName}
               </h1>
 
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+              <p className={`mt-5 max-w-2xl text-lg leading-8 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 Your order is confirmed, and we are already preparing delivery for {order.productName}.
               </p>
 
@@ -306,10 +321,10 @@ export function ThankYou() {
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2B63D9]">
                         You Might Like
                       </p>
-                      <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                      <h2 className={`mt-2 text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
                         More picks from {orderedCategoryLabel || 'this category'}
                       </h2>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                      <p className={`mt-2 max-w-2xl text-sm leading-6 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                         Since you ordered {order.productName}, here are a few related products shoppers also open next.
                       </p>
                     </div>
@@ -323,9 +338,17 @@ export function ThankYou() {
                         <Link
                           key={product.id}
                           to={`/product/${product.slug}`}
-                          className="min-w-[15.5rem] max-w-[15.5rem] snap-start rounded-[1.65rem] border border-slate-200 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)]"
+                          className={`min-w-[15.5rem] max-w-[15.5rem] snap-start rounded-[1.65rem] border p-3 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)] ${
+                            isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'
+                          }`}
                         >
-                          <div className="relative overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,#f8fbff_0%,#f3f6fb_100%)]">
+                          <div
+                            className={`relative overflow-hidden rounded-[1.3rem] ${
+                              isDark
+                                ? 'bg-[linear-gradient(180deg,#0f1726_0%,#111c2d_100%)]'
+                                : 'bg-[linear-gradient(180deg,#f8fbff_0%,#f3f6fb_100%)]'
+                            }`}
+                          >
                             <div className="absolute left-3 top-3 z-10 rounded-full bg-[#ff7c45] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                               -{pricing.discountPercentage}%
                             </div>
@@ -339,14 +362,14 @@ export function ThankYou() {
                           </div>
 
                           <div className="space-y-2 px-1 pb-1 pt-3">
-                            <p className="line-clamp-2 text-base font-bold leading-6 text-slate-950">
+                            <p className={`line-clamp-2 text-base font-bold leading-6 ${isDark ? 'text-white' : 'text-slate-950'}`}>
                               {product.name}
                             </p>
                             <div className="flex flex-wrap items-end gap-2">
                               <span className="text-lg font-black tracking-tight text-[#d73d32]">
                                 {formatPrice(pricing.currentPrice, product.currencyCode)}
                               </span>
-                              <span className="text-sm text-slate-400 line-through">
+                              <span className={`text-sm line-through ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                 {formatPrice(pricing.oldPrice, product.currencyCode)}
                               </span>
                             </div>
@@ -363,19 +386,19 @@ export function ThankYou() {
               ) : null}
 
               <div className="mt-8 grid w-full gap-4 sm:grid-cols-3">
-                <div className="rounded-[1.6rem] bg-slate-50 px-5 py-4">
+                <div className={`rounded-[1.6rem] px-5 py-4 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`}>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Order Number</p>
-                  <p className="mt-3 text-lg font-bold text-slate-950">{order.orderNumber}</p>
+                  <p className={`mt-3 text-lg font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>{order.orderNumber}</p>
                 </div>
-                <div className="rounded-[1.6rem] bg-slate-50 px-5 py-4">
+                <div className={`rounded-[1.6rem] px-5 py-4 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`}>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Final Total</p>
-                  <p className="mt-3 text-lg font-bold text-slate-950">
+                  <p className={`mt-3 text-lg font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
                     {formatCurrency(order.finalAmount, order.localeCountryCode)}
                   </p>
                 </div>
-                <div className="rounded-[1.6rem] bg-slate-50 px-5 py-4">
+                <div className={`rounded-[1.6rem] px-5 py-4 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`}>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Package</p>
-                  <p className="mt-3 text-lg font-bold text-slate-950">{order.packageTitle}</p>
+                  <p className={`mt-3 text-lg font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>{order.packageTitle}</p>
                 </div>
               </div>
 
@@ -390,7 +413,11 @@ export function ThankYou() {
                 <button
                   type="button"
                   onClick={() => setIsSlipPreviewOpen((currentState) => !currentState)}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-4 text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-50"
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-6 py-4 text-sm font-semibold transition-colors ${
+                    isDark
+                      ? 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]'
+                      : 'border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
                 >
                   Preview Order Slip
                   <ChevronDown
@@ -400,7 +427,11 @@ export function ThankYou() {
               </div>
 
               {isSlipPreviewOpen ? (
-                <div className="mt-8 w-full rounded-[2rem] border border-slate-200 bg-[#f8fafc] p-4 md:p-6">
+                <div
+                  className={`mt-8 w-full rounded-[2rem] border p-4 md:p-6 ${
+                    isDark ? 'border-white/10 bg-[#111826]' : 'border-slate-200 bg-[#f8fafc]'
+                  }`}
+                >
                   <div className="mb-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
                     <button
                       type="button"
@@ -415,7 +446,11 @@ export function ThankYou() {
                       type="button"
                       onClick={handleDownloadPdf}
                       disabled={isPreparingPdf}
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-50"
+                      className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition-colors ${
+                        isDark
+                          ? 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]'
+                          : 'border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50'
+                      }`}
                     >
                       <FileDown className="h-4 w-4" />
                       {isPreparingPdf ? 'Preparing PDF...' : 'Save as PDF'}

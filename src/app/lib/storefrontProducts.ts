@@ -253,6 +253,7 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
         title: draft.sections.orderForm.title,
         subtitle: draft.sections.orderForm.subtitle,
         submitButtonLabel: draft.sections.orderForm.submitButtonLabel,
+        mobileStickyCtaTexts: [...draft.sections.orderForm.mobileStickyCtaTexts],
         tokenPrompt: draft.sections.orderForm.tokenPrompt,
         enableTokenField: draft.sections.orderForm.enableTokenField,
         quickCheckoutLabel: draft.sections.orderForm.quickCheckoutLabel,
