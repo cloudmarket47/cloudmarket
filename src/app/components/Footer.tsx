@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, Mail, Facebook, Instagram, Twitter } from 'lucide-react';
 import { useBrandingSettings } from '../lib/branding';
 import { grantAdminAccess } from '../lib/adminAccess';
+import { getOptimizedMedia } from '../lib/media';
 
 const ADMIN_UNLOCK_CLICKS = 5;
 const ADMIN_UNLOCK_WINDOW_MS = 6000;
@@ -37,7 +38,7 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#0E7C7B] to-[#2B7FFF]">
-                <img src={branding.logoUrl} alt={`${branding.companyName} logo`} className="h-full w-full object-cover" />
+                <img src={getOptimizedMedia(branding.logoUrl)} alt={`${branding.companyName} logo`} loading="lazy" className="h-full w-full object-cover" />
               </div>
               <span className="font-bold text-xl">{branding.companyName}</span>
             </div>

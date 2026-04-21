@@ -9,7 +9,7 @@ import {
 import {
   DEFAULT_COUNTRY_CODE,
   getLocaleConfig,
-  readCountryCookie,
+  resolvePreferredCountryCode,
   type SupportedCountryCode,
   writeCountryCookie,
 } from '../lib/localeData';
@@ -32,12 +32,24 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [countryCode, setCountryCode] = useState<SupportedCountryCode>(() => readCountryCookie());
+  const [countryCode, setCountryCode] = useState<SupportedCountryCode>(DEFAULT_COUNTRY_CODE);
   const [ratesUpdatedAt, setRatesUpdatedAt] = useState(() => getActiveRatesSnapshot().updatedAt);
   const [isRatesReady, setIsRatesReady] = useState(false);
 
   useEffect(() => {
-    setCountryCode(readCountryCookie());
+    let isActive = true;
+
+    void resolvePreferredCountryCode()
+      .then((resolvedCountryCode) => {
+        if (isActive) {
+          setCountryCode(resolvedCountryCode);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {

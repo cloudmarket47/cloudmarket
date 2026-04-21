@@ -1,6 +1,8 @@
 import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { BadgeCheck, Mail, ShieldCheck, Ticket } from 'lucide-react';
 import { createCustomerDiscountToken, findCustomerDiscountTokenByIdentity } from '../../lib/customerTokens';
+import { useFormspreeEndpoint } from '../../lib/formspree';
+import { sendSubscriptionNotification } from '../../lib/netlifyOrders';
 import type { CustomerTokenRecord } from '../../types';
 import { ScrollReveal } from '../animations/ScrollReveal';
 import { Button } from '../design-system/Button';
@@ -23,6 +25,7 @@ export function EmailSubscription({
   buttonLabel = 'Subscribe Now',
   privacyNote = 'We respect customer privacy and only collect what is required for token recovery.',
 }: EmailSubscriptionProps) {
+  const formspreeEndpoint = useFormspreeEndpoint();
   const [subscriptionForm, setSubscriptionForm] = useState({
     fullName: '',
     gender: '',
@@ -71,6 +74,12 @@ export function EmailSubscription({
     setSubscriptionRecord(null);
 
     try {
+      if (!formspreeEndpoint) {
+        console.warn('Formspree endpoint URL is not configured.');
+        setSubscriptionError('Form currently unavailable.');
+        return;
+      }
+
       const record = await createCustomerDiscountToken({
         fullName: subscriptionForm.fullName,
         gender: subscriptionForm.gender,
@@ -79,6 +88,16 @@ export function EmailSubscription({
         sourceProductName: productName,
         sourceProductSlug: productSlug,
         sourcePageUrl: typeof window !== 'undefined' ? window.location.pathname : undefined,
+      });
+      await sendSubscriptionNotification({
+        fullName: record.fullName,
+        email: record.email,
+        gender: record.gender,
+        location: record.location,
+        token: record.token,
+        sourceProductName: record.sourceProductName,
+        sourceProductSlug: record.sourceProductSlug,
+        sourcePageUrl: record.sourcePageUrl,
       });
 
       setSubscriptionRecord(record);

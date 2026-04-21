@@ -200,6 +200,8 @@ export function OrderDetailModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close order detail"
+            title="Close"
             className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
           >
             <X className="h-5 w-5" />
@@ -278,6 +280,7 @@ export function OrderDetailModal({
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Update order status</label>
                     <select
+                      aria-label="Update order status"
                       value={selectedStatus}
                       onChange={(event) => setSelectedStatus(event.target.value as AdminOrderStatus)}
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
@@ -308,6 +311,7 @@ export function OrderDetailModal({
                             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
                           />
                           <select
+                            aria-label="Select currency for expense amount"
                             value={deliveryExpenseCurrency}
                             onChange={(event) => setDeliveryExpenseCurrency(event.target.value as SupportedRateCurrency)}
                             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"

@@ -4,6 +4,7 @@ import {
   readAdminProductDrafts,
   type AdminProductDraft,
 } from './adminProductDrafts';
+import { transformFetchedMedia } from './media';
 import { emitBrowserEvent } from './supabase';
 
 export const STOREFRONT_PRODUCTS_CHANGE_EVENT = 'cloudmarket-storefront-products-change';
@@ -278,7 +279,7 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
 export function getStorefrontProducts(options?: { includeDrafts?: boolean }) {
   return readAdminProductDrafts()
     .filter((draft) => options?.includeDrafts || draft.status === 'published')
-    .map(adminDraftToProduct);
+    .map((draft) => transformFetchedMedia(adminDraftToProduct(draft)));
 }
 
 export function emitStorefrontProductsChange() {

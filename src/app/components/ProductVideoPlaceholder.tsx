@@ -1,6 +1,7 @@
 import { Play } from 'lucide-react';
 import { ScrollReveal } from './animations/ScrollReveal';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { getOptimizedMedia } from '../lib/media';
 
 interface ProductVideoPlaceholderProps {
   title: string;
@@ -44,13 +45,13 @@ export function ProductVideoPlaceholder({
               <div className={`relative overflow-hidden bg-slate-100 ${ratioClassName}`}>
                 {videoSrc ? (
                   <video
-                    src={videoSrc}
-                    poster={poster || undefined}
+                    src={getOptimizedMedia(videoSrc)}
+                    poster={poster ? getOptimizedMedia(poster) : undefined}
                     controls
                     controlsList="nodownload noplaybackrate"
                     disablePictureInPicture
                     playsInline
-                    preload="metadata"
+                    preload="none"
                     className="h-full w-full bg-black object-cover"
                   />
                 ) : (

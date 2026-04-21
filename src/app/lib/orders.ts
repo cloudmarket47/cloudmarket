@@ -44,6 +44,14 @@ interface OrderRow {
   discount_amount_in_store_currency?: number;
   final_amount: number;
   final_amount_in_store_currency?: number;
+  status?: string;
+  source?: string;
+  updated_at?: string;
+  expense_amount?: number | null;
+  expense_currency?: SupportedRateCurrency;
+  expense_amount_in_store_currency?: number | null;
+  expense_note?: string;
+  expense_recorded_at?: string | null;
 }
 
 interface BuildPlacedOrderParams {
@@ -134,6 +142,13 @@ function toOrderRow(order: PlacedOrder): OrderRow {
     discount_amount_in_store_currency: order.discountAmountInStoreCurrency,
     final_amount: order.finalAmount,
     final_amount_in_store_currency: order.finalAmountInStoreCurrency,
+    status: 'new',
+    source: 'submission',
+    expense_amount: null,
+    expense_currency: order.storeCurrency,
+    expense_amount_in_store_currency: null,
+    expense_note: '',
+    expense_recorded_at: null,
   };
 }
 
@@ -342,11 +357,7 @@ export async function persistPlacedOrder(order: PlacedOrder) {
     const { error } = await supabase.from(getSupabaseTableName('orders')).upsert(
       {
         ...toOrderRow(order),
-        status: 'new',
         updated_at: new Date().toISOString(),
-        expense_amount: null,
-        expense_note: '',
-        expense_recorded_at: null,
       },
       {
         onConflict: 'order_number',

@@ -149,6 +149,8 @@ export function MarketplacePromoHero({
                         src={visual.image}
                         alt={visual.name}
                         className="h-full w-full object-cover"
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                        fetchPriority={index === 0 ? 'high' : 'auto'}
                       />
                     </Link>
                   );

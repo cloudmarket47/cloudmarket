@@ -11,6 +11,7 @@ import {
   createPlacedOrder,
   persistPlacedOrder,
 } from '../lib/orders';
+import { useFormspreeEndpoint } from '../lib/formspree';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { trackMetaPurchase } from '../lib/siteTracking';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
@@ -47,6 +48,7 @@ export function OrderForm({
   onPackageChange,
 }: OrderFormProps) {
   const navigate = useNavigate();
+  const formspreeEndpoint = useFormspreeEndpoint();
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const isDark = product.displayMode === 'dark';
   const orderFormCopy = product.sections.orderForm;
@@ -193,6 +195,12 @@ export function OrderForm({
     setIsSubmitting(true);
 
     try {
+      if (!formspreeEndpoint) {
+        console.warn('Formspree endpoint URL is not configured.');
+        setSubmitError('Form currently unavailable.');
+        return;
+      }
+
       let resolvedTokenRecord = tokenRecord;
 
       if (formData.customerToken.trim()) {
@@ -221,8 +229,9 @@ export function OrderForm({
         localeCountryCode: countryCode,
       });
 
-      await persistPlacedOrder(placedOrder);
-      void recordSubmittedOrder(placedOrder).catch(() => undefined);
+      await syncOrderSubmission(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      });
       trackAnalyticsEvent({
         type: 'form_submit',
         pagePath: `/product/${product.slug}`,
@@ -271,11 +280,8 @@ export function OrderForm({
         });
       }
 
-      await syncOrderSubmission(placedOrder, {
-        customerEmail: resolvedTokenRecord?.email,
-      }).catch((error) => {
-        console.warn('Order notification email failed.', error);
-      });
+      await persistPlacedOrder(placedOrder);
+      void recordSubmittedOrder(placedOrder).catch(() => undefined);
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
@@ -411,6 +417,7 @@ export function OrderForm({
                     id="city"
                     name="city"
                     required
+                    aria-label="Select your region"
                     value={formData.city}
                     onChange={handleChange}
                     className={`h-12 w-full rounded-xl border px-4 text-lg focus:border-[#0E7C7B] focus:outline-none focus:ring-2 focus:ring-[#0E7C7B] ${
@@ -437,6 +444,7 @@ export function OrderForm({
                     id="quantity"
                     name="quantity"
                     required
+                    aria-label="Select your package"
                     value={formData.quantity}
                     onChange={handleChange}
                     className={`h-12 w-full rounded-xl border px-4 text-lg focus:border-[#0E7C7B] focus:outline-none focus:ring-2 focus:ring-[#0E7C7B] ${

@@ -49,6 +49,7 @@ import {
   DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES,
   normalizeHomepageHighlightImages,
 } from '../../lib/homepageHighlights';
+import { getOptimizedMedia } from '../../lib/media';
 import { PRODUCT_CATEGORIES } from '../../lib/productCategories';
 import { uploadAssetToSupabaseStorage } from '../../lib/supabaseStorage';
 import { formatCurrency } from '../../lib/utils';
@@ -147,6 +148,7 @@ export function Settings() {
   const [trackingForm, setTrackingForm] = useState(() => ({
     metaPixelId: '',
     metaPurchaseTrackingEnabled: false,
+    formspreeEndpointUrl: '',
     customHeadMarkup: '',
     customFooterMarkup: '',
   }));
@@ -189,6 +191,7 @@ export function Settings() {
       setTrackingForm({
         metaPixelId: nextFinanceSettings.metaPixelId,
         metaPurchaseTrackingEnabled: nextFinanceSettings.metaPurchaseTrackingEnabled,
+        formspreeEndpointUrl: nextFinanceSettings.formspreeEndpointUrl,
         customHeadMarkup: nextFinanceSettings.customHeadMarkup,
         customFooterMarkup: nextFinanceSettings.customFooterMarkup,
       });
@@ -430,10 +433,11 @@ export function Settings() {
       await updateFinanceSettings({
         metaPixelId: trackingForm.metaPixelId.trim(),
         metaPurchaseTrackingEnabled: trackingForm.metaPurchaseTrackingEnabled,
+        formspreeEndpointUrl: trackingForm.formspreeEndpointUrl.trim(),
         customHeadMarkup: trackingForm.customHeadMarkup,
         customFooterMarkup: trackingForm.customFooterMarkup,
       });
-      setFeedbackMessage('Tracking settings saved. Storefront scripts and purchase events are now updated.');
+      setFeedbackMessage('Tracking settings saved. Storefront scripts, Formspree submissions, and purchase events are now updated.');
     } finally {
       setIsSavingTracking(false);
     }
@@ -533,8 +537,9 @@ export function Settings() {
               <div className="mt-4 flex items-center gap-4">
                 <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[1.5rem] bg-slate-900">
                   <img
-                    src={brandingForm.logoUrl || DEFAULT_LOGO_URL}
+                    src={getOptimizedMedia(brandingForm.logoUrl || DEFAULT_LOGO_URL)}
                     alt={`${brandingForm.companyName || 'Company'} logo`}
+                    loading="lazy"
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -800,6 +805,9 @@ export function Settings() {
                 When your Netlify environment includes a Meta Conversions API access token, CloudMarket also sends the same purchase server-side with the matching event ID for Meta deduplication.
               </p>
               <p>
+                Add your Formspree endpoint here to route storefront form submissions directly from the browser into your Formspree inbox.
+              </p>
+              <p>
                 Paste extra tracking code into the header or footer boxes only when you need scripts beyond the built-in Meta Pixel loader.
               </p>
               <p className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
@@ -818,6 +826,18 @@ export function Settings() {
                 }))
               }
               placeholder="Meta Pixel ID"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
+            />
+
+            <input
+              value={trackingForm.formspreeEndpointUrl}
+              onChange={(event) =>
+                setTrackingForm((current) => ({
+                  ...current,
+                  formspreeEndpointUrl: event.target.value,
+                }))
+              }
+              placeholder="Formspree Endpoint URL (https://formspree.io/f/xyz123)"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
             />
 
@@ -929,7 +949,7 @@ export function Settings() {
                         className="overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white p-1.5 shadow-sm"
                       >
                         <div className="aspect-[4/5] overflow-hidden rounded-[0.95rem] bg-slate-100">
-                          <img src={image} alt="" className="h-full w-full object-cover" />
+                          <img src={getOptimizedMedia(image)} alt="" loading="lazy" className="h-full w-full object-cover" />
                         </div>
                       </div>
                     );
@@ -998,7 +1018,7 @@ export function Settings() {
                   className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
                 >
                   <div className="aspect-[4/5] overflow-hidden bg-slate-100">
-                    <img src={image} alt="" className="h-full w-full object-cover" />
+                    <img src={getOptimizedMedia(image)} alt="" loading="lazy" className="h-full w-full object-cover" />
                   </div>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <div>
@@ -1079,8 +1099,9 @@ export function Settings() {
                     <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100">
                       {currentImage ? (
                         <img
-                          src={currentImage}
+                          src={getOptimizedMedia(currentImage)}
                           alt={`${category.name} category card`}
+                          loading="lazy"
                           className="aspect-[4/3] h-full w-full object-cover"
                         />
                       ) : (

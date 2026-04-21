@@ -10,6 +10,13 @@ import {
   DEFAULT_HOMEPAGE_HIGHLIGHT_IMAGES,
   normalizeHomepageHighlightImages,
 } from './homepageHighlights';
+import {
+  convertPriceAmount,
+  loadRatesSnapshot,
+  type RatesSnapshot,
+  type SupportedRateCurrency,
+} from './currencyRates';
+import { getOptimizedMedia } from './media';
 import { PRODUCT_CATEGORIES } from './productCategories';
 import { emitBrowserEvent, getSupabaseClient, getSupabaseTableName } from './supabase';
 import { readAppSetting, writeAppSetting } from './supabaseSettings';
@@ -41,6 +48,7 @@ export interface FinanceSettings {
   reportingCountryCode: SupportedCountryCode;
   metaPixelId: string;
   metaPurchaseTrackingEnabled: boolean;
+  formspreeEndpointUrl: string;
   customHeadMarkup: string;
   customFooterMarkup: string;
 }
@@ -326,6 +334,7 @@ function defaultFinanceSettings(): FinanceSettings {
     reportingCountryCode: 'NG',
     metaPixelId: '',
     metaPurchaseTrackingEnabled: false,
+    formspreeEndpointUrl: '',
     customHeadMarkup: '',
     customFooterMarkup: '',
   };
@@ -360,18 +369,38 @@ function normalizeFinanceSaleRecord(sale: FinanceSaleRecord): FinanceSaleRecord 
   };
 }
 
-function buildInventoryCatalog(products = [] as Awaited<ReturnType<typeof loadStorefrontProducts>>) {
+function buildInventoryCatalog(
+  products: Awaited<ReturnType<typeof loadStorefrontProducts>>,
+  storeCurrency: AdminCurrency,
+  ratesSnapshot: RatesSnapshot,
+) {
   return products
     .filter((product) => product.status === 'published')
-    .map((product) => ({
-      productId: product.id,
-      productSlug: product.slug,
-      productName: product.name,
-      currency: normalizeFinanceCurrency(product.currencyCode),
-      salePrice: product.price,
-      purchaseCost: product.purchaseCost ?? 0,
-      marginPerUnit: product.price - (product.purchaseCost ?? 0),
-    }))
+    .map((product) => {
+      const sourceCurrency = normalizeFinanceCurrency(product.currencyCode) as SupportedRateCurrency;
+      const salePrice = convertPriceAmount(
+        product.price,
+        sourceCurrency,
+        storeCurrency as SupportedRateCurrency,
+        ratesSnapshot,
+      );
+      const purchaseCost = convertPriceAmount(
+        product.purchaseCost ?? 0,
+        sourceCurrency,
+        storeCurrency as SupportedRateCurrency,
+        ratesSnapshot,
+      );
+
+      return {
+        productId: product.id,
+        productSlug: product.slug,
+        productName: product.name,
+        currency: storeCurrency,
+        salePrice,
+        purchaseCost,
+        marginPerUnit: Number((salePrice - purchaseCost).toFixed(storeCurrency === 'NGN' ? 0 : 2)),
+      };
+    })
     .sort((left, right) => left.productName.localeCompare(right.productName));
 }
 
@@ -416,6 +445,10 @@ export async function ensureFinanceSettingsLoaded(force = false) {
         typeof parsedSettings.metaPurchaseTrackingEnabled === 'boolean'
           ? parsedSettings.metaPurchaseTrackingEnabled
           : defaults.metaPurchaseTrackingEnabled,
+      formspreeEndpointUrl:
+        typeof parsedSettings.formspreeEndpointUrl === 'string'
+          ? parsedSettings.formspreeEndpointUrl.trim()
+          : defaults.formspreeEndpointUrl,
       customHeadMarkup:
         typeof parsedSettings.customHeadMarkup === 'string'
           ? parsedSettings.customHeadMarkup
@@ -425,6 +458,19 @@ export async function ensureFinanceSettingsLoaded(force = false) {
           ? parsedSettings.customFooterMarkup
           : defaults.customFooterMarkup,
     } satisfies FinanceSettings;
+    financeSettingsCache = {
+      ...financeSettingsCache,
+      logoUrl: getOptimizedMedia(financeSettingsCache.logoUrl),
+      homepageHighlightImages: financeSettingsCache.homepageHighlightImages.map((image) =>
+        getOptimizedMedia(image),
+      ),
+      homepageCategoryImages: Object.fromEntries(
+        Object.entries(financeSettingsCache.homepageCategoryImages).map(([key, value]) => [
+          key,
+          getOptimizedMedia(value),
+        ]),
+      ),
+    };
     financeSettingsLoaded = true;
     emitFinanceChange();
     return financeSettingsCache;
@@ -759,6 +805,8 @@ export async function updateFinanceSettings(update: Partial<FinanceSettings>) {
       typeof update.metaPurchaseTrackingEnabled === 'boolean'
         ? update.metaPurchaseTrackingEnabled
         : currentSettings.metaPurchaseTrackingEnabled,
+    formspreeEndpointUrl:
+      (update.formspreeEndpointUrl ?? currentSettings.formspreeEndpointUrl).trim(),
     customHeadMarkup: update.customHeadMarkup ?? currentSettings.customHeadMarkup,
     customFooterMarkup: update.customFooterMarkup ?? currentSettings.customFooterMarkup,
   };
@@ -1001,15 +1049,16 @@ export async function refreshFinanceData() {
 }
 
 export async function readFinanceSnapshot() {
-  const [settings, products] = await Promise.all([
+  const [settings, products, ratesSnapshot] = await Promise.all([
     ensureFinanceSettingsLoaded(),
     loadStorefrontProducts(),
+    loadRatesSnapshot(true),
     ensureAdminOrdersLoaded(),
     ensureFinanceExpensesLoaded(),
     ensureFinanceSalesLoaded(),
   ]);
   const orders = readAdminOrders();
-  const inventory = buildInventoryCatalog(products);
+  const inventory = buildInventoryCatalog(products, settings.currency, ratesSnapshot);
   const inventoryMap = new Map(inventory.map((item) => [item.productId, item]));
   const deliveredOrders = orders.filter((order) => order.status === 'delivered');
   const pendingOrders = orders.filter(

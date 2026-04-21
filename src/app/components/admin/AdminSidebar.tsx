@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useBrandingSettings } from '../../lib/branding';
+import { getOptimizedMedia } from '../../lib/media';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -70,8 +71,9 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#0E7C7B] to-[#2B7FFF]">
               {branding.logoUrl ? (
                 <img
-                  src={branding.logoUrl}
+                  src={getOptimizedMedia(branding.logoUrl)}
                   alt={`${branding.companyName} logo`}
+                  loading="lazy"
                   className="h-full w-full object-cover"
                 />
               ) : (

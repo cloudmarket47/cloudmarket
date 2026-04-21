@@ -561,16 +561,52 @@ export function Marketplace() {
 
   if (isLoadingProducts) {
     return (
-      <div className={cn('flex min-h-screen items-center justify-center bg-[#f5f7fb] px-4 text-center', isDarkMode && 'dark bg-[#081225]')}>
-        <div className="w-full max-w-sm rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
-          <div className="mx-auto mb-4 h-12 w-12 animate-pulse rounded-2xl bg-[#e6efff]" />
-          <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-            Loading storefront
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Preparing the shopping experience.
-          </p>
-        </div>
+      <div
+        className={cn(
+          'min-h-screen bg-[#f5f7fb] pb-36 text-slate-950 md:pb-10',
+          isDarkMode && 'dark bg-[#081225] text-slate-100',
+        )}
+      >
+        <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pb-20 pt-4 sm:px-5 lg:px-6">
+          <section className="overflow-hidden rounded-[2rem] border border-[#d8e6ff] bg-[linear-gradient(140deg,#fefeff_0%,#f3f8ff_38%,#eef4ff_100%)] shadow-[0_24px_60px_rgba(43,99,217,0.1)] dark:border-[#254478] dark:bg-[linear-gradient(140deg,#081a35_0%,#0d2348_45%,#12305f_100%)]">
+            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.15fr] lg:items-center">
+              <div className="space-y-5">
+                <div className="h-8 w-32 animate-pulse rounded-full bg-white/80 dark:bg-white/10" />
+                <div className="space-y-3">
+                  <div className="h-14 w-full max-w-[22rem] animate-pulse rounded-[1.6rem] bg-white/85 dark:bg-white/10" />
+                  <div className="h-5 w-full max-w-[26rem] animate-pulse rounded-full bg-white/75 dark:bg-white/10" />
+                  <div className="h-5 w-full max-w-[18rem] animate-pulse rounded-full bg-white/60 dark:bg-white/10" />
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="h-12 w-full animate-pulse rounded-full bg-white/90 sm:w-36 dark:bg-white/10" />
+                  <div className="h-12 w-full animate-pulse rounded-full bg-white/80 sm:w-48 dark:bg-white/10" />
+                </div>
+              </div>
+              <div className="min-h-[300px] animate-pulse rounded-[1.8rem] bg-white/80 dark:bg-white/10 sm:min-h-[340px]" />
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="h-8 w-48 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {Array.from({ length: 8 }, (_, index) => (
+                <div
+                  key={`marketplace-skeleton-card-${index}`}
+                  className="rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-[0_12px_26px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950"
+                >
+                  <div className="aspect-[5/3] animate-pulse rounded-[1.05rem] bg-slate-200 dark:bg-slate-800 sm:aspect-[4/3]" />
+                  <div className="space-y-3 px-1 pb-1 pt-3">
+                    <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-5 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-10 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+          <Footer />
+        </main>
       </div>
     );
   }

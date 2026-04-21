@@ -87,6 +87,7 @@ import {
   type ProductLibraryMediaKind,
   validateProductLibraryUpload,
 } from '../../lib/productMediaLibrary';
+import { getOptimizedMedia } from '../../lib/media';
 
 const inputClasses =
   'mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/10';
@@ -774,9 +775,9 @@ function MediaAssetField({
           <div className="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white">
             {asset.src ? (
               kind === 'image' ? (
-                <img src={asset.src} alt={label} className="h-52 w-full object-cover" />
+                <img src={getOptimizedMedia(asset.src)} alt={label} loading="lazy" className="h-52 w-full object-cover" />
               ) : (
-                <video src={asset.src} controls className="h-52 w-full bg-black object-cover" />
+                <video src={getOptimizedMedia(asset.src)} controls preload="none" className="h-52 w-full bg-black object-cover" />
               )
             ) : (
               <div className="flex h-52 w-full flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-white text-center text-gray-400">
@@ -1109,9 +1110,9 @@ function ProductLibraryManager({
             <div key={item.id} className="overflow-hidden rounded-[1.6rem] border border-gray-200 bg-white shadow-sm">
               <div className="aspect-[4/3] overflow-hidden bg-gray-100">
                 {item.asset.kind === 'image' ? (
-                  <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
+                  <img src={getOptimizedMedia(item.asset.src)} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
                 ) : (
-                  <video src={item.asset.src} className="h-full w-full object-cover" controls />
+                  <video src={getOptimizedMedia(item.asset.src)} className="h-full w-full object-cover" controls preload="none" />
                 )}
               </div>
               <div className="space-y-3 p-4">
@@ -1441,7 +1442,7 @@ function MediaListEditor({
 
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                   {hasMedia(item) ? (
-                    <img src={item.src} alt={`Carousel image ${index + 1}`} className="h-full w-full object-cover" />
+                    <img src={getOptimizedMedia(item.src)} alt={`Carousel image ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-gray-400">
                       Empty
@@ -1910,8 +1911,9 @@ function PreviewPanel({ draft }: { draft: AdminProductDraft }) {
       <div className="relative overflow-hidden border-b border-white/10">
         {heroPreviewImage ? (
           <img
-            src={heroPreviewImage}
+            src={getOptimizedMedia(heroPreviewImage)}
             alt={draft.productName}
+            loading="lazy"
             className="h-64 w-full object-cover"
           />
         ) : (
@@ -2148,8 +2150,9 @@ function SectionPreviewContent({
           <div className="relative">
             {heroImages[0] ? (
               <img
-                src={heroImages[0].src}
+                src={getOptimizedMedia(heroImages[0].src)}
                 alt={draft.sections.hero.title}
+                loading="lazy"
                 className="h-52 w-full object-cover"
               />
             ) : (
@@ -2201,7 +2204,7 @@ function SectionPreviewContent({
         <div className={`overflow-hidden rounded-[1.75rem] border ${cardClass}`}>
           <div className="relative">
             {hasMedia(section.poster) ? (
-              <img src={section.poster.src} alt={mediaTitle} className="h-52 w-full object-cover" />
+              <img src={getOptimizedMedia(section.poster.src)} alt={mediaTitle} loading="lazy" className="h-52 w-full object-cover" />
             ) : (
               <div className={`h-52 w-full ${shellClass}`} />
             )}
@@ -2265,7 +2268,7 @@ function SectionPreviewContent({
                   className={`h-28 w-24 shrink-0 overflow-hidden rounded-[1.25rem] border ${cardClass}`}
                 >
                   {hasMedia(item) ? (
-                    <img src={item.src} alt="" className="h-full w-full object-cover" />
+                    <img src={getOptimizedMedia(item.src)} alt="" loading="lazy" className="h-full w-full object-cover" />
                   ) : (
                     <div className={`h-full w-full ${shellClass}`} />
                   )}
@@ -2302,8 +2305,9 @@ function SectionPreviewContent({
         <div className={`overflow-hidden rounded-[1.75rem] border ${cardClass}`}>
           {hasMedia(draft.sections.solution.image) ? (
             <img
-              src={draft.sections.solution.image.src}
+              src={getOptimizedMedia(draft.sections.solution.image.src)}
               alt={draft.sections.solution.title}
+              loading="lazy"
               className="h-44 w-full object-cover"
             />
           ) : null}
@@ -2334,8 +2338,9 @@ function SectionPreviewContent({
           {completedShowcaseImages[0] ? (
             <div className={`overflow-hidden rounded-[1.5rem] border ${cardClass}`}>
               <img
-                src={completedShowcaseImages[0].src}
+                src={getOptimizedMedia(completedShowcaseImages[0].src)}
                 alt={draft.sections.showcase.title}
+                loading="lazy"
                 className="h-56 w-full object-cover"
               />
             </div>
@@ -2343,7 +2348,7 @@ function SectionPreviewContent({
           <div className="grid grid-cols-3 gap-3">
             {completedShowcaseImages.slice(1, 4).map((item, index) => (
               <div key={`showcase-thumb-${index}`} className={`h-24 overflow-hidden rounded-[1.25rem] border ${cardClass}`}>
-                <img src={item.src} alt="" className="h-full w-full object-cover" />
+                <img src={getOptimizedMedia(item.src)} alt="" loading="lazy" className="h-full w-full object-cover" />
               </div>
             ))}
           </div>
@@ -2359,7 +2364,7 @@ function SectionPreviewContent({
         <div className={`overflow-hidden rounded-[1.75rem] border ${cardClass}`}>
           <div className="relative">
             {hasMedia(review.image) ? (
-              <img src={review.image.src} alt={review.name} className="h-64 w-full object-cover" />
+              <img src={getOptimizedMedia(review.image.src)} alt={review.name} loading="lazy" className="h-64 w-full object-cover" />
             ) : null}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-4 text-white">
               <div className="flex items-center gap-1 text-[#fbbf24]">

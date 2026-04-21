@@ -443,6 +443,7 @@ export function Orders() {
             </label>
 
             <select
+              aria-label="Filter orders by status"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as 'all' | AdminOrderStatus)}
               className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"
@@ -458,6 +459,7 @@ export function Orders() {
 
             <input
               type="date"
+              aria-label="Filter orders by date"
               value={historyDateFilter}
               onChange={(event) => setHistoryDateFilter(event.target.value)}
               className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#2B63D9] focus:ring-2 focus:ring-[#2B63D9]/20"

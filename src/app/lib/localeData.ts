@@ -321,6 +321,14 @@ export function detectCountryCode() {
     return DEFAULT_COUNTRY_CODE;
   }
 
+  const detectedFromTimeZone = detectCountryCodeFromTimeZone(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+
+  if (detectedFromTimeZone) {
+    return detectedFromTimeZone;
+  }
+
   const navigatorLocales = [
     ...(Array.isArray(window.navigator.languages) ? window.navigator.languages : []),
     window.navigator.language,
@@ -334,11 +342,62 @@ export function detectCountryCode() {
     }
   }
 
-  const detectedFromTimeZone = detectCountryCodeFromTimeZone(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
-
   return detectedFromTimeZone ?? DEFAULT_COUNTRY_CODE;
+}
+
+async function fetchCountryCodeFromIpLookup(url: string, signal: AbortSignal) {
+  const response = await fetch(url, {
+    cache: 'no-store',
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`IP lookup failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    country_code?: string;
+    country?: string;
+    success?: boolean;
+    error?: boolean;
+  };
+
+  if (payload.success === false || payload.error === true) {
+    throw new Error('IP lookup returned an error payload');
+  }
+
+  return normalizeCountryCode(payload.country_code ?? payload.country);
+}
+
+export async function resolvePreferredCountryCode() {
+  const browserDetectedCountry = detectCountryCode();
+
+  if (typeof window === 'undefined') {
+    return browserDetectedCountry;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, 2500);
+
+  try {
+    for (const url of ['https://ipapi.co/json/', 'https://ipwho.is/']) {
+      try {
+        const detectedCountry = await fetchCountryCodeFromIpLookup(url, controller.signal);
+
+        if (detectedCountry) {
+          return detectedCountry;
+        }
+      } catch {
+        continue;
+      }
+    }
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  return browserDetectedCountry;
 }
 
 export function readCountryCookie() {
@@ -348,7 +407,7 @@ export function readCountryCookie() {
 
   const match = document.cookie.match(/(?:^|;\s*)nf_country=([^;]+)/);
 
-  return match?.[1] ? normalizeCountryCode(match[1]) : detectCountryCode();
+  return match?.[1] ? normalizeCountryCode(match[1]) : DEFAULT_COUNTRY_CODE;
 }
 
 export function writeCountryCookie(countryCode: SupportedCountryCode) {

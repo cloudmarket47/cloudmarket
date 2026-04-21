@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { Link2, Mail, Phone, Receipt, ShieldCheck, User } from 'lucide-react';
 import type { FinanceReceiptRecord, FinanceSettings } from '../../lib/adminFinance';
+import { getOptimizedMedia } from '../../lib/media';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 interface FinanceReceiptPreviewProps {
@@ -21,7 +22,7 @@ export const FinanceReceiptPreview = forwardRef<HTMLDivElement, FinanceReceiptPr
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rotate-[-18deg] flex-col items-center gap-5 opacity-[0.06]">
             <div className="flex h-32 w-32 items-center justify-center rounded-[2rem] border border-slate-300 bg-white shadow-sm">
               {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt={settings.companyName} className="h-24 w-24 rounded-[1.5rem] object-cover" />
+                <img src={getOptimizedMedia(settings.logoUrl)} alt={settings.companyName} loading="lazy" className="h-24 w-24 rounded-[1.5rem] object-cover" />
               ) : (
                 <span className="text-4xl font-black tracking-tight text-slate-900">{companyInitials}</span>
               )}
@@ -33,7 +34,7 @@ export const FinanceReceiptPreview = forwardRef<HTMLDivElement, FinanceReceiptPr
         <div className="relative z-10 border-b border-slate-200 pb-6">
           <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.35rem] bg-gradient-to-br from-[#0E7C7B] to-[#2B7FFF] text-xl font-black text-white shadow-[0_14px_30px_rgba(43,99,217,0.22)]">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt={settings.companyName} className="h-full w-full object-cover" />
+              <img src={getOptimizedMedia(settings.logoUrl)} alt={settings.companyName} loading="lazy" className="h-full w-full object-cover" />
             ) : (
               companyInitials
             )}

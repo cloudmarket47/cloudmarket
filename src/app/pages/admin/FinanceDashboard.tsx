@@ -401,7 +401,7 @@ export function FinanceDashboard() {
       customerPhone: linkedOrder.customerPhone,
       customerAddress: linkedOrder.customerAddress,
       quantity: String(linkedOrder.quantity),
-      amount: String(linkedOrder.finalAmount),
+      amount: String(linkedOrder.finalAmountInStoreCurrency),
       countsTowardRevenue: false,
     }));
   }, [saleForm.linkedOrderNumber, snapshot, snapshotOrders]);
@@ -633,7 +633,7 @@ export function FinanceDashboard() {
       quantity,
       unitPrice:
         linkedSaleOrder && quantity > 0
-          ? Math.round(linkedSaleOrder.finalAmount / quantity)
+          ? Math.round(linkedSaleOrder.finalAmountInStoreCurrency / quantity)
           : selectedSaleProduct?.salePrice ?? Number(saleForm.amount),
       unitCost:
         linkedSaleOrder && quantity > 0

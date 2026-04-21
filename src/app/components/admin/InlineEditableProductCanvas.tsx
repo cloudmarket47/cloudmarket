@@ -89,6 +89,7 @@ import {
   getProductLibraryCountLimit,
   validateProductLibraryUpload,
 } from '../../lib/productMediaLibrary';
+import { getOptimizedMedia } from '../../lib/media';
 import { cn } from '../../lib/utils';
 import { Carousel3D } from '../animations/Carousel3D';
 
@@ -445,7 +446,7 @@ function EditableImage({
       title={editable ? 'Double-click to change image' : undefined}
     >
       {src ? (
-        <img src={src} alt={alt} className={imageClassName} />
+        <img src={getOptimizedMedia(src)} alt={alt} loading="lazy" className={imageClassName} />
       ) : (
         <div
           className={cn(
@@ -754,9 +755,9 @@ function InlineEditorDrawer({
                         >
                           <div className={cn('aspect-[4/3] overflow-hidden', isDark ? 'bg-slate-900' : 'bg-gray-100')}>
                             {item.asset.kind === 'image' ? (
-                              <img src={item.asset.src} alt={item.name} className="h-full w-full object-cover" />
+                              <img src={getOptimizedMedia(item.asset.src)} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
                             ) : (
-                              <video src={item.asset.src} className="h-full w-full object-cover" />
+                              <video src={getOptimizedMedia(item.asset.src)} className="h-full w-full object-cover" controls preload="none" />
                             )}
                           </div>
                           <div className="space-y-3 p-3">
@@ -875,9 +876,9 @@ function InlineEditorDrawer({
                     )}
                   >
                     {editor.kind === 'image' ? (
-                      <img src={draftValue} alt={editor.title} className="h-56 w-full object-cover" />
+                      <img src={getOptimizedMedia(draftValue)} alt={editor.title} loading="lazy" className="h-56 w-full object-cover" />
                     ) : (
-                      <video src={draftValue} className="h-56 w-full bg-black object-cover" controls />
+                      <video src={getOptimizedMedia(draftValue)} className="h-56 w-full bg-black object-cover" controls preload="none" />
                     )}
                   </div>
                 ) : null}
@@ -1382,11 +1383,11 @@ function InlineVideoPreview({
       <div className={cn('relative overflow-hidden bg-black', getVideoAspectRatioClass(ratio))}>
         <video
           ref={videoRef}
-          src={video.src}
-          poster={poster.src || undefined}
+          src={getOptimizedMedia(video.src)}
+          poster={poster.src ? getOptimizedMedia(poster.src) : undefined}
           className="h-full w-full object-cover"
           controls
-          preload="metadata"
+          preload="none"
           onPlay={() => setIsPosterVisible(false)}
           onEnded={() => {
             if (videoRef.current) {
@@ -1403,7 +1404,7 @@ function InlineVideoPreview({
             className="absolute inset-0 flex items-center justify-center overflow-hidden"
             aria-label={`Play ${title}`}
           >
-            <img src={poster.src} alt={`${title} poster`} className="absolute inset-0 h-full w-full object-cover" />
+            <img src={getOptimizedMedia(poster.src)} alt={`${title} poster`} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-br from-slate-950/55 via-slate-900/35 to-slate-950/65" />
             <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full border border-white/70 bg-white/16 shadow-[0_18px_40px_rgba(15,23,42,0.2)] backdrop-blur-md">
               <Play className="ml-1 h-8 w-8 fill-white text-white" />
@@ -2858,8 +2859,9 @@ export function InlineEditableProductCanvas({
               <div className="relative overflow-hidden rounded-[1.25rem]">
                 {keySettingsPreviewImage ? (
                   <img
-                    src={keySettingsPreviewImage}
+                    src={getOptimizedMedia(keySettingsPreviewImage)}
                     alt={pageData.productName}
+                    loading="lazy"
                     className="aspect-[5/4] h-full w-full object-cover"
                   />
                 ) : (
@@ -3184,8 +3186,9 @@ export function InlineEditableProductCanvas({
                                 <div className={cn('relative h-28 w-full', isDark ? 'bg-slate-900' : 'bg-gray-100')}>
                                   {slide.src ? (
                                     <img
-                                      src={slide.src}
+                                      src={getOptimizedMedia(slide.src)}
                                       alt={`Hero slide ${index + 1}`}
+                                      loading="lazy"
                                       className="h-full w-full object-cover"
                                     />
                                   ) : (
@@ -3613,8 +3616,9 @@ export function InlineEditableProductCanvas({
                               >
                                 <div className={cn('aspect-[4/5] overflow-hidden rounded-[1.35rem]', isDark ? 'bg-slate-900' : 'bg-slate-100')}>
                                   <img
-                                    src={image.src}
+                                    src={getOptimizedMedia(image.src)}
                                     alt={`Marquee ${index + 1}`}
+                                    loading="lazy"
                                     className="h-full w-full object-cover"
                                   />
                                 </div>
@@ -3634,8 +3638,9 @@ export function InlineEditableProductCanvas({
                               >
                                 <div className={cn('aspect-[4/5] overflow-hidden rounded-[1.35rem]', isDark ? 'bg-slate-900' : 'bg-slate-100')}>
                                   <img
-                                    src={image.src}
+                                    src={getOptimizedMedia(image.src)}
                                     alt={`Marquee ${index + 1}`}
+                                    loading="lazy"
                                     className="h-full w-full object-cover"
                                   />
                                 </div>

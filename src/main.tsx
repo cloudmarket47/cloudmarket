@@ -9,21 +9,4 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-const splashElement = document.getElementById('app-splash');
-
-const hideSplash = () => {
-  if (!splashElement) {
-    return;
-  }
-
-  splashElement.classList.add('app-splash--hidden');
-  window.setTimeout(() => {
-    splashElement.remove();
-  }, 360);
-};
-
 createRoot(document.getElementById('root')!).render(<App />);
-
-window.requestAnimationFrame(() => {
-  window.requestAnimationFrame(hideSplash);
-});

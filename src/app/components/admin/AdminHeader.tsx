@@ -15,6 +15,7 @@ import {
   type AdminNotificationSnapshot,
 } from '../../lib/adminNotifications';
 import { useBrandingSettings } from '../../lib/branding';
+import { getOptimizedMedia } from '../../lib/media';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -243,8 +244,9 @@ export function AdminHeader({
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#0E7C7B]">
               {branding.logoUrl ? (
                 <img
-                  src={branding.logoUrl}
+                  src={getOptimizedMedia(branding.logoUrl)}
                   alt={`${branding.companyName} logo`}
+                  loading="lazy"
                   className="h-full w-full object-cover"
                 />
               ) : (

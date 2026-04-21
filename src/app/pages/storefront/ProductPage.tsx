@@ -29,17 +29,14 @@ import { TopDropOfferAlerts } from '../../components/TopDropOfferAlerts';
 import { ScrollReveal } from '../../components/animations/ScrollReveal';
 import { EmailSubscription } from '../../components/storefront/EmailSubscription';
 import { CheckoutSheet } from '../../components/CheckoutSheet';
-import { ProductPageGlassLoader } from '../../components/storefront/ProductPageGlassLoader';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
-import { useBrandingSettings } from '../../lib/branding';
 import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
 import type { Product } from '../../types';
 
 export function ProductPage() {
   const { slug } = useParams();
   const { formatPrice } = useLocale();
-  const branding = useBrandingSettings();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPackageQuantity, setSelectedPackageQuantity] = useState('1');
   const [storefrontProducts, setStorefrontProducts] = useState<Product[]>([]);
@@ -140,7 +137,49 @@ export function ProductPage() {
   }
 
   if (isLoadingProducts) {
-    return <ProductPageGlassLoader companyName={branding.companyName} />;
+    return (
+      <div className="min-h-screen bg-white pb-20">
+        <section className="relative overflow-hidden bg-[#f6f4ef] px-3 py-3 md:px-6 md:py-6">
+          <div className="mx-auto h-[80vh] max-w-7xl md:h-[700px]">
+            <div className="relative h-full overflow-hidden rounded-[2.5rem] bg-[linear-gradient(135deg,#dfe9f7_0%,#f4f6f2_50%,#d9e6f7_100%)] md:rounded-[3rem]">
+              <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_55%)]" />
+              <div className="relative z-10 flex h-full items-end">
+                <div className="mx-auto flex h-full w-full max-w-6xl items-end p-5 md:p-10">
+                  <div className="w-full max-w-[36rem] space-y-4 md:space-y-6">
+                    <div className="h-5 w-28 animate-pulse rounded-full bg-white/80" />
+                    <div className="space-y-3">
+                      <div className="h-14 w-full max-w-[22rem] animate-pulse rounded-[1.8rem] bg-white/85 md:h-16" />
+                      <div className="h-5 w-40 animate-pulse rounded-full bg-white/75" />
+                      <div className="h-4 w-full max-w-[28rem] animate-pulse rounded-full bg-white/70" />
+                      <div className="h-4 w-full max-w-[24rem] animate-pulse rounded-full bg-white/60" />
+                    </div>
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                      <div className="h-16 w-40 animate-pulse rounded-full bg-white/85" />
+                      <div className="h-14 w-full animate-pulse rounded-full bg-white/90 sm:w-44" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="container mx-auto space-y-8 px-4 py-12">
+          <div className="grid gap-4 md:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={`product-page-skeleton-card-${index}`} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6">
+                <div className="h-5 w-24 animate-pulse rounded-full bg-slate-200" />
+                <div className="mt-4 h-6 w-full animate-pulse rounded-full bg-slate-200" />
+                <div className="mt-3 h-4 w-5/6 animate-pulse rounded-full bg-slate-200" />
+                <div className="mt-8 h-48 animate-pulse rounded-[1.5rem] bg-slate-200" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    );
   }
 
   if (!product) {

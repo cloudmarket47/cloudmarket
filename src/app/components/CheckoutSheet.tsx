@@ -7,6 +7,7 @@ import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analytics
 import { convertPriceAmount, getCurrencyForCountry } from '../lib/currencyRates';
 import { recordSubmittedOrder } from '../lib/adminOrders';
 import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../lib/customerTokens';
+import { useFormspreeEndpoint } from '../lib/formspree';
 import type { SupportedCountryCode } from '../lib/localeData';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { getPackagePriceBreakdown } from '../lib/packagePricing';
@@ -94,6 +95,7 @@ function ensurePhonePrefix(value: string, phonePrefix: string) {
 
 export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) {
   const navigate = useNavigate();
+  const formspreeEndpoint = useFormspreeEndpoint();
   const childScrollRef = useRef<HTMLDivElement>(null);
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const bundles = useMemo(() => buildCheckoutBundles(product, countryCode), [countryCode, product, ratesUpdatedAt]);
@@ -340,6 +342,12 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     setIsSubmitting(true);
 
     try {
+      if (!formspreeEndpoint) {
+        console.warn('Formspree endpoint URL is not configured.');
+        setSubmitError('Form currently unavailable.');
+        return;
+      }
+
       let resolvedTokenRecord = tokenRecord;
 
       if (formData.customerToken.trim()) {
@@ -372,8 +380,9 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         localeCountryCode: countryCode,
       });
 
-      await persistPlacedOrder(placedOrder);
-      void recordSubmittedOrder(placedOrder).catch(() => undefined);
+      await syncOrderSubmission(placedOrder, {
+        customerEmail: resolvedTokenRecord?.email,
+      });
       trackAnalyticsEvent({
         type: 'form_submit',
         pagePath: `/product/${product.slug}`,
@@ -422,11 +431,8 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
         });
       }
 
-      await syncOrderSubmission(placedOrder, {
-        customerEmail: resolvedTokenRecord?.email,
-      }).catch((error) => {
-        console.warn('Order notification email failed.', error);
-      });
+      await persistPlacedOrder(placedOrder);
+      void recordSubmittedOrder(placedOrder).catch(() => undefined);
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);
