@@ -1,13 +1,73 @@
+import { useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { getOptimizedMedia } from '../../lib/media';
 import { cn } from '../../lib/utils';
+import type { Product } from '../../types';
 
-const WHATSAPP_LINK =
-  "https://wa.me/13364596552?text=hello%2C%20please%20i'm%20intrested%20in%20this%20product";
+const WHATSAPP_PHONE_NUMBER = '13364596552';
+const DEFAULT_WHATSAPP_MESSAGE = "Hello, please I'm interested in this product.";
 
-export function FloatingStorefrontActions({ className }: { className?: string }) {
+function toAbsoluteUrl(value?: string | null) {
+  const normalizedValue = value?.trim() ?? '';
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  if (typeof window === 'undefined') {
+    return normalizedValue;
+  }
+
+  try {
+    return new URL(normalizedValue, window.location.origin).toString();
+  } catch {
+    return normalizedValue;
+  }
+}
+
+function getProductCoverImage(product: Product) {
+  return (
+    product.sections.hero.image ||
+    product.image ||
+    product.sections.seeInAction.poster ||
+    product.sections.solution.image ||
+    product.sections.footerVideo.poster ||
+    product.sections.showcase.images.find(Boolean) ||
+    product.sections.featureMarquee.images.find(Boolean) ||
+    product.sections.offer.packages.find((item) => Boolean(item.image))?.image ||
+    ''
+  );
+}
+
+interface FloatingStorefrontActionsProps {
+  className?: string;
+  product?: Product;
+}
+
+export function FloatingStorefrontActions({
+  className,
+  product,
+}: FloatingStorefrontActionsProps) {
   const { isDarkMode, toggleThemeMode } = useAppTheme();
   const themeEmoji = isDarkMode ? '\u{1F319}' : '\u2600\uFE0F';
   const themeLabel = isDarkMode ? 'Switch to light mode' : 'Switch to dark mode';
+  const whatsappLink = useMemo(() => {
+    const pageUrl = product
+      ? toAbsoluteUrl(`/product/${product.slug}`)
+      : toAbsoluteUrl(typeof window === 'undefined' ? '/' : window.location.pathname);
+
+    const messageLines = product
+      ? [
+          `Hello, I'm interested in ${product.name}.`,
+          `Product page: ${pageUrl}`,
+          `Cover image: ${toAbsoluteUrl(getOptimizedMedia(getProductCoverImage(product)))}`,
+        ]
+      : [DEFAULT_WHATSAPP_MESSAGE, `Page: ${pageUrl}`];
+
+    return `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodeURIComponent(
+      messageLines.filter(Boolean).join('\n'),
+    )}`;
+  }, [product]);
 
   return (
     <div
@@ -26,7 +86,7 @@ export function FloatingStorefrontActions({ className }: { className?: string })
       </button>
 
       <a
-        href={WHATSAPP_LINK}
+        href={whatsappLink}
         target="_blank"
         rel="noreferrer"
         aria-label="Chat on WhatsApp"

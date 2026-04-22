@@ -64,7 +64,7 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="font-bold text-lg">Delivery Info</h3>
             <div className="space-y-2 text-gray-400 text-sm">
-              <p>Free delivery across Nigeria</p>
+              <p>Free delivery nationwide</p>
               <p>Pay on delivery available</p>
               <p>1-3 days for major cities</p>
               <p>3-5 days for other locations</p>

@@ -505,7 +505,7 @@ export function ProductPage() {
       </main>
 
       <Footer />
-      <FloatingStorefrontActions className="bottom-24 sm:bottom-6" />
+      <FloatingStorefrontActions className="bottom-24 sm:bottom-6" product={product} />
       <StickyMobileCTA onBuyNow={openCheckout} captions={mobileStickyCtaCaptions} />
       <CheckoutSheet
         isOpen={isCheckoutOpen}
