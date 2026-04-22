@@ -59,6 +59,7 @@ import {
   type AdminSubscriberSnapshot,
 } from '../../lib/adminSubscribers';
 import { useBrandingSettings } from '../../lib/branding';
+import { useAppTheme } from '../../context/AppThemeContext';
 import {
   SUBSCRIBER_DATA_CHANGE_EVENT,
   formatSubscriberActivityLabel,
@@ -165,6 +166,7 @@ function orderStatusClassName(status: AdminManagedOrder['status']) {
 
 export function Dashboard() {
   const branding = useBrandingSettings();
+  const { isDarkMode } = useAppTheme();
   const [period, setPeriod] = useState<DashboardPeriod>(7);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -333,17 +335,24 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2.2rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,124,123,0.14),transparent_32%),linear-gradient(135deg,#ffffff,rgba(248,250,252,0.98))] p-6 shadow-[0_28px_70px_rgba(15,23,42,0.08)] md:p-8">
+      <section
+        className={cn(
+          'overflow-hidden rounded-[2.2rem] border p-6 shadow-[0_28px_70px_rgba(15,23,42,0.08)] md:p-8',
+          isDarkMode
+            ? 'border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.2),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,124,123,0.18),transparent_32%),linear-gradient(135deg,#0f141b,rgba(21,27,34,0.98))]'
+            : 'border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,124,123,0.14),transparent_32%),linear-gradient(135deg,#ffffff,rgba(248,250,252,0.98))]'
+        )}
+      >
         <div className="grid gap-8 xl:grid-cols-[1.15fr,0.85fr]">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white">
+            <div className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]', isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-950 text-white')}>
               <LayoutDashboard className="h-3.5 w-3.5" />
               Premium Admin Dashboard
             </div>
-            <h1 className="mt-5 max-w-3xl text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
+            <h1 className={cn('mt-5 max-w-3xl text-3xl font-black tracking-tight md:text-5xl', isDarkMode ? 'text-white' : 'text-slate-950')}>
               {branding.companyName} command center built for clearer decisions and friendlier daily work
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
+            <p className={cn('mt-4 max-w-2xl text-sm leading-7 md:text-base', isDarkMode ? 'text-slate-300' : 'text-slate-600')}>
               Follow live orders, traffic, revenue, subscribers, and admin alerts without jumping across pages just to know what needs action next.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -351,21 +360,21 @@ export function Dashboard() {
                 <PackagePlus className="h-4 w-4" />
                 Create Product Page
               </Link>
-              <Link to="/admin/orders" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">
+              <Link to="/admin/orders" className={cn('inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition', isDarkMode ? 'border-white/12 bg-[#161b22] text-slate-100 hover:bg-[#1b2330]' : 'border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50')}>
                 <ShoppingBag className="h-4 w-4" />
                 Open Orders
               </Link>
-              <Link to="/admin/analytics" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">
+              <Link to="/admin/analytics" className={cn('inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition', isDarkMode ? 'border-white/12 bg-[#161b22] text-slate-100 hover:bg-[#1b2330]' : 'border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50')}>
                 <TrendingUp className="h-4 w-4" />
                 Open Analytics
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+              <span className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] shadow-sm', isDarkMode ? 'bg-white/10 text-slate-200' : 'bg-white/90 text-slate-600')}>
                 <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
                 {isRefreshing ? 'Refreshing live data' : `Last refresh ${formatRelativeTime(dashboard.analytics.generatedAt)}`}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+              <span className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] shadow-sm', isDarkMode ? 'bg-white/10 text-slate-200' : 'bg-white/90 text-slate-600')}>
                 <Globe2 className="h-3.5 w-3.5" />
                 {derived.topSource}
               </span>
@@ -373,22 +382,22 @@ export function Dashboard() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.65rem] border border-white/70 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className={cn('rounded-[1.65rem] border p-5 shadow-sm backdrop-blur', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/70 bg-white/85')}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Today revenue</p>
               <p className="mt-3 text-3xl font-black tracking-tight text-slate-950">{derived.todayRevenue}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">Pure profit today is {formatCurrency(dashboard.finance.todaySummary.pureProfit, derived.country)}.</p>
             </div>
-            <div className="rounded-[1.65rem] border border-white/70 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className={cn('rounded-[1.65rem] border p-5 shadow-sm backdrop-blur', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/70 bg-white/85')}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Top performing page</p>
               <p className="mt-3 text-2xl font-black tracking-tight text-slate-950">{derived.topPage}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">Best page based on traffic, engagement, and conversion.</p>
             </div>
-            <div className="rounded-[1.65rem] border border-white/70 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className={cn('rounded-[1.65rem] border p-5 shadow-sm backdrop-blur', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/70 bg-white/85')}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Unread alerts</p>
               <p className="mt-3 text-3xl font-black tracking-tight text-slate-950">{dashboard.notifications.unreadCount}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">Orders, finance, subscribers, and draft activity are combined here.</p>
             </div>
-            <div className="rounded-[1.65rem] border border-white/70 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className={cn('rounded-[1.65rem] border p-5 shadow-sm backdrop-blur', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/70 bg-white/85')}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Pending income</p>
               <p className="mt-3 text-3xl font-black tracking-tight text-slate-950">{derived.pendingIncome}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">{dashboard.finance.metrics.processingOrders} confirmed or processing orders are still in motion.</p>

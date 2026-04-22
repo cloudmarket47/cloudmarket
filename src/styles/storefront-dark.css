@@ -191,3 +191,99 @@
 .dark :is(.shadow-sm, .shadow-lg) {
   box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22) !important;
 }
+
+.app-theme-dark.admin-theme-shell {
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+.app-theme-dark .admin-theme-content :is(
+    .bg-\[\#eef5ff\],
+    .bg-\[\#f4efff\],
+    .bg-\[\#eff6ff\],
+    .bg-\[\#eaf8f3\],
+    .bg-\[\#ecfdf5\],
+    .bg-\[\#fff4ea\],
+    .bg-\[\#fff2de\],
+    .bg-\[\#f5f3ff\],
+    .bg-\[\#f8fafc\],
+    .bg-slate-100,
+    .bg-slate-200
+  ) {
+  background-color: #161b22 !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-\[\#2563eb\], .text-\[\#2B63D9\]) {
+  color: #8ab4ff !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-\[\#0E7C7B\], .text-\[\#0f766e\]) {
+  color: #6ee7b7 !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-\[\#d97706\], .text-orange-700, .text-\[\#f97316\]) {
+  color: #fdba74 !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-\[\#7c3aed\], .text-violet-700) {
+  color: #c4b5fd !important;
+}
+
+.app-theme-dark .admin-theme-content .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.18) !important;
+}
+
+.app-theme-dark .admin-theme-content .bg-cyan-100 {
+  background-color: rgba(34, 211, 238, 0.16) !important;
+}
+
+.app-theme-dark .admin-theme-content .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+
+.app-theme-dark .admin-theme-content .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.16) !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.bg-red-100, .bg-rose-100) {
+  background-color: rgba(244, 63, 94, 0.16) !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-blue-700, .text-cyan-700) {
+  color: #7dd3fc !important;
+}
+
+.app-theme-dark .admin-theme-content .text-emerald-700 {
+  color: #86efac !important;
+}
+
+.app-theme-dark .admin-theme-content :is(.text-red-700, .text-rose-700) {
+  color: #fda4af !important;
+}
+
+.app-theme-dark .admin-theme-content [class*='radial-gradient(circle_at_top_left'] {
+  background-image: radial-gradient(circle at top left, rgba(43, 99, 217, 0.2), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(14, 124, 123, 0.18), transparent 32%),
+    linear-gradient(135deg, #0f141b, rgba(21, 27, 34, 0.98)) !important;
+}
+
+.app-theme-dark .admin-theme-content .admin-data-table {
+  border-color: #30363d !important;
+  background: #0f141b !important;
+}
+
+.app-theme-dark .admin-theme-content .admin-data-table thead {
+  background: #11161d !important;
+}
+
+.app-theme-dark .admin-theme-content .admin-data-table tbody {
+  background: #0f141b !important;
+}
+
+.app-theme-dark .admin-theme-content .admin-data-table :is(th, td) {
+  border-color: #30363d !important;
+}
+
+.app-theme-dark .admin-theme-content .admin-data-table tbody tr:hover {
+  background: #151b23 !important;
+}

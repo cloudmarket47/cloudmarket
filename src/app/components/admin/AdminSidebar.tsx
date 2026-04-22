@@ -13,6 +13,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useBrandingSettings } from '../../lib/branding';
 import { getOptimizedMedia } from '../../lib/media';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const navigationItems = [
 export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps) {
   const location = useLocation();
   const branding = useBrandingSettings();
+  const { isDarkMode } = useAppTheme();
 
   return (
     <>
@@ -47,7 +49,10 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full w-64 border-r border-gray-200 bg-white z-50 transition-[width,transform] duration-300',
+          'fixed top-0 left-0 z-50 h-full w-64 transition-[width,transform] duration-300',
+          isDarkMode
+            ? 'border-r border-white/10 bg-[#0f141b] text-[#e6edf3]'
+            : 'border-r border-gray-200 bg-white',
           isCollapsed ? 'lg:w-[5.5rem]' : 'lg:w-64',
           'lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -56,7 +61,8 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
         {/* Logo/Header */}
         <div
           className={cn(
-            'h-16 border-b border-gray-200 flex items-center',
+            'flex h-16 items-center',
+            isDarkMode ? 'border-b border-white/10' : 'border-b border-gray-200',
             isCollapsed ? 'px-6 lg:px-3' : 'px-6'
           )}
         >
@@ -81,18 +87,21 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
               )}
             </div>
             {isCollapsed ? (
-              <span className="ml-2 text-lg font-bold text-gray-900 lg:hidden">
+              <span className={cn('ml-2 text-lg font-bold lg:hidden', isDarkMode ? 'text-white' : 'text-gray-900')}>
                 {branding.companyName}
               </span>
             ) : (
-              <span className="ml-2 text-lg font-bold text-gray-900">
+              <span className={cn('ml-2 text-lg font-bold', isDarkMode ? 'text-white' : 'text-gray-900')}>
                 {branding.companyName}
               </span>
             )}
           </Link>
           <button
             onClick={onClose}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg ml-auto"
+            className={cn(
+              'ml-auto rounded-lg p-2 lg:hidden',
+              isDarkMode ? 'hover:bg-white/8 text-slate-200' : 'hover:bg-gray-100'
+            )}
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
@@ -121,7 +130,9 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
                   isCollapsed ? 'items-center gap-3 px-4 lg:justify-center lg:px-3' : 'items-center gap-3 px-4',
                   isActive 
                     ? 'bg-[#0E7C7B] text-white shadow-sm' 
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : isDarkMode
+                      ? 'text-slate-300 hover:bg-white/6'
+                      : 'text-gray-700 hover:bg-gray-100'
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -136,11 +147,16 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed }: AdminSidebarProps
         </nav>
 
         {/* View Storefront Link */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className={cn('absolute bottom-0 left-0 right-0 border-t p-4', isDarkMode ? 'border-white/10' : 'border-gray-200')}>
           <Link
             to="/"
             title={isCollapsed ? 'View Storefront' : undefined}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-gray-700 font-medium transition-all"
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition-all',
+              isDarkMode
+                ? 'bg-[#161b22] text-slate-200 hover:bg-[#1b2330]'
+                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+            )}
           >
             <Store className="w-5 h-5" />
             {isCollapsed ? <span className="lg:hidden">View Storefront</span> : <span>View Storefront</span>}

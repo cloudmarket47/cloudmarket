@@ -13,7 +13,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { isDarkMode } = useAppTheme();
 
   return (
-    <div className={isDarkMode ? 'app-theme-dark min-h-screen bg-[#0d1117] text-[#c9d1d9]' : 'min-h-screen bg-gray-50'}>
+    <div className={isDarkMode ? 'admin-theme-shell app-theme-dark min-h-screen bg-[#0d1117] text-[#c9d1d9]' : 'admin-theme-shell min-h-screen bg-gray-50'}>
       <AdminSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
@@ -26,7 +26,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       />
       
       <main
-        className={`pt-16 transition-[padding-left] duration-300 ${
+        className={`admin-theme-content pt-16 transition-[padding-left] duration-300 ${
           isSidebarCollapsed ? 'lg:pl-[5.5rem]' : 'lg:pl-64'
         }`}
       >

@@ -16,6 +16,7 @@ import {
 } from '../../lib/adminNotifications';
 import { useBrandingSettings } from '../../lib/branding';
 import { getOptimizedMedia } from '../../lib/media';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -30,6 +31,7 @@ export function AdminHeader({
 }: AdminHeaderProps) {
   const navigate = useNavigate();
   const branding = useBrandingSettings();
+  const { isDarkMode } = useAppTheme();
   const [preferences, setPreferences] = useState(() => readAdminPreferences());
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -176,7 +178,11 @@ export function AdminHeader({
 
   return (
     <header
-      className={`fixed left-0 right-0 top-0 z-30 h-16 border-b border-gray-200 bg-white transition-[left] duration-300 ${
+      className={`fixed left-0 right-0 top-0 z-30 h-16 transition-[left] duration-300 ${
+        isDarkMode
+          ? 'border-b border-white/10 bg-[#0f141b] text-[#e6edf3]'
+          : 'border-b border-gray-200 bg-white'
+      } ${
         isSidebarCollapsed ? 'lg:left-[5.5rem]' : 'lg:left-64'
       }`}
     >
@@ -184,7 +190,7 @@ export function AdminHeader({
         <div className="flex items-center gap-3">
           <button
             onClick={onMenuClick}
-            className="rounded-lg p-2 hover:bg-gray-100 lg:hidden"
+            className={`rounded-lg p-2 lg:hidden ${isDarkMode ? 'hover:bg-white/8 text-slate-200' : 'hover:bg-gray-100'}`}
             aria-label="Open sidebar"
           >
             <Menu className="h-6 w-6" />
@@ -192,7 +198,11 @@ export function AdminHeader({
 
           <button
             onClick={onDesktopToggle}
-            className="hidden items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 lg:inline-flex"
+            className={`hidden items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition lg:inline-flex ${
+              isDarkMode
+                ? 'border-white/12 bg-[#161b22] text-slate-200 hover:bg-[#1b2330]'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
             aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -212,10 +222,14 @@ export function AdminHeader({
             <button
               type="button"
               onClick={() => void handleBellClick()}
-              className="relative rounded-xl border border-gray-200 bg-white p-2 transition hover:bg-gray-100"
+              className={`relative rounded-xl border p-2 transition ${
+                isDarkMode
+                  ? 'border-white/12 bg-[#161b22] hover:bg-[#1b2330]'
+                  : 'border-gray-200 bg-white hover:bg-gray-100'
+              }`}
               aria-label="Open notifications"
             >
-              <Bell className="h-5 w-5 text-gray-600" />
+              <Bell className={`h-5 w-5 ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`} />
               {preferences.notificationsEnabled &&
               preferences.showUnreadBadge &&
               unreadCount > 0 ? (
@@ -239,7 +253,11 @@ export function AdminHeader({
           <button
             type="button"
             onClick={() => navigate('/admin/settings')}
-            className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-2 transition hover:bg-gray-100"
+            className={`flex items-center gap-3 rounded-xl border p-2 transition ${
+              isDarkMode
+                ? 'border-white/12 bg-[#161b22] hover:bg-[#1b2330]'
+                : 'border-gray-200 bg-white hover:bg-gray-100'
+            }`}
           >
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#0E7C7B]">
               {branding.logoUrl ? (

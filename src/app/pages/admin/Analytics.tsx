@@ -33,6 +33,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Button } from '../../components/design-system/Button';
+import { useAppTheme } from '../../context/AppThemeContext';
 import {
   getAnalyticsDataEventName,
   readAdminAnalyticsSnapshot,
@@ -402,6 +403,7 @@ function PredictionPanel({ prediction }: { prediction: AnalyticsPrediction }) {
 }
 
 export function Analytics() {
+  const { isDarkMode } = useAppTheme();
   const [periodDays, setPeriodDays] = useState<PeriodOption>(30);
   const [snapshot, setSnapshot] = useState<AdminAnalyticsSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -487,9 +489,20 @@ export function Analytics() {
     forms: country.formSubmissions,
   }));
   const maxButtonClicks = buttonInsights[0]?.clicks ?? 0;
+  const chartGridColor = isDarkMode ? '#30363d' : '#e2e8f0';
+  const chartAxisColor = isDarkMode ? '#8b949e' : '#64748b';
+  const chartTooltipStyle = {
+    borderRadius: '1rem',
+    borderColor: isDarkMode ? '#30363d' : '#e2e8f0',
+    backgroundColor: isDarkMode ? '#161b22' : '#ffffff',
+    color: isDarkMode ? '#e6edf3' : '#0f172a',
+    boxShadow: isDarkMode
+      ? '0 20px 45px rgba(0,0,0,0.35)'
+      : '0 20px 45px rgba(15,23,42,0.08)',
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="admin-analytics-page space-y-8">
       <section className="overflow-hidden rounded-[2.2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-[#183b57] p-6 text-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] sm:p-8">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -669,15 +682,15 @@ export function Analytics() {
                         <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
-                    <XAxis dataKey="shortLabel" tickLine={false} axisLine={false} stroke="#64748b" />
+                    <CartesianGrid stroke={chartGridColor} strokeDasharray="4 4" vertical={false} />
+                    <XAxis dataKey="shortLabel" tickLine={false} axisLine={false} stroke={chartAxisColor} />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      stroke="#64748b"
+                      stroke={chartAxisColor}
                       tickFormatter={(value: number) => formatCompactNumber(value)}
                     />
-                    <Tooltip contentStyle={{ borderRadius: '1rem', borderColor: '#e2e8f0', boxShadow: '0 20px 45px rgba(15,23,42,0.08)' }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                     <Legend />
                     <Area type="monotone" dataKey="visitors" stroke="#2563eb" fill="url(#analyticsVisitors)" strokeWidth={3} name="Visitors" />
                     <Area type="monotone" dataKey="pageViews" stroke="#0f766e" fill="url(#analyticsPageViews)" strokeWidth={3} name="Page views" />
@@ -719,11 +732,11 @@ export function Analytics() {
               <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={conversionChartData}>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
-                    <XAxis dataKey="shortLabel" tickLine={false} axisLine={false} stroke="#64748b" />
-                    <YAxis yAxisId="left" tickLine={false} axisLine={false} stroke="#64748b" tickFormatter={(value: number) => formatCompactNumber(value)} />
-                    <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} stroke="#64748b" tickFormatter={(value: number) => `${value}%`} />
-                    <Tooltip contentStyle={{ borderRadius: '1rem', borderColor: '#e2e8f0', boxShadow: '0 20px 45px rgba(15,23,42,0.08)' }} />
+                    <CartesianGrid stroke={chartGridColor} strokeDasharray="4 4" vertical={false} />
+                    <XAxis dataKey="shortLabel" tickLine={false} axisLine={false} stroke={chartAxisColor} />
+                    <YAxis yAxisId="left" tickLine={false} axisLine={false} stroke={chartAxisColor} tickFormatter={(value: number) => formatCompactNumber(value)} />
+                    <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} stroke={chartAxisColor} tickFormatter={(value: number) => `${value}%`} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="searches" stroke="#8b5cf6" strokeWidth={3} dot={false} />
                     <Line yAxisId="left" type="monotone" dataKey="buttonClicks" stroke="#0f766e" strokeWidth={3} dot={false} />
@@ -770,7 +783,7 @@ export function Analytics() {
                         <Cell key={`${entry.name}-${index}`} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '1rem', borderColor: '#e2e8f0', boxShadow: '0 20px 45px rgba(15,23,42,0.08)' }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -804,10 +817,10 @@ export function Analytics() {
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={countryChartData} layout="vertical" margin={{ left: 6, right: 6 }}>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" horizontal={false} />
-                    <XAxis type="number" tickLine={false} axisLine={false} stroke="#64748b" />
-                    <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} stroke="#64748b" width={40} />
-                    <Tooltip contentStyle={{ borderRadius: '1rem', borderColor: '#e2e8f0', boxShadow: '0 20px 45px rgba(15,23,42,0.08)' }} />
+                    <CartesianGrid stroke={chartGridColor} strokeDasharray="4 4" horizontal={false} />
+                    <XAxis type="number" tickLine={false} axisLine={false} stroke={chartAxisColor} />
+                    <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} stroke={chartAxisColor} width={40} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                     <Legend />
                     <Bar dataKey="visitors" fill="#2563eb" radius={[10, 10, 10, 10]} />
                     <Bar dataKey="forms" fill="#0f766e" radius={[10, 10, 10, 10]} />
@@ -895,10 +908,10 @@ export function Analytics() {
             <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={productChartData}>
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="#64748b" />
-                  <YAxis tickLine={false} axisLine={false} stroke="#64748b" />
-                  <Tooltip contentStyle={{ borderRadius: '1rem', borderColor: '#e2e8f0', boxShadow: '0 20px 45px rgba(15,23,42,0.08)' }} />
+                  <CartesianGrid stroke={chartGridColor} strokeDasharray="4 4" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} stroke={chartAxisColor} />
+                  <YAxis tickLine={false} axisLine={false} stroke={chartAxisColor} />
+                  <Tooltip contentStyle={chartTooltipStyle} />
                   <Legend />
                   <Bar dataKey="visitors" radius={[10, 10, 0, 0]} name="Visitors">
                     {productChartData.map((entry, index) => (
@@ -910,7 +923,7 @@ export function Analytics() {
               </ResponsiveContainer>
             </div>
 
-            <div className="hidden overflow-hidden rounded-[1.5rem] border border-slate-200 lg:block">
+            <div className="admin-data-table hidden overflow-hidden rounded-[1.5rem] border border-slate-200 lg:block">
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
