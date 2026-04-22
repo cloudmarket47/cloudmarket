@@ -1,7 +1,6 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type TouchEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ChevronLeft, MapPin, MessageSquare, MoreVertical, Package, Phone, Tag, User } from 'lucide-react';
-import { useAppTheme } from '../context/AppThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { convertPriceAmount, getCurrencyForCountry } from '../lib/currencyRates';
@@ -93,14 +92,33 @@ function ensurePhonePrefix(value: string, phonePrefix: string) {
   return `${phonePrefix} ${normalizedLocalNumber}`.trim();
 }
 
+function hasRequiredText(value: string) {
+  return value.trim().length > 0;
+}
+
+function hasValidPhoneNumber(value: string, phonePrefix: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return false;
+  }
+
+  const withoutPrefix = trimmedValue.startsWith(phonePrefix)
+    ? trimmedValue.slice(phonePrefix.length).trim()
+    : trimmedValue.replace(/^\+\d+\s*/, '').trim();
+
+  return withoutPrefix.replace(/\D/g, '').length >= 7;
+}
+
 export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) {
   const formspreeEndpoint = useFormspreeEndpoint();
   const childScrollRef = useRef<HTMLDivElement>(null);
-  const { isDarkMode } = useAppTheme();
+  const sheetTouchStartYRef = useRef<number | null>(null);
+  const sheetTouchDeltaYRef = useRef(0);
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const bundles = useMemo(() => buildCheckoutBundles(product, countryCode), [countryCode, product, ratesUpdatedAt]);
   const orderFormCopy = product.sections.orderForm;
-  const isDark = isDarkMode;
+  const isDark = false;
   const [selectedBundleIndex, setSelectedBundleIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -119,7 +137,6 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   const [isApplyingToken, setIsApplyingToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [hasInteractedWithScroll, setHasInteractedWithScroll] = useState(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
   const activeBundle = bundles[selectedBundleIndex ?? 0] ?? null;
@@ -192,7 +209,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
       return;
     }
 
-    childScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    childScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
   }, [isOpen, selectedBundleIndex]);
 
   useEffect(() => {
@@ -293,6 +310,37 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     }));
   };
 
+  const handleSheetTouchStart = (event: TouchEvent<HTMLElement>) => {
+    sheetTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+    sheetTouchDeltaYRef.current = 0;
+  };
+
+  const handleSheetTouchMove = (event: TouchEvent<HTMLElement>) => {
+    if (sheetTouchStartYRef.current === null) {
+      return;
+    }
+
+    const nextY = event.touches[0]?.clientY ?? sheetTouchStartYRef.current;
+    sheetTouchDeltaYRef.current = Math.max(0, nextY - sheetTouchStartYRef.current);
+  };
+
+  const handleSheetTouchEnd = () => {
+    const deltaY = sheetTouchDeltaYRef.current;
+    sheetTouchStartYRef.current = null;
+    sheetTouchDeltaYRef.current = 0;
+
+    if (deltaY < 100) {
+      return;
+    }
+
+    if (selectedBundle) {
+      setSelectedBundleIndex(null);
+      return;
+    }
+
+    onClose();
+  };
+
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name } = event.target;
     let { value } = event.target;
@@ -388,6 +436,36 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     setIsSubmitting(true);
 
     try {
+      if (!hasRequiredText(formData.fullName)) {
+        setSubmitError('Enter your full name before submitting your order.');
+        return;
+      }
+
+      if (!hasValidPhoneNumber(formData.phone, phonePrefix)) {
+        setSubmitError('Enter a valid primary phone number before submitting your order.');
+        return;
+      }
+
+      if (!hasValidPhoneNumber(formData.alternatePhone, phonePrefix)) {
+        setSubmitError('Enter a valid alternative phone number before submitting your order.');
+        return;
+      }
+
+      if (!hasRequiredText(formData.address)) {
+        setSubmitError('Enter your delivery address before submitting your order.');
+        return;
+      }
+
+      if (!hasRequiredText(formData.city)) {
+        setSubmitError(`Select your ${regionLabel.toLowerCase()} before submitting your order.`);
+        return;
+      }
+
+      if (!hasRequiredText(formData.quantity)) {
+        setSubmitError('Select your package before submitting your order.');
+        return;
+      }
+
       if (!formspreeEndpoint) {
         console.warn('Formspree endpoint URL is not configured.');
         setSubmitError('Form currently unavailable.');
@@ -511,7 +589,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
     ? 'w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-[#c9d1d9] placeholder:text-[#8b949e] outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20'
     : 'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-[#0E7C7B] focus:ring-2 focus:ring-[#0E7C7B]/20';
   const warmCardClassName = isDark
-    ? 'rounded-[1.7rem] border border-white/10 bg-white/[0.03] p-4 text-[#c9d1d9] shadow-[0_18px_36px_rgba(0,0,0,0.4)] backdrop-blur-[20px]'
+    ? 'rounded-[1.7rem] border border-white/15 bg-[#161b22] p-4 text-[#e6edf3] shadow-[0_18px_36px_rgba(0,0,0,0.4)]'
     : 'rounded-[1.7rem] bg-[#f8f1e8] p-4 text-stone-950 shadow-[0_12px_24px_rgba(15,23,42,0.12)]';
   const warmPillClassName = isDark
     ? 'rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200'
@@ -677,9 +755,10 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
               id="alternatePhone"
               name="alternatePhone"
               type="tel"
+              required
               value={formData.alternatePhone}
               onChange={handleChange}
-              placeholder={`Optional: ${phoneExample}`}
+              placeholder={phoneExample}
               className={fieldClassName}
             />
           </div>
@@ -772,29 +851,29 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/45">
+                <p className={`text-xs font-semibold uppercase tracking-[0.26em] ${isDark ? 'text-[#9fb0c3]' : 'text-white/45'}`}>
                   {orderFormCopy.summaryLabel}
                 </p>
-                <h4 className="mt-2 text-xl font-bold">{selectedBundle.title}</h4>
-                <p className="mt-1 text-sm text-white/68">
+                <h4 className={`mt-2 text-xl font-bold ${isDark ? 'text-white' : ''}`}>{selectedBundle.title}</h4>
+                <p className={`mt-1 text-sm ${isDark ? 'text-[#c9d1d9]' : 'text-white/68'}`}>
                   {selectedBundle.features.join(' / ')}
                 </p>
                 {formData.shortDeliveryMessage.trim() ? (
-                  <p className="mt-2 text-sm text-white/72">
+                  <p className={`mt-2 text-sm ${isDark ? 'text-[#c9d1d9]' : 'text-white/72'}`}>
                     Delivery note: {formData.shortDeliveryMessage.trim()}
                   </p>
                 ) : null}
               </div>
 
               <div className="text-right">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/45">{orderFormCopy.totalLabel}</p>
+                <p className={`text-xs uppercase tracking-[0.24em] ${isDark ? 'text-[#9fb0c3]' : 'text-white/45'}`}>{orderFormCopy.totalLabel}</p>
                 <p className="mt-2 text-2xl font-black">
                   {formatCurrency(pricing.finalAmount, countryCode)}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 space-y-1 border-t border-white/15 pt-4 text-sm text-white/82">
+            <div className={`mt-4 space-y-1 border-t pt-4 text-sm ${isDark ? 'border-white/15 text-[#d0dae4]' : 'border-white/15 text-white/82'}`}>
               <p>Subtotal: {formatCurrency(pricing.baseAmount, countryCode)}</p>
               <p>Delivery region: {countryName}</p>
               {pricing.discountAmount > 0 ? (
@@ -837,10 +916,10 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
   };
 
   const parentSurfaceClassName = isDark
-    ? 'border border-white/10 bg-[#0d1117]/95 text-[#c9d1d9] shadow-[0_-28px_90px_rgba(0,0,0,0.6)] backdrop-blur-[20px]'
+    ? 'border border-white/12 bg-[#0f141b] text-[#e6edf3] shadow-[0_-28px_90px_rgba(0,0,0,0.6)]'
     : 'bg-white shadow-[0_-28px_90px_rgba(15,23,42,0.36)]';
   const childSurfaceClassName = isDark
-    ? 'bg-gradient-to-br from-[#0d1117] via-[#11161d] to-[#161b22]'
+    ? 'bg-gradient-to-br from-[#11161d] via-[#151b23] to-[#1b222c]'
     : 'bg-gradient-to-br from-[#0E7C7B] via-[#1f6ebf] to-[#2B7FFF]';
   const headerButtonClassName = isDark
     ? 'inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white shadow-sm transition hover:bg-white/[0.08]'
@@ -870,8 +949,11 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
           >
             <motion.div
               animate={{ height: isExpanded ? '100dvh' : '99dvh' }}
-              transition={{ duration: 0.42, ease: motionEase }}
+              transition={{ duration: 0.26, ease: motionEase }}
               className={`relative flex h-full w-full max-w-[29rem] min-h-0 flex-col overflow-hidden rounded-t-[2.25rem] ${parentSurfaceClassName} md:hidden`}
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
             >
               <div className="px-4 pt-3">
                 <div className={`mx-auto h-1.5 w-14 rounded-full ${isDark ? 'bg-white/18' : 'bg-stone-300'}`} />
@@ -901,11 +983,11 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                   {!selectedBundle && (
                     <motion.div
                       key={activeBundle.id}
-                      className="pointer-events-none flex h-full flex-col items-center px-4 pt-2 text-center"
+                      className="flex h-full flex-col items-center overflow-y-auto px-4 pb-40 pt-2 text-center"
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -28, scale: 0.98 }}
-                      transition={{ duration: 0.28, ease: motionEase }}
+                      transition={{ duration: 0.2, ease: motionEase }}
                     >
                       <div className={`h-36 w-36 overflow-hidden rounded-[2.4rem] ${isDark ? 'bg-slate-900' : 'bg-[#f4ede3]'} shadow-[0_18px_32px_rgba(15,23,42,0.1)]`}>
                         <ImageWithFallback
@@ -940,13 +1022,19 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                 </AnimatePresence>
 
                 <motion.section
-                  animate={{ height: isExpanded ? 'calc(100% - 0.5rem)' : '58%' }}
-                  transition={{ duration: 0.38, ease: motionEase }}
+                  animate={{ height: isExpanded ? 'calc(100% - 0.5rem)' : '52%' }}
+                  transition={{ duration: 0.22, ease: motionEase }}
                   className={`absolute inset-x-0 bottom-0 flex min-h-0 flex-col rounded-t-[2.8rem] ${childSurfaceClassName}`}
                 >
                   <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/16" />
 
-                  <div ref={childScrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-5">
+                  <div
+                    ref={childScrollRef}
+                    className="checkout-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-5"
+                    onTouchStart={handleSheetTouchStart}
+                    onTouchMove={handleSheetTouchMove}
+                    onTouchEnd={handleSheetTouchEnd}
+                  >
                     <AnimatePresence initial={false} mode="wait">
                       {!selectedBundle ? (
                         <motion.div
@@ -958,13 +1046,13 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                           className="space-y-4"
                         >
                           <div>
-                            <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-white/45">
+                            <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-white/75">
                               {orderFormCopy.childSheetLabel}
                             </p>
                             <h3 className="mt-2 text-center text-2xl font-black tracking-tight text-white">
                               {orderFormCopy.childSheetTitle}
                             </h3>
-                            <p className="mt-2 text-center text-sm leading-6 text-white/65">
+                            <p className="mt-2 text-center text-sm leading-6 text-white/85">
                               {orderFormCopy.childSheetDescription}
                             </p>
                           </div>
@@ -976,7 +1064,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                                 type="button"
                                 onClick={() => handleBundleSelect(index)}
                                 className={`w-full rounded-[1.7rem] p-4 text-center shadow-[0_12px_24px_rgba(15,23,42,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(15,23,42,0.16)] ${
-                                  isDark ? 'bg-slate-950/60 text-white' : 'bg-[#f8f1e8] text-stone-950'
+                                  isDark ? 'border border-white/12 bg-[#161b22] text-white' : 'bg-[#f8f1e8] text-stone-950'
                                 }`}
                               >
                                 <div className="flex flex-col items-center gap-4">
@@ -1035,7 +1123,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                     </AnimatePresence>
                   </div>
                   <div
-                    className={`checkout-scroll-hint pointer-events-none absolute bottom-2 left-1/2 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-white/20 text-white/90 backdrop-blur-md transition-opacity duration-300 ${
+                    className={`checkout-scroll-hint pointer-events-none absolute bottom-2 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white/90 backdrop-blur-md transition-opacity duration-300 ${
                       showScrollHint ? 'opacity-100' : 'opacity-0'
                     }`}
                     aria-hidden="true"
@@ -1069,7 +1157,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                   </p>
                 </div>
 
-                <div className={`mt-8 rounded-[2.2rem] border p-5 ${isDark ? 'border-white/10 bg-white/5' : 'border-stone-200 bg-[#f8f5ee]'}`}>
+                <div className={`mt-8 rounded-[2.2rem] border p-5 ${isDark ? 'border-white/12 bg-[#161b22]' : 'border-stone-200 bg-[#f8f5ee]'}`}>
                   <div className={`overflow-hidden rounded-[2rem] ${isDark ? 'bg-slate-950' : 'bg-white'} shadow-[0_18px_40px_rgba(15,23,42,0.12)]`}>
                     <ImageWithFallback
                       src={(selectedBundle ?? activeBundle).image}
@@ -1101,7 +1189,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                   <span className="rounded-full bg-[#FF7A00] px-4 py-2 text-sm font-semibold text-white">
                     Promo {formatCurrency((selectedBundle ?? activeBundle).price, countryCode)}
                   </span>
-                  <span className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-[#1d355f] text-slate-100' : 'bg-[#eef4ff] text-[#1f56c6]'}`}>
+                  <span className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-[#263a52] text-slate-100' : 'bg-[#eef4ff] text-[#1f56c6]'}`}>
                     Save {formatCurrency((selectedBundle ?? activeBundle).savings, countryCode)}
                   </span>
                 </div>
@@ -1111,7 +1199,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                     <div
                       key={feature}
                       className={`rounded-[1.4rem] border px-4 py-4 text-sm font-medium ${
-                        isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-stone-200 bg-stone-50 text-stone-700'
+                        isDark ? 'border-white/12 bg-[#161b22] text-slate-200' : 'border-stone-200 bg-stone-50 text-stone-700'
                       }`}
                     >
                       {feature}
@@ -1121,15 +1209,15 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
               </div>
 
               <div className={`flex min-w-0 flex-1 flex-col ${childSurfaceClassName}`}>
-                <div className="flex items-center justify-between border-b border-white/10 px-8 py-6">
+                <div className="flex items-center justify-between border-b border-white/20 px-8 py-6">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/75">
                       {orderFormCopy.childSheetLabel}
                     </p>
                     <h3 className="mt-2 text-3xl font-black tracking-tight text-white">
                       {selectedBundle ? orderFormCopy.orderDetailsLabel : orderFormCopy.childSheetTitle}
                     </h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">
                       {selectedBundle ? 'Complete the details below to lock in your selected package.' : orderFormCopy.childSheetDescription}
                     </p>
                   </div>
@@ -1149,7 +1237,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                   )}
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-8 py-8">
+                <div className="checkout-scrollbar min-h-0 flex-1 overflow-y-auto px-8 py-8">
                   {!selectedBundle ? (
                     <div className="grid grid-cols-2 gap-5 xl:grid-cols-2">
                       {bundles.map((bundle, index) => (
@@ -1158,7 +1246,7 @@ export function CheckoutSheet({ isOpen, onClose, product }: CheckoutSheetProps) 
                           type="button"
                           onClick={() => handleBundleSelect(index)}
                           className={`flex h-full flex-col items-center rounded-[2rem] p-6 text-center shadow-[0_18px_34px_rgba(2,6,23,0.18)] transition duration-200 hover:-translate-y-1 ${
-                            isDark ? 'bg-slate-950/60 text-white' : 'bg-[#f8f1e8] text-stone-950'
+                            isDark ? 'border border-white/12 bg-[#161b22] text-white' : 'bg-[#f8f1e8] text-stone-950'
                           }`}
                         >
                           <div className="h-20 w-20 overflow-hidden rounded-[1.4rem] bg-white">

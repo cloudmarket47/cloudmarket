@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapPin, MessageSquare, Package, Phone, Tag, User } from 'lucide-react';
-import { useAppTheme } from '../context/AppThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../lib/analyticsTelemetry';
 import { redeemCustomerDiscountToken, validateCustomerDiscountToken } from '../lib/customerTokens';
@@ -43,15 +42,32 @@ function ensurePhonePrefix(value: string, phonePrefix: string) {
   return `${phonePrefix} ${normalizedLocalNumber}`.trim();
 }
 
+function hasRequiredText(value: string) {
+  return value.trim().length > 0;
+}
+
+function hasValidPhoneNumber(value: string, phonePrefix: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return false;
+  }
+
+  const withoutPrefix = trimmedValue.startsWith(phonePrefix)
+    ? trimmedValue.slice(phonePrefix.length).trim()
+    : trimmedValue.replace(/^\+\d+\s*/, '').trim();
+
+  return withoutPrefix.replace(/\D/g, '').length >= 7;
+}
+
 export function OrderForm({
   product,
   selectedPackage = '1',
   onPackageChange,
 }: OrderFormProps) {
   const formspreeEndpoint = useFormspreeEndpoint();
-  const { isDarkMode } = useAppTheme();
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
-  const isDark = isDarkMode;
+  const isDark = false;
   const orderFormCopy = product.sections.orderForm;
   const packageOptions = useMemo(
     () => buildPackageOptions(product, countryCode),
@@ -196,6 +212,36 @@ export function OrderForm({
     setIsSubmitting(true);
 
     try {
+      if (!hasRequiredText(formData.fullName)) {
+        setSubmitError('Enter your full name before submitting your order.');
+        return;
+      }
+
+      if (!hasValidPhoneNumber(formData.phone, phonePrefix)) {
+        setSubmitError('Enter a valid primary phone number before submitting your order.');
+        return;
+      }
+
+      if (!hasValidPhoneNumber(formData.alternatePhone, phonePrefix)) {
+        setSubmitError('Enter a valid alternative phone number before submitting your order.');
+        return;
+      }
+
+      if (!hasRequiredText(formData.address)) {
+        setSubmitError('Enter your delivery address before submitting your order.');
+        return;
+      }
+
+      if (!hasRequiredText(formData.city)) {
+        setSubmitError(`Select your ${regionLabel.toLowerCase()} before submitting your order.`);
+        return;
+      }
+
+      if (!hasRequiredText(formData.quantity)) {
+        setSubmitError('Select your package before submitting your order.');
+        return;
+      }
+
       if (!formspreeEndpoint) {
         console.warn('Formspree endpoint URL is not configured.');
         setSubmitError('Form currently unavailable.');
@@ -382,9 +428,10 @@ export function OrderForm({
                     id="alternatePhone"
                     name="alternatePhone"
                     type="tel"
+                    required
                     value={formData.alternatePhone}
                     onChange={handleChange}
-                    placeholder={`Optional: ${phoneExample}`}
+                    placeholder={phoneExample}
                     className={`h-12 rounded-xl text-lg focus:border-[#0E7C7B] focus:ring-[#0E7C7B] ${
                       isDark
                         ? 'border-white/10 bg-white/[0.03] text-[#c9d1d9] placeholder:text-[#8b949e]'

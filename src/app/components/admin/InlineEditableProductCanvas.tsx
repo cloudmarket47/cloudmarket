@@ -2979,7 +2979,14 @@ export function InlineEditableProductCanvas({
             <div className={cn('space-y-8 px-3 pb-4 pt-2 sm:px-4 sm:pb-6', canvasBackgroundClassName)}>
               {pageData.sections.hero.visible ? (
                 <section className="space-y-4">
-                  <div className="relative isolate overflow-hidden rounded-[2.4rem] bg-[#f6f4ef] p-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)] md:p-5">
+                  <div
+                    className={cn(
+                      'relative isolate overflow-hidden rounded-[2.4rem] p-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)] md:p-5',
+                      isDark
+                        ? 'border border-slate-800 bg-[#0f141b] shadow-[0_24px_70px_rgba(2,6,23,0.45)]'
+                        : 'bg-[#f6f4ef]',
+                    )}
+                  >
                     <div className="hero-frame relative h-[80vh] min-h-[520px] overflow-hidden rounded-[2.2rem] md:h-[700px] md:rounded-[2.7rem]">
                       <div className="hero-carousel-media absolute inset-0">
                         {heroSlides.map((slide, index) => (
@@ -4261,9 +4268,11 @@ export function InlineEditableProductCanvas({
                     >
                       <div className="space-y-6">
                         {[
-                          { icon: User, label: 'Full Name', placeholder: 'Enter your full name' },
-                          { icon: Phone, label: 'Phone Number', placeholder: 'e.g., 08012345678' },
-                          { icon: MapPin, label: 'Delivery Address', placeholder: 'Enter your full address' },
+                          { icon: User, label: 'Full Name *', placeholder: 'Enter your full name' },
+                          { icon: Phone, label: 'Phone Number *', placeholder: 'e.g., 08012345678' },
+                          { icon: Phone, label: 'Alternative Phone Number *', placeholder: 'e.g., 08087654321' },
+                          { icon: MapPin, label: 'Delivery Address *', placeholder: 'Enter your full address' },
+                          { icon: MapPin, label: `${regionLabel} *`, placeholder: `Select your ${regionLabel.toLowerCase()}` },
                         ].map((field) => {
                           const Icon = field.icon;
                           return (
@@ -4580,7 +4589,7 @@ export function InlineEditableProductCanvas({
                                       key={`${bundle.title}-preview`}
                                       className={cn(
                                         'rounded-[1.7rem] p-4 text-center shadow-[0_12px_24px_rgba(15,23,42,0.12)]',
-                                        isDark ? 'bg-slate-950 text-white' : 'bg-[#f8f1e8] text-stone-950',
+                                        isDark ? 'border border-slate-800 bg-[#0f141b] text-white' : 'bg-[#f8f1e8] text-stone-950',
                                       )}
                                     >
                                       <div className="flex flex-col items-center gap-4">
@@ -4666,7 +4675,7 @@ export function InlineEditableProductCanvas({
 
                                 <div className={cn(
                                   'mt-5 rounded-[1.7rem] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.12)]',
-                                  isDark ? 'bg-slate-950 text-white' : 'bg-[#f8f1e8] text-stone-950',
+                                  isDark ? 'border border-slate-800 bg-[#0f141b] text-white' : 'bg-[#f8f1e8] text-stone-950',
                                 )}>
                                   <div className="flex flex-col items-center gap-3 text-center">
                                     <EditableImage
@@ -4752,10 +4761,16 @@ export function InlineEditableProductCanvas({
 
                                 <div className={cn(
                                   'mt-4 rounded-[1.7rem] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.12)] md:p-5',
-                                  isDark ? 'bg-slate-950 text-white' : 'bg-[#f8f1e8] text-stone-950',
+                                  isDark ? 'border border-slate-800 bg-[#0f141b] text-white' : 'bg-[#f8f1e8] text-stone-950',
                                 )}>
                                   <div className="space-y-4">
-                                    {[ 'Full Name', 'Phone Number', 'Delivery Address' ].map((label) => (
+                                    {[
+                                      'Full Name *',
+                                      'Phone Number *',
+                                      'Alternative Phone Number *',
+                                      'Delivery Address *',
+                                      `${regionLabel} *`,
+                                    ].map((label) => (
                                       <div key={label} className="space-y-2">
                                         <label className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-stone-700')}>{label}</label>
                                         <div className={cn(

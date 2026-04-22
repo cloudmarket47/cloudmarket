@@ -31,7 +31,6 @@ import { EmailSubscription } from '../../components/storefront/EmailSubscription
 import { FloatingStorefrontActions } from '../../components/storefront/FloatingStorefrontActions';
 import { CheckoutSheet } from '../../components/CheckoutSheet';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
-import { useAppTheme } from '../../context/AppThemeContext';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
 import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
@@ -40,7 +39,6 @@ import type { Product } from '../../types';
 export function ProductPage() {
   const { slug } = useParams();
   const { formatPrice } = useLocale();
-  const { isDarkMode } = useAppTheme();
   const branding = useBrandingSettings();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPackageQuantity, setSelectedPackageQuantity] = useState('1');
@@ -48,7 +46,7 @@ export function ProductPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [storefrontError, setStorefrontError] = useState<string | null>(null);
   const product = storefrontProducts.find((p) => p.slug === slug);
-  const isDark = isDarkMode;
+  const isDark = false;
   const mobileStickyCtaCaptions = useMemo(() => {
     const fallbackCaptions = [
       'Order Now - Pay on Delivery',
@@ -180,7 +178,7 @@ export function ProductPage() {
 
   if (isLoadingProducts) {
     return (
-      <div className={`min-h-screen pb-20 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-white'}`}>
+      <div className="min-h-screen bg-white pb-20">
         <section
           className={`relative overflow-hidden px-3 py-3 md:px-6 md:py-6 ${
             isDark ? 'bg-[#0d1117]' : 'bg-[#f6f4ef]'
@@ -347,7 +345,7 @@ export function ProductPage() {
   };
 
   return (
-    <div className={`min-h-screen pb-28 md:pb-0 ${isDark ? 'storefront-dark bg-[#0d1117]' : 'bg-white'}`}>
+    <div className="min-h-screen bg-white pb-28 md:pb-0">
       <TopDropOfferAlerts
         enabled={!isCheckoutOpen && product.sections.alerts.visible}
         items={product.sections.alerts.items}
