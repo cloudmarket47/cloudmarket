@@ -33,8 +33,97 @@ import { CheckoutSheet } from '../../components/CheckoutSheet';
 import { StorefrontReloadNotice } from '../../components/storefront/StorefrontReloadNotice';
 import { trackAnalyticsButtonClick, trackAnalyticsEvent } from '../../lib/analyticsTelemetry';
 import { useBrandingSettings } from '../../lib/branding';
+import { getOptimizedMedia } from '../../lib/media';
 import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
 import type { Product } from '../../types';
+
+const mediaSectionSizeClasses: Record<
+  Product['sections']['media']['displaySize'],
+  {
+    card: string;
+    frame: string;
+  }
+> = {
+  small: {
+    card: 'md:basis-[15rem]',
+    frame: 'aspect-[4/5]',
+  },
+  medium: {
+    card: 'md:basis-[19rem]',
+    frame: 'aspect-[16/10]',
+  },
+  large: {
+    card: 'md:basis-[24rem]',
+    frame: 'aspect-[16/9]',
+  },
+};
+
+function ProductMediaSection({ product }: { product: Product }) {
+  const section = product.sections.media;
+  const items = section.items.filter((item) => item.src.trim().length > 0).slice(0, 5);
+
+  if (!section.visible || items.length === 0) {
+    return null;
+  }
+
+  const sizeConfig = mediaSectionSizeClasses[section.displaySize];
+
+  return (
+    <ScrollReveal>
+      <section className="bg-white py-14 md:py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">
+              {section.title}
+            </h2>
+            {section.subtitle.trim() ? (
+              <p className="mt-4 text-base leading-7 text-gray-600 md:text-lg">
+                {section.subtitle}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="-mx-4 mt-10 overflow-x-auto px-4 pb-4">
+            <div className="flex gap-4 md:gap-6">
+              {items.map((item, index) => (
+                <article
+                  key={`media-section-${item.src}-${index}`}
+                  className={`w-[17rem] shrink-0 overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.08)] ${sizeConfig.card}`}
+                >
+                  <div className={`overflow-hidden bg-slate-100 ${sizeConfig.frame}`}>
+                    {item.kind === 'video' ? (
+                      <video
+                        src={getOptimizedMedia(item.src)}
+                        controls
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={getOptimizedMedia(item.src)}
+                        alt={`${product.name} media ${index + 1}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {item.kind === 'video' ? `Video ${index + 1}` : `Media ${index + 1}`}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                      {section.displaySize}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </ScrollReveal>
+  );
+}
 
 export function ProductPage() {
   const { slug } = useParams();
@@ -365,6 +454,7 @@ export function ProductPage() {
             aspectRatio={product.sections.seeInAction.ratio}
           />
         )}
+        <ProductMediaSection product={product} />
         {product.sections.headline.visible && <ProductHeadlineTextSection product={product} />}
         {product.sections.featureMarquee.visible && (
           <ProductFeaturesMarquee product={product} onBuyNow={openCheckout} />

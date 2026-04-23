@@ -18,6 +18,7 @@ export type AdminCurrency = 'NGN' | 'USD' | 'GHS' | 'KES' | 'ZAR';
 export type AdminGenderTarget = CustomerGenderTarget;
 export type AdminAssetKind = 'image' | 'video';
 export type AdminVideoAspectRatio = '16:9' | '4:5' | '1:1' | '3:4';
+export type AdminMediaSectionDisplaySize = 'small' | 'medium' | 'large';
 
 export interface AdminMediaAsset {
   src: string;
@@ -120,6 +121,13 @@ export interface AdminProductDraft {
       ratio: AdminVideoAspectRatio;
       poster: AdminMediaAsset;
       video: AdminMediaAsset;
+    };
+    media: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      displaySize: AdminMediaSectionDisplaySize;
+      items: AdminMediaAsset[];
     };
     headline: {
       visible: boolean;
@@ -361,6 +369,9 @@ function collectDraftMediaLibraryItems(draft: AdminProductDraft) {
   );
   appendLibraryItem(collected, 'See in Action Poster', draft.sections.seeInAction.poster);
   appendLibraryItem(collected, 'See in Action Video', draft.sections.seeInAction.video);
+  draft.sections.media.items.forEach((item, index) =>
+    appendLibraryItem(collected, `Media Section Asset ${index + 1}`, item),
+  );
   draft.sections.featureMarquee.images.forEach((item, index) =>
     appendLibraryItem(collected, `Feature Marquee Image ${index + 1}`, item),
   );
@@ -528,6 +539,15 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
         ratio: normalizeVideoAspectRatio(draft.sections.seeInAction.ratio),
         poster: normalizeMediaAsset(draft.sections.seeInAction.poster, 'image'),
         video: normalizeMediaAsset(draft.sections.seeInAction.video, 'video'),
+      },
+      media: {
+        visible: draft.sections.media?.visible ?? true,
+        title: draft.sections.media?.title ?? 'Media Section',
+        subtitle: draft.sections.media?.subtitle ?? '',
+        displaySize: draft.sections.media?.displaySize ?? 'medium',
+        items: (draft.sections.media?.items ?? [])
+          .slice(0, 5)
+          .map((item) => normalizeMediaAsset(item, item?.kind ?? 'image')),
       },
       solution: {
         ...draft.sections.solution,
@@ -729,6 +749,13 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         ratio: '16:9',
         poster: asset(),
         video: asset('', 'video'),
+      },
+      media: {
+        visible: true,
+        title: 'Media Section',
+        subtitle: '',
+        displaySize: 'medium',
+        items: [],
       },
       headline: {
         visible: true,
@@ -956,6 +983,10 @@ export function removeMediaAssetFromDraft(
         poster: clearMatchingMediaAsset(draft.sections.seeInAction.poster, targetAsset, 'image'),
         video: clearMatchingMediaAsset(draft.sections.seeInAction.video, targetAsset, 'video'),
       },
+      media: {
+        ...draft.sections.media,
+        items: draft.sections.media.items.filter((item) => !mediaAssetMatches(item, targetAsset)),
+      },
       featureMarquee: {
         ...draft.sections.featureMarquee,
         images: draft.sections.featureMarquee.images.filter((item) => !mediaAssetMatches(item, targetAsset)),
@@ -1045,6 +1076,13 @@ export function createAdminProductDraftFromProduct(
     ratio: '16:9',
     poster: asset(product.sections.showcase.images[0] ?? product.sections.hero.image ?? product.image),
     video: asset('', 'video'),
+  };
+  draft.sections.media = {
+    visible: product.sections.media?.visible ?? false,
+    title: product.sections.media?.title ?? 'Media Section',
+    subtitle: product.sections.media?.subtitle ?? '',
+    displaySize: product.sections.media?.displaySize ?? 'medium',
+    items: (product.sections.media?.items ?? []).slice(0, 5).map((item) => asset(item.src, item.kind)),
   };
   draft.sections.headline = {
     visible: true,

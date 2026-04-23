@@ -2,7 +2,7 @@ export type ProductLibraryMediaKind = 'image' | 'video';
 
 export const PRODUCT_LIBRARY_LIMITS = {
   image: {
-    maxItems: 30,
+    maxItems: 50,
     maxFileSizeBytes: 5 * 1024 * 1024,
   },
   video: {

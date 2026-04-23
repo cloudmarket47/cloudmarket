@@ -3,6 +3,8 @@ import type {
   CustomerIdentityPools,
 } from '../lib/customerIdentityPools';
 
+export type ProductMediaSectionDisplaySize = 'small' | 'medium' | 'large';
+
 // Product data structure
 export interface Product {
   id: string;
@@ -48,6 +50,16 @@ export interface Product {
       ratio: '16:9' | '4:5' | '1:1' | '3:4';
       poster: string;
       video: string;
+    };
+    media: {
+      visible: boolean;
+      title: string;
+      subtitle: string;
+      displaySize: ProductMediaSectionDisplaySize;
+      items: {
+        src: string;
+        kind: 'image' | 'video';
+      }[];
     };
     headline: {
       visible: boolean;

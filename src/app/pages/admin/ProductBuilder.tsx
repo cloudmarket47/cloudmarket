@@ -200,6 +200,8 @@ function getEditorTargetLabel(target: EditorTargetId) {
       return 'Hero Section';
     case 'seeInAction':
       return 'See in Action';
+    case 'media':
+      return 'Media Section';
     case 'headline':
       return 'Product Headline';
     case 'alerts':
@@ -255,6 +257,16 @@ function getLivePreviewSections(draft: AdminProductDraft): LivePreviewSection[] 
         isFilled(draft.sections.seeInAction.title) &&
         (hasMedia(draft.sections.seeInAction.poster) || hasMedia(draft.sections.seeInAction.video)),
       active: draft.sections.seeInAction.visible,
+    },
+    {
+      id: 'media',
+      title: 'Media Section',
+      description: 'Mixed image, GIF and video strip below the first video',
+      complete:
+        draft.sections.media.visible &&
+        isFilled(draft.sections.media.title) &&
+        draft.sections.media.items.some((item) => hasMedia(item)),
+      active: draft.sections.media.visible,
     },
     {
       id: 'headline',
@@ -1492,6 +1504,126 @@ function MediaListEditor({
   );
 }
 
+function MixedMediaListEditor({
+  label,
+  description,
+  items,
+  displaySize,
+  onDisplaySizeChange,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  items: AdminMediaAsset[];
+  displaySize: AdminProductDraft['sections']['media']['displaySize'];
+  onDisplaySizeChange: (value: AdminProductDraft['sections']['media']['displaySize']) => void;
+  onChange: (items: AdminMediaAsset[]) => void;
+}) {
+  const updateItem = (index: number, value: AdminMediaAsset) => {
+    onChange(items.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  };
+
+  const handleAddItem = (kind: AdminMediaAsset['kind']) => {
+    if (items.length >= 5) {
+      return;
+    }
+
+    onChange([
+      ...items,
+      {
+        src: '',
+        source: 'url',
+        kind,
+      },
+    ]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{label}</p>
+          <p className="mt-1 text-xs text-gray-500">{description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => handleAddItem('image')}
+            disabled={items.length >= 5}
+            className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#0E7C7B] ring-1 ring-inset ring-[#0E7C7B]/15 transition hover:bg-[#eef7f6] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add image or GIF
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAddItem('video')}
+            disabled={items.length >= 5}
+            className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#0E7C7B] ring-1 ring-inset ring-[#0E7C7B]/15 transition hover:bg-[#eef7f6] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add video
+          </button>
+        </div>
+      </div>
+
+      <SelectField
+        label="Display size"
+        value={displaySize}
+        options={[
+          { value: 'small', label: 'Small cards' },
+          { value: 'medium', label: 'Medium cards' },
+          { value: 'large', label: 'Large cards' },
+        ]}
+        onChange={(value) => onDisplaySizeChange(value as AdminProductDraft['sections']['media']['displaySize'])}
+        hint="Controls how large each media tile appears on the storefront."
+      />
+
+      <p className="text-xs text-gray-500">{items.length}/5 media items configured.</p>
+
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div key={`${label}-media-${index}`} className="space-y-3 rounded-[1.75rem] border border-gray-200 bg-white p-4">
+            <SelectField
+              label={`Item ${index + 1} type`}
+              value={item.kind}
+              options={[
+                { value: 'image', label: 'Image or GIF' },
+                { value: 'video', label: 'Video' },
+              ]}
+              onChange={(value) =>
+                updateItem(index, {
+                  ...item,
+                  kind: value as AdminMediaAsset['kind'],
+                  src: '',
+                  source: 'url',
+                })
+              }
+            />
+            <MediaAssetField
+              label={`Media ${index + 1}`}
+              description="Upload from this device or paste a direct media URL."
+              asset={item}
+              kind={item.kind}
+              onChange={(value) => updateItem(index, value)}
+            />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600 transition hover:border-red-200 hover:text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove media
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AlertItemsEditor({
   items,
   onChange,
@@ -2225,6 +2357,34 @@ function SectionPreviewContent({
       );
     }
 
+    case 'media': {
+      const mediaItems = draft.sections.media.items.filter((item) => hasMedia(item));
+
+      if (mediaItems.length === 0) {
+        return null;
+      }
+
+      return (
+        <div className="space-y-3">
+          <div className={`rounded-[1.5rem] border p-4 ${cardClass}`}>
+            <h4 className="text-lg font-bold">{draft.sections.media.title}</h4>
+            <p className={`mt-2 text-sm leading-6 ${mutedClass}`}>{draft.sections.media.subtitle}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {mediaItems.slice(0, 4).map((item, index) => (
+              <div key={`media-preview-${index}`} className={`overflow-hidden rounded-[1.25rem] border ${cardClass}`}>
+                {item.kind === 'video' ? (
+                  <video src={getOptimizedMedia(item.src)} controls preload="metadata" className="h-28 w-full object-cover" />
+                ) : (
+                  <img src={getOptimizedMedia(item.src)} alt="" loading="lazy" className="h-28 w-full object-cover" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     case 'headline':
       return (
         <div className={`rounded-[1.75rem] border p-5 ${cardClass}`}>
@@ -2781,7 +2941,7 @@ function ElementEditorModal({
   }
 
   const title = getEditorTargetLabel(target);
-  const isStorySection = ['hero', 'seeInAction', 'headline', 'alerts', 'featureMarquee', 'problem', 'solution', 'features', 'aboutProduct'].includes(target);
+  const isStorySection = ['hero', 'seeInAction', 'media', 'headline', 'alerts', 'featureMarquee', 'problem', 'solution', 'features', 'aboutProduct'].includes(target);
   const stepLabel =
     currentIndex >= 0 ? `Step ${currentIndex + 1} of ${orderedTargets.length}` : null;
   const nextTargetLabel = nextTarget ? getEditorTargetLabel(nextTarget) : null;
@@ -3224,6 +3384,37 @@ function StorySections({
           asset={draft.sections.seeInAction.video}
           kind="video"
           onChange={(value) => patchSection('seeInAction', { video: value })}
+        />
+      </SectionCard>
+      ) : null}
+
+      {(!onlySectionId || onlySectionId === 'media') ? (
+      <SectionCard
+        icon={Layers3}
+        title="Media Section"
+        description="Add up to 5 images, GIFs or videos directly below the See in Action section."
+        visible={draft.sections.media.visible}
+        onVisibleChange={(value) => patchSection('media', { visible: value })}
+      >
+        <TextField
+          label="Section title"
+          value={draft.sections.media.title}
+          onChange={(value) => patchSection('media', { title: value })}
+          placeholder="Media Section"
+        />
+        <TextAreaField
+          label="Subtitle"
+          value={draft.sections.media.subtitle}
+          onChange={(value) => patchSection('media', { subtitle: value })}
+          placeholder="Upload extra proof, demos, transformations or motion shots here."
+        />
+        <MixedMediaListEditor
+          label="Section media"
+          description="Supports up to 5 mixed media items. GIF uploads count as images."
+          items={draft.sections.media.items}
+          displaySize={draft.sections.media.displaySize}
+          onDisplaySizeChange={(displaySize) => patchSection('media', { displaySize })}
+          onChange={(items) => patchSection('media', { items: items.slice(0, 5) })}
         />
       </SectionCard>
       ) : null}

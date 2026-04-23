@@ -79,6 +79,7 @@ function toProductImage(draft: AdminProductDraft) {
     draft.sections.hero.images.find((image) => hasMedia(image.src))?.src ||
     draft.sections.hero.image.src ||
     draft.sections.seeInAction.poster.src ||
+    draft.sections.media.items.find((item) => item.kind === 'image' && hasMedia(item.src))?.src ||
     draft.sections.solution.image.src ||
     draft.sections.featureMarquee.images.find((image) => hasMedia(image.src))?.src ||
     draft.sections.showcase.images.find((image) => hasMedia(image.src))?.src ||
@@ -136,6 +137,19 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
         ratio: draft.sections.seeInAction.ratio,
         poster: draft.sections.seeInAction.poster.src || heroImage,
         video: draft.sections.seeInAction.video.src,
+      },
+      media: {
+        visible: draft.sections.media.visible,
+        title: draft.sections.media.title,
+        subtitle: draft.sections.media.subtitle,
+        displaySize: draft.sections.media.displaySize,
+        items: draft.sections.media.items
+          .filter((item) => hasMedia(item.src))
+          .slice(0, 5)
+          .map((item) => ({
+            src: item.src,
+            kind: item.kind,
+          })),
       },
       headline: {
         visible: draft.sections.headline.visible,

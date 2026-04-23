@@ -102,6 +102,16 @@ const videoAspectRatioOptions: { value: AdminVideoAspectRatio; label: string; cl
   { value: '1:1', label: 'Square', className: 'aspect-square' },
   { value: '3:4', label: '3:4', className: 'aspect-[3/4]' },
 ];
+const mediaSectionSizeOptions: {
+  value: AdminProductDraft['sections']['media']['displaySize'];
+  label: string;
+  cardClassName: string;
+  frameClassName: string;
+}[] = [
+  { value: 'small', label: 'Small', cardClassName: 'md:w-[15rem]', frameClassName: 'aspect-[4/5]' },
+  { value: 'medium', label: 'Medium', cardClassName: 'md:w-[19rem]', frameClassName: 'aspect-[16/10]' },
+  { value: 'large', label: 'Large', cardClassName: 'md:w-[24rem]', frameClassName: 'aspect-[16/9]' },
+];
 
 const contentCardIconMap: Record<string, LucideIcon> = {
   Zap,
@@ -1293,6 +1303,217 @@ function EditableMediaList({
   );
 }
 
+function MediaSectionSizeSelector({
+  value,
+  onChange,
+  isDark = false,
+}: {
+  value: AdminProductDraft['sections']['media']['displaySize'];
+  onChange: (value: AdminProductDraft['sections']['media']['displaySize']) => void;
+  isDark?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-[1.5rem] border p-4',
+        isDark ? 'border-slate-800 bg-slate-950' : 'border-gray-200 bg-white',
+      )}
+    >
+      <div className="space-y-4">
+        <div className="min-w-0">
+          <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+            Media tile size
+          </p>
+          <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+            Choose how large each media card appears in the section.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {mediaSectionSizeOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'rounded-full px-3 py-2 text-sm font-semibold transition',
+                option.value === value
+                  ? 'bg-[#0E7C7B] text-white'
+                  : isDark
+                    ? 'bg-slate-900 text-slate-200 hover:bg-slate-800'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditableMixedMediaList({
+  items,
+  onChange,
+  isDark = false,
+}: {
+  items: AdminMediaAsset[];
+  onChange: (items: AdminMediaAsset[]) => void;
+  isDark?: boolean;
+}) {
+  const limitedItems = items.slice(0, 5);
+
+  const updateItem = (index: number, asset: AdminMediaAsset) => {
+    onChange(limitedItems.map((item, itemIndex) => (itemIndex === index ? asset : item)));
+  };
+
+  const appendItem = (kind: AdminMediaAsset['kind']) => {
+    if (limitedItems.length >= 5) {
+      return;
+    }
+
+    onChange([
+      ...limitedItems,
+      {
+        src: '',
+        source: 'url',
+        kind,
+      },
+    ]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+            Media files
+          </p>
+          <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+            Add up to 5 images, GIFs or videos for this section.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => appendItem('image')}
+            disabled={limitedItems.length >= 5}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ImagePlus className="h-4 w-4" />
+            Add image or GIF
+          </button>
+          <button
+            type="button"
+            onClick={() => appendItem('video')}
+            disabled={limitedItems.length >= 5}
+            className="inline-flex items-center gap-2 rounded-full bg-[#0E7C7B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5f5e] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Video className="h-4 w-4" />
+            Add video
+          </button>
+        </div>
+      </div>
+
+      <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+        {limitedItems.length}/5 media item{limitedItems.length === 1 ? '' : 's'} configured.
+      </p>
+
+      <div className="space-y-4">
+        {limitedItems.map((item, index) => (
+          <div
+            key={`mixed-media-${index}`}
+            className={cn(
+              'rounded-[1.5rem] border p-4',
+              isDark ? 'border-slate-800 bg-slate-950' : 'border-gray-200 bg-white',
+            )}
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                {(['image', 'video'] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() =>
+                      updateItem(index, {
+                        src: '',
+                        source: 'url',
+                        kind,
+                      })
+                    }
+                    className={cn(
+                      'rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition',
+                      item.kind === kind
+                        ? 'bg-[#0E7C7B] text-white'
+                        : isDark
+                          ? 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                    )}
+                  >
+                    {kind === 'image' ? 'Image or GIF' : 'Video'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange(limitedItems.filter((_, itemIndex) => itemIndex !== index))}
+                className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove
+              </button>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <EditableAssetControls
+                label={`Media ${index + 1}`}
+                asset={item}
+                kind={item.kind}
+                accept={item.kind === 'video' ? 'video/*' : 'image/*'}
+                deleteLabel="Delete Media"
+                isDark={isDark}
+                onSave={(asset) => updateItem(index, asset)}
+              />
+              <div
+                className={cn(
+                  'overflow-hidden rounded-[1.25rem] border',
+                  isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-gray-50',
+                )}
+              >
+                {item.src ? (
+                  item.kind === 'video' ? (
+                    <video
+                      src={getOptimizedMedia(item.src)}
+                      controls
+                      preload="metadata"
+                      className="aspect-[16/10] h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={getOptimizedMedia(item.src)}
+                      alt={`Media ${index + 1}`}
+                      loading="lazy"
+                      className="aspect-[16/10] h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className={cn(
+                    'flex aspect-[16/10] h-full w-full items-center justify-center',
+                    isDark ? 'text-slate-500' : 'text-gray-400',
+                  )}>
+                    {item.kind === 'video' ? <Video className="h-6 w-6" /> : <ImagePlus className="h-6 w-6" />}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HiddenInlineMessage({
   message: _message,
   isDark: _isDark = false,
@@ -2450,7 +2671,7 @@ export function InlineEditableProductCanvas({
   onChange,
   readOnly = false,
 }: InlineEditableProductCanvasProps) {
-  const { countryCode } = useLocale();
+  const { countryCode, regionLabel } = useLocale();
   const isDark = pageData.themeMode === 'dark';
   const isMobileView = deviceView === 'mobile';
   const heroSlides = useMemo(() => getHeroSlides(pageData), [pageData]);
@@ -2799,6 +3020,7 @@ export function InlineEditableProductCanvas({
     ? 'border border-slate-800 bg-slate-950 text-white shadow-[0_18px_50px_rgba(0,0,0,0.28)]'
     : 'border border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]';
   const marqueeImages = pageData.sections.featureMarquee.images.filter((item) => hasMedia(item));
+  const mediaSectionItems = pageData.sections.media.items.filter((item) => hasMedia(item)).slice(0, 5);
   const showcaseImages = pageData.sections.showcase.images.filter((item) => hasMedia(item));
   const keySettingsPreviewImage =
     pageData.coverImage.src ||
@@ -3472,6 +3694,124 @@ export function InlineEditableProductCanvas({
                 </section>
               ) : (
                 <HiddenInlineMessage message="See in Action section is hidden." isDark={isDark} />
+              )}
+
+              {pageData.sections.media.visible ? (
+                <section className={cn('rounded-[2rem] py-12 md:py-16', isDark ? 'bg-slate-950' : 'bg-white')}>
+                  <div className="mx-auto max-w-6xl px-4">
+                    <div className="mb-8 flex flex-wrap items-start justify-between gap-4 text-center md:text-left">
+                      <div className="mx-auto md:mx-0">
+                        <EditableText
+                          as="h2"
+                          value={pageData.sections.media.title}
+                          onSave={(value) => updateSection('media', { title: value })}
+                          multiline
+                          className={cn(
+                            'text-3xl font-bold tracking-tight md:text-5xl',
+                            isDark ? 'text-white' : 'text-slate-950',
+                          )}
+                        />
+                        <EditableText
+                          as="p"
+                          value={pageData.sections.media.subtitle}
+                          onSave={(value) => updateSection('media', { subtitle: value })}
+                          multiline
+                          className={cn(
+                            'mx-auto mt-4 max-w-3xl text-base leading-7 md:text-lg md:mx-0',
+                            isDark ? 'text-slate-300' : 'text-slate-600',
+                          )}
+                        />
+                      </div>
+                      {!readOnly ? (
+                        <SectionVisibilityToggle
+                          visible={pageData.sections.media.visible}
+                          label="Media Section"
+                          isDark={isDark}
+                          onToggle={() =>
+                            updateSection('media', {
+                              visible: !pageData.sections.media.visible,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </div>
+
+                    {mediaSectionItems.length > 0 ? (
+                      <div className="-mx-4 overflow-x-auto px-4 pb-4">
+                        <div className="flex gap-4 md:gap-6">
+                          {mediaSectionItems.map((item, index) => {
+                            const sizeConfig =
+                              mediaSectionSizeOptions.find(
+                                (option) => option.value === pageData.sections.media.displaySize,
+                              ) ?? mediaSectionSizeOptions[1];
+
+                            return (
+                              <article
+                                key={`inline-media-${item.src}-${index}`}
+                                className={cn(
+                                  'w-[17rem] shrink-0 overflow-hidden rounded-[1.8rem] border shadow-[0_18px_42px_rgba(15,23,42,0.08)]',
+                                  sizeConfig.cardClassName,
+                                  isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white',
+                                )}
+                              >
+                                <div className={cn('overflow-hidden', sizeConfig.frameClassName, isDark ? 'bg-slate-950' : 'bg-slate-100')}>
+                                  {item.kind === 'video' ? (
+                                    <video
+                                      src={getOptimizedMedia(item.src)}
+                                      controls
+                                      preload="metadata"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={getOptimizedMedia(item.src)}
+                                      alt={`${pageData.productName} media ${index + 1}`}
+                                      loading="lazy"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-between px-4 py-3">
+                                  <span className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-slate-900')}>
+                                    {item.kind === 'video' ? `Video ${index + 1}` : `Media ${index + 1}`}
+                                  </span>
+                                  <span className={cn(
+                                    'rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                                    isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-100 text-slate-600',
+                                  )}>
+                                    {pageData.sections.media.displaySize}
+                                  </span>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <HiddenInlineMessage
+                        message="Add images, GIFs or videos to activate the media section."
+                        isDark={isDark}
+                      />
+                    )}
+
+                    {!readOnly ? (
+                      <div className="mt-4 grid gap-4">
+                        <MediaSectionSizeSelector
+                          value={pageData.sections.media.displaySize}
+                          onChange={(displaySize) => updateSection('media', { displaySize })}
+                          isDark={isDark}
+                        />
+                        <EditableMixedMediaList
+                          items={pageData.sections.media.items}
+                          onChange={(items) => updateSection('media', { items: items.slice(0, 5) })}
+                          isDark={isDark}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : (
+                <HiddenInlineMessage message="Media section is hidden." isDark={isDark} />
               )}
 
               {pageData.sections.headline.visible ? (
