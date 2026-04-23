@@ -38,24 +38,15 @@ import { trackSubscriberActivity } from '../../lib/subscriberTelemetry';
 import type { Product } from '../../types';
 
 const mediaSectionSizeClasses: Record<
-  Product['sections']['media']['displaySize'],
+  Product['sections']['media']['aspectRatio'],
   {
-    card: string;
     frame: string;
   }
 > = {
-  small: {
-    card: 'md:basis-[15rem]',
-    frame: 'aspect-[4/5]',
-  },
-  medium: {
-    card: 'md:basis-[19rem]',
-    frame: 'aspect-[16/10]',
-  },
-  large: {
-    card: 'md:basis-[24rem]',
-    frame: 'aspect-[16/9]',
-  },
+  '16:9': { frame: 'aspect-video' },
+  '1:1': { frame: 'aspect-square' },
+  '4:5': { frame: 'aspect-[4/5]' },
+  '3:4': { frame: 'aspect-[3/4]' },
 };
 
 function ProductMediaSection({ product }: { product: Product }) {
@@ -66,7 +57,7 @@ function ProductMediaSection({ product }: { product: Product }) {
     return null;
   }
 
-  const sizeConfig = mediaSectionSizeClasses[section.displaySize];
+  const sizeConfig = mediaSectionSizeClasses[section.aspectRatio];
 
   return (
     <ScrollReveal>
@@ -83,12 +74,11 @@ function ProductMediaSection({ product }: { product: Product }) {
             ) : null}
           </div>
 
-          <div className="-mx-4 mt-10 overflow-x-auto px-4 pb-4">
-            <div className="flex gap-4 md:gap-6">
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
               {items.map((item, index) => (
                 <article
                   key={`media-section-${item.src}-${index}`}
-                  className={`w-[17rem] shrink-0 overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.08)] ${sizeConfig.card}`}
+                  className="overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.08)]"
                 >
                   <div className={`overflow-hidden bg-slate-100 ${sizeConfig.frame}`}>
                     {item.kind === 'video' ? (
@@ -112,12 +102,11 @@ function ProductMediaSection({ product }: { product: Product }) {
                       {item.kind === 'video' ? `Video ${index + 1}` : `Media ${index + 1}`}
                     </span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                      {section.displaySize}
+                      {section.aspectRatio}
                     </span>
                   </div>
                 </article>
               ))}
-            </div>
           </div>
         </div>
       </section>

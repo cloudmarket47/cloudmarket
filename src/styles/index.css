@@ -158,13 +158,37 @@ body {
 }
 
 .sticky-cta-finger {
-  animation: sticky-cta-finger-nudge 1.15s ease-in-out;
+  animation: sticky-cta-finger-nudge 1.15s ease-in-out infinite;
   will-change: opacity, transform;
 }
 
 .checkout-scroll-hint {
   animation: checkout-scroll-hint-bounce 1.5s ease-in-out 2;
   will-change: opacity, transform;
+}
+
+.checkout-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(149, 179, 211, 0.72) rgba(13, 17, 23, 0.3);
+}
+
+.checkout-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.checkout-scrollbar::-webkit-scrollbar-track {
+  background: rgba(13, 17, 23, 0.25);
+  border-radius: 999px;
+}
+
+.checkout-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(149, 179, 211, 0.78);
+  border-radius: 999px;
+  border: 2px solid rgba(13, 17, 23, 0.35);
+}
+
+.checkout-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 205, 230, 0.92);
 }
 
 @media (prefers-reduced-motion: reduce) {

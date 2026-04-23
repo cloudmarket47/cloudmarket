@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 import { Button } from '../../components/design-system/Button';
 import { FinanceReceiptModal } from '../../components/admin/FinanceReceiptModal';
+import { useAppTheme } from '../../context/AppThemeContext';
 import {
   FINANCE_DATA_CHANGE_EVENT,
   readFinanceSnapshot,
@@ -281,6 +282,7 @@ function JournalCard({ record, reportingCountryCode }: { record: FinanceLedgerRe
 }
 
 export function FinanceDashboard() {
+  const { isDarkMode } = useAppTheme();
   const [snapshot, setSnapshot] = useState<FinanceSnapshot | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<FinanceReceiptRecord | null>(null);
   const [receiptSearchQuery, setReceiptSearchQuery] = useState('');
@@ -671,7 +673,13 @@ export function FinanceDashboard() {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2.2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-[#1e3a5f] p-6 text-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] md:p-8">
+      <section
+        className={`overflow-hidden rounded-[2.2rem] border p-6 text-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] md:p-8 ${
+          isDarkMode
+            ? 'border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.2),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,124,123,0.18),transparent_32%),linear-gradient(135deg,#0f141b,rgba(21,27,34,0.98))]'
+            : 'border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-[#1e3a5f]'
+        }`}
+      >
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80 backdrop-blur">

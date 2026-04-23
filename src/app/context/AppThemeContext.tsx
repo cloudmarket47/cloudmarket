@@ -18,7 +18,7 @@ interface AppThemeContextValue {
   clearThemeOverride: () => void;
 }
 
-const AppThemeContext = createContext<AppThemeContextValue | null>(null);
+export const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 function readStoredThemeOverride(): AppThemeMode | null {
   if (typeof window === 'undefined') {

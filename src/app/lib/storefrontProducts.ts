@@ -142,7 +142,7 @@ export function adminDraftToProduct(draft: AdminProductDraft): Product {
         visible: draft.sections.media.visible,
         title: draft.sections.media.title,
         subtitle: draft.sections.media.subtitle,
-        displaySize: draft.sections.media.displaySize,
+        aspectRatio: draft.sections.media.aspectRatio,
         items: draft.sections.media.items
           .filter((item) => hasMedia(item.src))
           .slice(0, 5)

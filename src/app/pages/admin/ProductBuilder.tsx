@@ -657,6 +657,18 @@ function CompactEditorSection({
   );
 }
 
+function MediaPreviewDropdown({
+  title,
+  summary,
+  children,
+}: {
+  title: string;
+  summary: string;
+  children: ReactNode;
+}) {
+  return <CompactEditorSection title={title} summary={summary}>{children}</CompactEditorSection>;
+}
+
 function MediaAssetField({
   label,
   description,
@@ -784,22 +796,27 @@ function MediaAssetField({
         </div>
 
         <div className="lg:w-[240px]">
-          <div className="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white">
-            {asset.src ? (
-              kind === 'image' ? (
-                <img src={getOptimizedMedia(asset.src)} alt={label} loading="lazy" className="h-52 w-full object-cover" />
+          <MediaPreviewDropdown
+            title={`${label} preview`}
+            summary={asset.src ? 'Click to reveal the current media.' : 'No media linked yet.'}
+          >
+            <div className="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white">
+              {asset.src ? (
+                kind === 'image' ? (
+                  <img src={getOptimizedMedia(asset.src)} alt={label} loading="lazy" className="h-52 w-full object-cover" />
+                ) : (
+                  <video src={getOptimizedMedia(asset.src)} controls preload="none" className="h-52 w-full bg-black object-cover" />
+                )
               ) : (
-                <video src={getOptimizedMedia(asset.src)} controls preload="none" className="h-52 w-full bg-black object-cover" />
-              )
-            ) : (
-              <div className="flex h-52 w-full flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-white text-center text-gray-400">
-                {kind === 'image' ? <ImagePlus className="h-7 w-7" /> : <FileVideo className="h-7 w-7" />}
-                <p className="mt-3 px-6 text-sm font-medium text-gray-500">
-                  {kind === 'image' ? 'No image selected yet' : 'No video selected yet'}
-                </p>
-              </div>
-            )}
-          </div>
+                <div className="flex h-52 w-full flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-white text-center text-gray-400">
+                  {kind === 'image' ? <ImagePlus className="h-7 w-7" /> : <FileVideo className="h-7 w-7" />}
+                  <p className="mt-3 px-6 text-sm font-medium text-gray-500">
+                    {kind === 'image' ? 'No image selected yet' : 'No video selected yet'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </MediaPreviewDropdown>
         </div>
       </div>
     </div>
@@ -1109,15 +1126,20 @@ function ProductLibraryManager({
         <div className="rounded-[1.75rem] border border-gray-200 bg-white p-5">
           <p className="text-sm font-semibold text-gray-900">Library rules</p>
           <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
-            <p>Images: maximum 30 items, 5MB each, upload up to 20 at once.</p>
+            <p>Images: maximum 50 items, 5MB each, upload up to 20 at once.</p>
             <p>Videos: maximum 3 items, 15MB each.</p>
             <p>Deleting an uploaded file removes it from this draft and permanently deletes it from Supabase Storage.</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 max-h-[30rem] overflow-y-auto pr-1">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-6">
+        <MediaPreviewDropdown
+          title="Library media files"
+          summary={`${draft.mediaLibrary.length} stored item${draft.mediaLibrary.length === 1 ? '' : 's'}. Click to reveal.`}
+        >
+        <div className="max-h-[30rem] overflow-y-auto pr-1">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {draft.mediaLibrary.map((item) => (
             <div key={item.id} className="overflow-hidden rounded-[1.6rem] border border-gray-200 bg-white shadow-sm">
               <div className="aspect-[4/3] overflow-hidden bg-gray-100">
@@ -1149,7 +1171,9 @@ function ProductLibraryManager({
               </div>
             </div>
           ))}
+          </div>
         </div>
+        </MediaPreviewDropdown>
       </div>
       </>
       ) : null}
@@ -1508,15 +1532,15 @@ function MixedMediaListEditor({
   label,
   description,
   items,
-  displaySize,
-  onDisplaySizeChange,
+  aspectRatio,
+  onAspectRatioChange,
   onChange,
 }: {
   label: string;
   description: string;
   items: AdminMediaAsset[];
-  displaySize: AdminProductDraft['sections']['media']['displaySize'];
-  onDisplaySizeChange: (value: AdminProductDraft['sections']['media']['displaySize']) => void;
+  aspectRatio: AdminProductDraft['sections']['media']['aspectRatio'];
+  onAspectRatioChange: (value: AdminProductDraft['sections']['media']['aspectRatio']) => void;
   onChange: (items: AdminMediaAsset[]) => void;
 }) {
   const updateItem = (index: number, value: AdminMediaAsset) => {
@@ -1568,15 +1592,16 @@ function MixedMediaListEditor({
       </div>
 
       <SelectField
-        label="Display size"
-        value={displaySize}
+        label="Media aspect ratio"
+        value={aspectRatio}
         options={[
-          { value: 'small', label: 'Small cards' },
-          { value: 'medium', label: 'Medium cards' },
-          { value: 'large', label: 'Large cards' },
+          { value: '16:9', label: 'Landscape (16:9)' },
+          { value: '1:1', label: 'Square (1:1)' },
+          { value: '4:5', label: 'Portrait (4:5)' },
+          { value: '3:4', label: 'Tall Portrait (3:4)' },
         ]}
-        onChange={(value) => onDisplaySizeChange(value as AdminProductDraft['sections']['media']['displaySize'])}
-        hint="Controls how large each media tile appears on the storefront."
+        onChange={(value) => onAspectRatioChange(value as AdminProductDraft['sections']['media']['aspectRatio'])}
+        hint="Controls the file ratio used for each media card on the published page."
       />
 
       <p className="text-xs text-gray-500">{items.length}/5 media items configured.</p>
@@ -3412,8 +3437,8 @@ function StorySections({
           label="Section media"
           description="Supports up to 5 mixed media items. GIF uploads count as images."
           items={draft.sections.media.items}
-          displaySize={draft.sections.media.displaySize}
-          onDisplaySizeChange={(displaySize) => patchSection('media', { displaySize })}
+          aspectRatio={draft.sections.media.aspectRatio}
+          onAspectRatioChange={(aspectRatio) => patchSection('media', { aspectRatio })}
           onChange={(items) => patchSection('media', { items: items.slice(0, 5) })}
         />
       </SectionCard>

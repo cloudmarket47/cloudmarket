@@ -356,7 +356,7 @@ function defaultFinanceSettings(): FinanceSettings {
     formspreeEndpointUrl: '',
     customHeadMarkup: '',
     customFooterMarkup: '',
-    appThemeMode: 'dark',
+    appThemeMode: 'light',
     mobileStickyCtaTexts: [
       'Order Now - Pay on Delivery',
       'Claim Today\'s Free Delivery Offer',

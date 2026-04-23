@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SubscriberDetailModal } from '../../components/admin/SubscriberDetailModal';
 import { Button } from '../../components/design-system/Button';
+import { useAppTheme } from '../../context/AppThemeContext';
 import {
   buildSubscribersCsv,
   readAdminSubscribersSnapshot,
@@ -228,6 +229,7 @@ function SubscriberMobileCard({
 }
 
 export function Subscribers() {
+  const { isDarkMode } = useAppTheme();
   const [snapshot, setSnapshot] = useState<AdminSubscriberSnapshot>({
     subscribers: [],
     todayActivities: [],
@@ -367,17 +369,23 @@ export function Subscribers() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff,rgba(239,246,255,0.95))] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] md:p-7">
+      <div
+        className={`rounded-[2rem] border p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] md:p-7 ${
+          isDarkMode
+            ? 'border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(43,99,217,0.2),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,124,123,0.18),transparent_32%),linear-gradient(135deg,#0f141b,rgba(21,27,34,0.98))]'
+            : 'border-slate-200 bg-[linear-gradient(135deg,#ffffff,rgba(239,246,255,0.95))]'
+        }`}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white ${isDarkMode ? 'bg-white/10' : 'bg-slate-950'}`}>
               <Users className="h-3.5 w-3.5" />
               Subscriber Control
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+            <h1 className={`mt-4 text-3xl font-black tracking-tight md:text-4xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
               Grow, monitor, and manage your entire subscriber audience from one premium workspace
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 md:text-base">
+            <p className={`mt-3 max-w-xl text-sm leading-6 md:text-base ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
               Track signups, returning customers, token usage, product interest, and subscriber behavior while keeping your email list organized for future automations.
             </p>
           </div>

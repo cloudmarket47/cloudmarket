@@ -3,7 +3,7 @@ import type {
   CustomerIdentityPools,
 } from '../lib/customerIdentityPools';
 
-export type ProductMediaSectionDisplaySize = 'small' | 'medium' | 'large';
+export type ProductMediaSectionAspectRatio = '16:9' | '1:1' | '4:5' | '3:4';
 
 // Product data structure
 export interface Product {
@@ -55,7 +55,7 @@ export interface Product {
       visible: boolean;
       title: string;
       subtitle: string;
-      displaySize: ProductMediaSectionDisplaySize;
+      aspectRatio: ProductMediaSectionAspectRatio;
       items: {
         src: string;
         kind: 'image' | 'video';

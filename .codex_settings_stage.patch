@@ -1,0 +1,166 @@
+diff --git a/src/app/pages/admin/Settings.tsx b/src/app/pages/admin/Settings.tsx
+--- a/src/app/pages/admin/Settings.tsx
++++ b/src/app/pages/admin/Settings.tsx
+@@ -1 +1 @@
+-import { useEffect, useRef, useState } from 'react';
++import { type ReactNode, useEffect, useRef, useState } from 'react';
+@@ -4,0 +5,2 @@ import {
++  ChevronDown,
++  ChevronUp,
+@@ -91,0 +95,31 @@ function OverviewMetric({
++function CollapsiblePreviewPanel({
++  title,
++  summary,
++  children,
++}: {
++  title: string;
++  summary: string;
++  children: ReactNode;
++}) {
++  const [isOpen, setIsOpen] = useState(false);
++
++  return (
++    <div className="rounded-[1.6rem] border border-slate-200 bg-slate-50">
++      <button
++        type="button"
++        onClick={() => setIsOpen((current) => !current)}
++        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left"
++      >
++        <div>
++          <p className="text-sm font-semibold text-slate-900">{title}</p>
++          <p className="mt-1 text-xs leading-5 text-slate-500">{summary}</p>
++        </div>
++        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500">
++          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
++        </div>
++      </button>
++      {isOpen ? <div className="border-t border-slate-200 p-4">{children}</div> : null}
++    </div>
++  );
++}
++
+@@ -548,5 +589,5 @@ export function Settings() {
+-            <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 p-5">
+-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+-                Live preview
+-              </p>
+-              <div className="mt-4 flex items-center gap-4">
++            <CollapsiblePreviewPanel
++              title="Brand preview"
++              summary="Logo and storefront identity stay hidden until you open this preview."
++            >
++              <div className="mt-4 flex items-center gap-4">
+@@ -576 +617 @@ export function Settings() {
+-            </div>
++            </CollapsiblePreviewPanel>
+@@ -1042,5 +1083,5 @@ export function Settings() {
+-          <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 p-5">
+-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+-              Live preview
+-            </p>
+-            <div className="mt-4 space-y-3">
++          <CollapsiblePreviewPanel
++            title="Homepage highlight preview"
++            summary="Open to inspect the current storefront highlight image arrangement."
++          >
++            <div className="space-y-3">
+@@ -1070 +1111 @@ export function Settings() {
+-          </div>
++          </CollapsiblePreviewPanel>
+@@ -1124,13 +1165,27 @@ export function Settings() {
+-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+-              {brandingForm.homepageHighlightImages.map((image, index) => (
+-                <div
+-                  key={`${image}-${index}`}
+-                  className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
+-                >
+-                  <div className="aspect-[4/5] overflow-hidden bg-slate-100">
+-                    <img src={getOptimizedMedia(image)} alt="" loading="lazy" className="h-full w-full object-cover" />
+-                  </div>
+-                  <div className="flex items-center justify-between gap-3 px-4 py-3">
+-                    <div>
+-                      <p className="text-sm font-semibold text-slate-950">Image {index + 1}</p>
+-                      <p className="text-xs text-slate-500">Homepage hero carousel slot</p>
++            <CollapsiblePreviewPanel
++              title="Stored homepage highlight images"
++              summary={`${brandingForm.homepageHighlightImages.length} image${brandingForm.homepageHighlightImages.length === 1 ? '' : 's'} available. Open to reveal.`}
++            >
++              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
++                {brandingForm.homepageHighlightImages.map((image, index) => (
++                  <div
++                    key={`${image}-${index}`}
++                    className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
++                  >
++                    <div className="aspect-[4/5] overflow-hidden bg-slate-100">
++                      <img src={getOptimizedMedia(image)} alt="" loading="lazy" className="h-full w-full object-cover" />
++                    </div>
++                    <div className="flex items-center justify-between gap-3 px-4 py-3">
++                      <div>
++                        <p className="text-sm font-semibold text-slate-950">Image {index + 1}</p>
++                        <p className="text-xs text-slate-500">Homepage hero carousel slot</p>
++                      </div>
++                      <button
++                        type="button"
++                        onClick={() => handleRemoveHighlightImage(image)}
++                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-700 transition hover:bg-slate-50"
++                        aria-label={`Remove image ${index + 1}`}
++                        title="Remove image"
++                      >
++                        <Trash2 className="h-4 w-4" />
++                      </button>
+@@ -1138,9 +1192,0 @@ export function Settings() {
+-                    <button
+-                      type="button"
+-                      onClick={() => handleRemoveHighlightImage(image)}
+-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-700 transition hover:bg-slate-50"
+-                      aria-label={`Remove image ${index + 1}`}
+-                      title="Remove image"
+-                    >
+-                      <Trash2 className="h-4 w-4" />
+-                    </button>
+@@ -1148,3 +1194,3 @@ export function Settings() {
+-                </div>
+-              ))}
+-            </div>
++                ))}
++              </div>
++            </CollapsiblePreviewPanel>
+@@ -1209,13 +1255,18 @@ export function Settings() {
+-                    <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100">
+-                      {currentImage ? (
+-                        <img
+-                          src={getOptimizedMedia(currentImage)}
+-                          alt={`${category.name} category card`}
+-                          loading="lazy"
+-                          className="aspect-[4/3] h-full w-full object-cover"
+-                        />
+-                      ) : (
+-                        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(145deg,#f7faff,#edf3ff)] px-4 text-center">
+-                          <div>
+-                            <p className="text-sm font-bold text-slate-900">{category.name}</p>
+-                            <p className="mt-1 text-xs text-slate-500">Using icon fallback on the homepage</p>
++                    <CollapsiblePreviewPanel
++                      title={`${category.name} preview`}
++                      summary={currentImage ? 'Open to reveal the current category image.' : 'No custom image saved. Using storefront fallback.'}
++                    >
++                      <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100">
++                        {currentImage ? (
++                          <img
++                            src={getOptimizedMedia(currentImage)}
++                            alt={`${category.name} category card`}
++                            loading="lazy"
++                            className="aspect-[4/3] h-full w-full object-cover"
++                          />
++                        ) : (
++                          <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(145deg,#f7faff,#edf3ff)] px-4 text-center">
++                            <div>
++                              <p className="text-sm font-bold text-slate-900">{category.name}</p>
++                              <p className="mt-1 text-xs text-slate-500">Using icon fallback on the homepage</p>
++                            </div>
+@@ -1223,3 +1274,3 @@ export function Settings() {
+-                        </div>
+-                      )}
+-                    </div>
++                        )}
++                      </div>
++                    </CollapsiblePreviewPanel>

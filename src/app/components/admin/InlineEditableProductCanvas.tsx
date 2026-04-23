@@ -103,14 +103,14 @@ const videoAspectRatioOptions: { value: AdminVideoAspectRatio; label: string; cl
   { value: '3:4', label: '3:4', className: 'aspect-[3/4]' },
 ];
 const mediaSectionSizeOptions: {
-  value: AdminProductDraft['sections']['media']['displaySize'];
+  value: AdminProductDraft['sections']['media']['aspectRatio'];
   label: string;
-  cardClassName: string;
   frameClassName: string;
 }[] = [
-  { value: 'small', label: 'Small', cardClassName: 'md:w-[15rem]', frameClassName: 'aspect-[4/5]' },
-  { value: 'medium', label: 'Medium', cardClassName: 'md:w-[19rem]', frameClassName: 'aspect-[16/10]' },
-  { value: 'large', label: 'Large', cardClassName: 'md:w-[24rem]', frameClassName: 'aspect-[16/9]' },
+  { value: '16:9', label: 'Landscape (16:9)', frameClassName: 'aspect-video' },
+  { value: '1:1', label: 'Square (1:1)', frameClassName: 'aspect-square' },
+  { value: '4:5', label: 'Portrait (4:5)', frameClassName: 'aspect-[4/5]' },
+  { value: '3:4', label: 'Tall Portrait (3:4)', frameClassName: 'aspect-[3/4]' },
 ];
 
 const contentCardIconMap: Record<string, LucideIcon> = {
@@ -1308,8 +1308,8 @@ function MediaSectionSizeSelector({
   onChange,
   isDark = false,
 }: {
-  value: AdminProductDraft['sections']['media']['displaySize'];
-  onChange: (value: AdminProductDraft['sections']['media']['displaySize']) => void;
+  value: AdminProductDraft['sections']['media']['aspectRatio'];
+  onChange: (value: AdminProductDraft['sections']['media']['aspectRatio']) => void;
   isDark?: boolean;
 }) {
   return (
@@ -1322,14 +1322,14 @@ function MediaSectionSizeSelector({
       <div className="space-y-4">
         <div className="min-w-0">
           <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-            Media tile size
+            Media aspect ratio
           </p>
           <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
-            Choose how large each media card appears in the section.
+            Choose the file ratio used for each media card on the published page.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {mediaSectionSizeOptions.map((option) => (
             <button
               key={option.value}
@@ -1363,6 +1363,7 @@ function EditableMixedMediaList({
   isDark?: boolean;
 }) {
   const limitedItems = items.slice(0, 5);
+  const [openPreviewIndex, setOpenPreviewIndex] = useState<number | null>(null);
 
   const updateItem = (index: number, asset: AdminMediaAsset) => {
     onChange(limitedItems.map((item, itemIndex) => (itemIndex === index ? asset : item)));
@@ -1465,7 +1466,7 @@ function EditableMixedMediaList({
               </button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid gap-4">
               <EditableAssetControls
                 label={`Media ${index + 1}`}
                 asset={item}
@@ -1475,36 +1476,60 @@ function EditableMixedMediaList({
                 isDark={isDark}
                 onSave={(asset) => updateItem(index, asset)}
               />
-              <div
-                className={cn(
-                  'overflow-hidden rounded-[1.25rem] border',
-                  isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-gray-50',
-                )}
-              >
-                {item.src ? (
-                  item.kind === 'video' ? (
-                    <video
-                      src={getOptimizedMedia(item.src)}
-                      controls
-                      preload="metadata"
-                      className="aspect-[16/10] h-full w-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={getOptimizedMedia(item.src)}
-                      alt={`Media ${index + 1}`}
-                      loading="lazy"
-                      className="aspect-[16/10] h-full w-full object-cover"
-                    />
-                  )
-                ) : (
-                  <div className={cn(
-                    'flex aspect-[16/10] h-full w-full items-center justify-center',
-                    isDark ? 'text-slate-500' : 'text-gray-400',
-                  )}>
-                    {item.kind === 'video' ? <Video className="h-6 w-6" /> : <ImagePlus className="h-6 w-6" />}
+              <div className={cn(
+                'rounded-[1.25rem] border',
+                isDark ? 'border-slate-800 bg-slate-950' : 'border-gray-200 bg-gray-50',
+              )}>
+                <button
+                  type="button"
+                  onClick={() => setOpenPreviewIndex((current) => (current === index ? null : index))}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                >
+                  <div>
+                    <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                      Preview media {index + 1}
+                    </p>
+                    <p className={cn('mt-1 text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                      {item.src ? 'Click to reveal the current file.' : 'No media linked yet.'}
+                    </p>
                   </div>
-                )}
+                  {openPreviewIndex === index ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {openPreviewIndex === index ? (
+                  <div className="border-t border-inherit p-4">
+                    <div
+                      className={cn(
+                        'overflow-hidden rounded-[1rem] border',
+                        isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white',
+                      )}
+                    >
+                      {item.src ? (
+                        item.kind === 'video' ? (
+                          <video
+                            src={getOptimizedMedia(item.src)}
+                            controls
+                            preload="metadata"
+                            className="aspect-[16/10] h-full w-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={getOptimizedMedia(item.src)}
+                            alt={`Media ${index + 1}`}
+                            loading="lazy"
+                            className="aspect-[16/10] h-full w-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <div className={cn(
+                          'flex aspect-[16/10] h-full w-full items-center justify-center',
+                          isDark ? 'text-slate-500' : 'text-gray-400',
+                        )}>
+                          {item.kind === 'video' ? <Video className="h-6 w-6" /> : <ImagePlus className="h-6 w-6" />}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -3737,20 +3762,18 @@ export function InlineEditableProductCanvas({
                     </div>
 
                     {mediaSectionItems.length > 0 ? (
-                      <div className="-mx-4 overflow-x-auto px-4 pb-4">
-                        <div className="flex gap-4 md:gap-6">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
                           {mediaSectionItems.map((item, index) => {
                             const sizeConfig =
                               mediaSectionSizeOptions.find(
-                                (option) => option.value === pageData.sections.media.displaySize,
+                                (option) => option.value === pageData.sections.media.aspectRatio,
                               ) ?? mediaSectionSizeOptions[1];
 
                             return (
                               <article
                                 key={`inline-media-${item.src}-${index}`}
                                 className={cn(
-                                  'w-[17rem] shrink-0 overflow-hidden rounded-[1.8rem] border shadow-[0_18px_42px_rgba(15,23,42,0.08)]',
-                                  sizeConfig.cardClassName,
+                                  'overflow-hidden rounded-[1.8rem] border shadow-[0_18px_42px_rgba(15,23,42,0.08)]',
                                   isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white',
                                 )}
                               >
@@ -3779,13 +3802,12 @@ export function InlineEditableProductCanvas({
                                     'rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
                                     isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-100 text-slate-600',
                                   )}>
-                                    {pageData.sections.media.displaySize}
+                                    {pageData.sections.media.aspectRatio}
                                   </span>
                                 </div>
                               </article>
                             );
                           })}
-                        </div>
                       </div>
                     ) : (
                       <HiddenInlineMessage
@@ -3797,8 +3819,8 @@ export function InlineEditableProductCanvas({
                     {!readOnly ? (
                       <div className="mt-4 grid gap-4">
                         <MediaSectionSizeSelector
-                          value={pageData.sections.media.displaySize}
-                          onChange={(displaySize) => updateSection('media', { displaySize })}
+                          value={pageData.sections.media.aspectRatio}
+                          onChange={(aspectRatio) => updateSection('media', { aspectRatio })}
                           isDark={isDark}
                         />
                         <EditableMixedMediaList

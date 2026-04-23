@@ -18,7 +18,7 @@ export type AdminCurrency = 'NGN' | 'USD' | 'GHS' | 'KES' | 'ZAR';
 export type AdminGenderTarget = CustomerGenderTarget;
 export type AdminAssetKind = 'image' | 'video';
 export type AdminVideoAspectRatio = '16:9' | '4:5' | '1:1' | '3:4';
-export type AdminMediaSectionDisplaySize = 'small' | 'medium' | 'large';
+export type AdminMediaSectionAspectRatio = '16:9' | '1:1' | '4:5' | '3:4';
 
 export interface AdminMediaAsset {
   src: string;
@@ -126,7 +126,7 @@ export interface AdminProductDraft {
       visible: boolean;
       title: string;
       subtitle: string;
-      displaySize: AdminMediaSectionDisplaySize;
+      aspectRatio: AdminMediaSectionAspectRatio;
       items: AdminMediaAsset[];
     };
     headline: {
@@ -446,6 +446,22 @@ function clearMatchingMediaAsset(
   return mediaAssetMatches(mediaAsset, targetAsset) ? asset('', kind) : normalizeMediaAsset(mediaAsset, kind);
 }
 
+function normalizeMediaSectionAspectRatio(value: unknown): AdminMediaSectionAspectRatio {
+  if (value === '1:1' || value === '4:5' || value === '3:4') {
+    return value;
+  }
+
+  if (value === 'small') {
+    return '4:5';
+  }
+
+  if (value === 'medium' || value === 'large') {
+    return '16:9';
+  }
+
+  return '16:9';
+}
+
 const LEGACY_INSTRUCTIONAL_COPY = new Set([
   'Short product summary for cards, previews and quick admin review.',
   'Add the main conversion message that introduces the product clearly.',
@@ -544,7 +560,9 @@ function normalizeDraft(draft: AdminProductDraft): AdminProductDraft {
         visible: draft.sections.media?.visible ?? true,
         title: draft.sections.media?.title ?? 'Media Section',
         subtitle: draft.sections.media?.subtitle ?? '',
-        displaySize: draft.sections.media?.displaySize ?? 'medium',
+        aspectRatio: normalizeMediaSectionAspectRatio(
+          draft.sections.media?.aspectRatio ?? (draft.sections.media as { displaySize?: unknown } | undefined)?.displaySize,
+        ),
         items: (draft.sections.media?.items ?? [])
           .slice(0, 5)
           .map((item) => normalizeMediaAsset(item, item?.kind ?? 'image')),
@@ -754,7 +772,7 @@ export function createEmptyAdminProductDraft(): AdminProductDraft {
         visible: true,
         title: 'Media Section',
         subtitle: '',
-        displaySize: 'medium',
+        aspectRatio: '16:9',
         items: [],
       },
       headline: {
@@ -1081,7 +1099,9 @@ export function createAdminProductDraftFromProduct(
     visible: product.sections.media?.visible ?? false,
     title: product.sections.media?.title ?? 'Media Section',
     subtitle: product.sections.media?.subtitle ?? '',
-    displaySize: product.sections.media?.displaySize ?? 'medium',
+    aspectRatio: normalizeMediaSectionAspectRatio(
+      product.sections.media?.aspectRatio ?? (product.sections.media as { displaySize?: unknown } | undefined)?.displaySize,
+    ),
     items: (product.sections.media?.items ?? []).slice(0, 5).map((item) => asset(item.src, item.kind)),
   };
   draft.sections.headline = {
