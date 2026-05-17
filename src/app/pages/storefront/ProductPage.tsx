@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '../../components/design-system/Button';
 import { Card } from '../../components/design-system/Card';
@@ -75,43 +76,77 @@ function ProductMediaSection({ product }: { product: Product }) {
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
-              {items.map((item, index) => (
-                <article
+            {items.map((item, index) => {
+              const slideDirection = index % 2 === 0 ? -1 : 1;
+
+              return (
+                <motion.article
                   key={`media-section-${item.src}-${index}`}
-                  className="overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.08)]"
+                  aria-label={`${product.name} ${item.kind} preview ${index + 1}`}
+                  initial={{ opacity: 0, x: slideDirection * 72, scale: 0.98 }}
+                  whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                  viewport={{ once: true, amount: 0.35 }}
+                  transition={{
+                    duration: 0.38,
+                    delay: Math.min(index * 0.04, 0.16),
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="group/media overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(15,23,42,0.14)]"
                 >
-                  <div className={`overflow-hidden bg-slate-100 ${sizeConfig.frame}`}>
+                  <div className={`relative overflow-hidden bg-slate-100 ${sizeConfig.frame}`}>
                     {item.kind === 'video' ? (
                       <video
                         src={getOptimizedMedia(item.src)}
                         controls
                         preload="metadata"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition duration-500 ease-out group-hover/media:scale-[1.04]"
                       />
                     ) : (
                       <img
                         src={getOptimizedMedia(item.src)}
                         alt={`${product.name} media ${index + 1}`}
                         loading="lazy"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition duration-500 ease-out group-hover/media:scale-[1.04]"
                       />
                     )}
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.28)_45%,transparent_70%)] opacity-0 transition-opacity duration-300 group-hover/media:opacity-100" />
                   </div>
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm font-semibold text-gray-900">
-                      {item.kind === 'video' ? `Video ${index + 1}` : `Media ${index + 1}`}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                      {section.aspectRatio}
-                    </span>
-                  </div>
-                </article>
-              ))}
+                </motion.article>
+              );
+            })}
           </div>
         </div>
       </section>
     </ScrollReveal>
   );
+}
+
+function getProductFadeCarouselImages(
+  product: Product,
+  priorityImages: Array<string | undefined | null> = [],
+) {
+  const mediaImages = product.sections.media.items
+    .filter((item) => item.kind === 'image')
+    .map((item) => item.src);
+  const packageImages = product.sections.offer.packages.map((bundle) => bundle.image);
+  const imageCandidates = [
+    ...priorityImages,
+    ...mediaImages,
+    product.sections.hero.image,
+    product.image,
+    product.sections.solution.image,
+    ...product.sections.showcase.images,
+    ...product.sections.featureMarquee.images,
+    ...packageImages,
+    product.sections.seeInAction.poster,
+    product.sections.footerVideo.poster,
+  ];
+
+  return imageCandidates
+    .map((image) => image?.trim() ?? '')
+    .filter(Boolean)
+    .filter((image, index, collection) => collection.indexOf(image) === index)
+    .slice(0, 5);
 }
 
 export function ProductPage() {
@@ -441,6 +476,11 @@ export function ProductPage() {
             poster={product.sections.seeInAction.poster || product.sections.hero.image || product.image}
             videoSrc={product.sections.seeInAction.video}
             aspectRatio={product.sections.seeInAction.ratio}
+            carouselImages={getProductFadeCarouselImages(product, [
+              product.sections.seeInAction.poster,
+              product.sections.hero.image,
+              product.image,
+            ])}
           />
         )}
         <ProductMediaSection product={product} />
@@ -461,6 +501,11 @@ export function ProductPage() {
             poster={product.sections.footerVideo.poster || product.sections.solution.image || product.image}
             videoSrc={product.sections.footerVideo.video}
             aspectRatio={product.sections.footerVideo.ratio}
+            carouselImages={getProductFadeCarouselImages(product, [
+              product.sections.footerVideo.poster,
+              product.sections.solution.image,
+              product.image,
+            ])}
           />
         )}
         {product.sections.subscription.visible && (

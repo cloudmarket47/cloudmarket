@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollReveal } from './animations/ScrollReveal';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { getOptimizedMedia } from '../lib/media';
@@ -9,6 +9,7 @@ interface ProductVideoPlaceholderProps {
   poster: string;
   videoSrc?: string;
   aspectRatio?: '16:9' | '4:5' | '1:1' | '3:4';
+  carouselImages?: string[];
 }
 
 const VIDEO_RATIO_CLASS_MAP = {
@@ -24,8 +25,36 @@ export function ProductVideoPlaceholder({
   poster,
   videoSrc,
   aspectRatio = '16:9',
+  carouselImages = [],
 }: ProductVideoPlaceholderProps) {
   const ratioClassName = VIDEO_RATIO_CLASS_MAP[aspectRatio] ?? 'aspect-video';
+  const fadeImages = useMemo(() => {
+    return [poster, ...carouselImages]
+      .map((image) => image?.trim() ?? '')
+      .filter(Boolean)
+      .filter((image, index, collection) => collection.indexOf(image) === index)
+      .slice(0, 5);
+  }, [carouselImages, poster]);
+  const fadeImageSignature = fadeImages.join('|');
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [fadeImageSignature]);
+
+  useEffect(() => {
+    if (videoSrc || fadeImages.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveImageIndex((currentIndex) => (currentIndex + 1) % fadeImages.length);
+    }, 2800);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [fadeImageSignature, fadeImages.length, videoSrc]);
 
   return (
     <ScrollReveal>
@@ -56,30 +85,37 @@ export function ProductVideoPlaceholder({
                   />
                 ) : (
                   <>
-                    <ImageWithFallback
-                      src={poster}
-                      alt={title}
-                      className="h-full w-full object-cover"
-                    />
-
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-950/55 via-slate-900/35 to-slate-950/65" />
-
-                    <div className="absolute left-4 top-4 rounded-full bg-white/88 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-700 backdrop-blur-md">
-                      Video Placeholder
-                    </div>
-
-                    <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/70 bg-white/16 shadow-[0_18px_40px_rgba(15,23,42,0.2)] backdrop-blur-md">
-                        <Play className="ml-1 h-8 w-8 fill-white text-white" />
+                    {fadeImages.length > 0 ? (
+                      <div className="absolute inset-0">
+                        {fadeImages.map((image, index) => (
+                          <ImageWithFallback
+                            key={`${image}-${index}`}
+                            src={image}
+                            alt={`${title || 'Product media'} ${index + 1}`}
+                            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
+                              index === activeImageIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          />
+                        ))}
                       </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" />
+                    )}
 
-                      <p className="mt-6 text-xl font-semibold text-white md:text-2xl">
-                        Your demo video will appear here
-                      </p>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-white/82 md:text-base">
-                        Replace this poster block with an embedded product demo, customer testimonial, or walkthrough video.
-                      </p>
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-950/25 via-transparent to-slate-950/30" />
+
+                    {fadeImages.length > 1 ? (
+                      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-950/35 px-3 py-2 backdrop-blur-md">
+                        {fadeImages.map((image, index) => (
+                          <span
+                            key={`${image}-dot-${index}`}
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              index === activeImageIndex ? 'w-7 bg-white' : 'w-2 bg-white/45'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </>
                 )}
               </div>

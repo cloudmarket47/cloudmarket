@@ -11,7 +11,6 @@ import {
   rememberPlacedOrder,
   persistPlacedOrder,
 } from '../lib/orders';
-import { useFormspreeEndpoint } from '../lib/formspree';
 import { syncOrderSubmission } from '../lib/netlifyOrders';
 import { trackMetaPurchase } from '../lib/siteTracking';
 import { trackSubscriberActivity } from '../lib/subscriberTelemetry';
@@ -65,7 +64,6 @@ export function OrderForm({
   selectedPackage = '1',
   onPackageChange,
 }: OrderFormProps) {
-  const formspreeEndpoint = useFormspreeEndpoint();
   const { countryCode, countryName, phoneExample, phonePrefix, regionLabel, regions, ratesUpdatedAt } = useLocale();
   const isDark = false;
   const orderFormCopy = product.sections.orderForm;
@@ -242,12 +240,6 @@ export function OrderForm({
         return;
       }
 
-      if (!formspreeEndpoint) {
-        console.warn('Formspree endpoint URL is not configured.');
-        setSubmitError('Form currently unavailable.');
-        return;
-      }
-
       let resolvedTokenRecord = tokenRecord;
 
       if (formData.customerToken.trim()) {
@@ -277,8 +269,10 @@ export function OrderForm({
       });
       rememberPlacedOrder(placedOrder);
 
-      await syncOrderSubmission(placedOrder, {
+      void syncOrderSubmission(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
+      }).catch((error) => {
+        console.warn('Order notification could not be sent.', error);
       });
       trackAnalyticsEvent({
         type: 'form_submit',
@@ -317,21 +311,29 @@ export function OrderForm({
         },
       });
 
-      void (async () => {
-        if (resolvedTokenRecord) {
-          await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
-            productId: placedOrder.productId,
-            productSlug: placedOrder.productSlug,
-            productName: placedOrder.productName,
-            packageTitle: placedOrder.packageTitle,
-            amount: placedOrder.finalAmount,
-            pagePath: `/product/${product.slug}`,
-          });
-        }
+      const trackingResults = await Promise.allSettled([
+        (async () => {
+          if (resolvedTokenRecord) {
+            await redeemCustomerDiscountToken(resolvedTokenRecord.token, placedOrder.orderNumber, {
+              productId: placedOrder.productId,
+              productSlug: placedOrder.productSlug,
+              productName: placedOrder.productName,
+              packageTitle: placedOrder.packageTitle,
+              amount: placedOrder.finalAmount,
+              pagePath: `/product/${product.slug}`,
+            });
+          }
 
-        await persistPlacedOrder(placedOrder);
-      })().catch(() => undefined);
-      void recordSubmittedOrder(placedOrder).catch(() => undefined);
+          await persistPlacedOrder(placedOrder);
+        })(),
+        recordSubmittedOrder(placedOrder),
+      ]);
+
+      trackingResults.forEach((result) => {
+        if (result.status === 'rejected') {
+          console.warn('Order tracking task could not be completed.', result.reason);
+        }
+      });
       void trackMetaPurchase(placedOrder, {
         customerEmail: resolvedTokenRecord?.email,
       }).catch(() => undefined);

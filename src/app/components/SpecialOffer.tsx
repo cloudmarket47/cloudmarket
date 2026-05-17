@@ -145,7 +145,7 @@ export function SpecialOffer({
                     key={pkg.title}
                     type="button"
                     onClick={() => onSelectPackage(packageQuantity)}
-                    className={`card-3d relative rounded-2xl p-8 text-center shadow-2xl transition-transform hover:-translate-y-1 ${
+                    className={`card-3d offer-package-rotating-border relative rounded-2xl p-8 text-center shadow-2xl transition-transform hover:-translate-y-1 ${
                       isDarkMode
                         ? 'border border-white/12 bg-[#0f1724] text-white shadow-[0_24px_60px_rgba(0,0,0,0.34)]'
                         : 'bg-white text-slate-950'
